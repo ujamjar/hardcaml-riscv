@@ -1,0 +1,38 @@
+OASISFormat: 0.4
+Name:        hardcaml-riscv
+Version:     0.1
+Synopsis:    HardCaml RISC-V cores
+Description: HardCaml RISC-V cores
+
+Authors:     Andy Ray
+Maintainers: Andy Ray <andy.ray@ujamjar.com>
+Homepage:    https://github.com/ujamjar/hardcaml-riscv
+License:     ISC
+Plugins:     META (0.4)
+BuildTools:  ocamlbuild
+
+Library HardCamlRiscV
+  Path:          src
+  Findlibname:   hardcaml-riscv
+  Pack:          true
+  Modules:       Picorv32
+  BuildDepends:  hardcaml,hardcaml.syntax,riscv,deriving
+  XMETARequires: hardcaml,riscv,deriving
+
+Flag testbenches
+  Description: Build the testbenches
+  Default: false
+
+Executable picorv32tb
+  Build$:             flag(testbenches)
+  Path:               test
+  MainIs:             testbench.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
+
+SourceRepository master
+  Type:     git
+  Location: https://github.com/ujamjar/hardcaml-riscv.git
+  Browser:  https://github.com/ujamjar/hardcaml-riscv

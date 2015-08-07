@@ -1,0 +1,12 @@
+# OASIS_START
+# DO NOT EDIT (digest: e1176956b54de839297402da85e02b9c)
+version = "0.1"
+description = "HardCaml RISC-V cores"
+requires = "hardcaml riscv deriving"
+archive(byte) = "HardCamlRiscV.cma"
+archive(byte, plugin) = "HardCamlRiscV.cma"
+archive(native) = "HardCamlRiscV.cmxa"
+archive(native, plugin) = "HardCamlRiscV.cmxs"
+exists_if = "HardCamlRiscV.cma"
+# OASIS_STOP
+

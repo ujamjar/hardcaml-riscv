@@ -1,0 +1,40 @@
+# OASIS_START
+# DO NOT EDIT (digest: b25ef3151cfbcdd322f7228be64dbaa2)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
+# useless stuff for the build process
+true: annot, bin_annot
+<**/.svn>: -traverse
+<**/.svn>: not_hygienic
+".bzr": -traverse
+".bzr": not_hygienic
+".hg": -traverse
+".hg": not_hygienic
+".git": -traverse
+".git": not_hygienic
+"_darcs": -traverse
+"_darcs": not_hygienic
+# Library HardCamlRiscV
+"src/HardCamlRiscV.cmxs": use_HardCamlRiscV
+"src/picorv32.cmx": for-pack(HardCamlRiscV)
+<src/*.ml{,i,y}>: pkg_deriving
+<src/*.ml{,i,y}>: pkg_hardcaml
+<src/*.ml{,i,y}>: pkg_hardcaml.syntax
+<src/*.ml{,i,y}>: pkg_riscv
+# Executable picorv32tb
+<test/testbench.{native,byte}>: pkg_deriving
+<test/testbench.{native,byte}>: pkg_hardcaml
+<test/testbench.{native,byte}>: pkg_hardcaml-llvmsim
+<test/testbench.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<test/testbench.{native,byte}>: pkg_hardcaml.syntax
+<test/testbench.{native,byte}>: pkg_riscv
+<test/testbench.{native,byte}>: use_HardCamlRiscV
+<test/*.ml{,i,y}>: pkg_deriving
+<test/*.ml{,i,y}>: pkg_hardcaml
+<test/*.ml{,i,y}>: pkg_hardcaml-llvmsim
+<test/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
+<test/*.ml{,i,y}>: pkg_hardcaml.syntax
+<test/*.ml{,i,y}>: pkg_riscv
+<test/*.ml{,i,y}>: use_HardCamlRiscV
+<test/testbench.{native,byte}>: custom
+# OASIS_STOP
