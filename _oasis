@@ -23,6 +23,10 @@ Flag testbenches
   Description: Build the testbenches
   Default: false
 
+Flag generators
+  Description: Build the core generators
+  Default: false
+
 Executable picorv32tb
   Build$:             flag(testbenches)
   Path:               test
@@ -31,6 +35,15 @@ Executable picorv32tb
   CompiledObject:     best
   Install:            false
   BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
+
+Executable genpicorv32
+  Build$:             flag(generators)
+  Path:               test
+  MainIs:             genpicorv32.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml-riscv
 
 SourceRepository master
   Type:     git

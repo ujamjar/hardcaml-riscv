@@ -1,7 +1,3 @@
-(*#camlp4o;;
-#require "hardcaml,hardcaml.syntax,hardcaml-waveterm.lterm,deriving,deriving.syntax";;
-#mod_use "picorv32.ml";;*)
-
 open Printf
 open HardCaml.Api
 open HardCamlWaveLTerm.Api

@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: b25ef3151cfbcdd322f7228be64dbaa2)
+# DO NOT EDIT (digest: bf3c6b9b54f56471e55978506dd802d4)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -29,12 +29,19 @@ true: annot, bin_annot
 <test/testbench.{native,byte}>: pkg_hardcaml.syntax
 <test/testbench.{native,byte}>: pkg_riscv
 <test/testbench.{native,byte}>: use_HardCamlRiscV
-<test/*.ml{,i,y}>: pkg_deriving
-<test/*.ml{,i,y}>: pkg_hardcaml
 <test/*.ml{,i,y}>: pkg_hardcaml-llvmsim
 <test/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
+<test/testbench.{native,byte}>: custom
+# Executable genpicorv32
+<test/genpicorv32.{native,byte}>: pkg_deriving
+<test/genpicorv32.{native,byte}>: pkg_hardcaml
+<test/genpicorv32.{native,byte}>: pkg_hardcaml.syntax
+<test/genpicorv32.{native,byte}>: pkg_riscv
+<test/genpicorv32.{native,byte}>: use_HardCamlRiscV
+<test/*.ml{,i,y}>: pkg_deriving
+<test/*.ml{,i,y}>: pkg_hardcaml
 <test/*.ml{,i,y}>: pkg_hardcaml.syntax
 <test/*.ml{,i,y}>: pkg_riscv
 <test/*.ml{,i,y}>: use_HardCamlRiscV
-<test/testbench.{native,byte}>: custom
+<test/genpicorv32.{native,byte}>: custom
 # OASIS_STOP
