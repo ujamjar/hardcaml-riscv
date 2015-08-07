@@ -254,13 +254,13 @@ module Test = struct
 
     let write name' = 
       let name = "opicorv32_" ^ name' in
-      let f = open_out (name ^ ".v") in
+      let f = open_out ("test/picorv32_rtl/" ^ name ^ ".v") in
       let circ = Y.make name X.f in
       Rtl.Verilog.write (output_string f) circ;
       close_out f;
 
       let name = "opicorv32_" ^ name' ^ "_wrap" in
-      let f = open_out (name ^ ".v") in
+      let f = open_out ("test/picorv32_rtl/" ^ name ^ ".v") in
       let circ = Y'.make name (wrap name') in
       Rtl.Verilog.write (output_string f) circ;
       close_out f;
