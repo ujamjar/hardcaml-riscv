@@ -65,6 +65,7 @@ let run_testbench (sim, i, o, memory, waves) =
   (* basic memory interface *)
   let memif () = 
     let verbose = false in
+    (* XXX see Utils.Mem/Dxx *)
     if B.to_int !(o.mem_valid) = 1 && B.to_int !(i.mem_ready) = 0 then begin
       let addr = B.to_int !(o.mem_addr) in
       let wstrb = B.to_int !(o.mem_wstrb) in

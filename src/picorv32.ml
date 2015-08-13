@@ -71,6 +71,7 @@ let irq_sbreak = 1
 let irq_buserror = 2
 
 (* one hot control inputs. log depth muxes *)
+(* XXX see Utils.pmux1ht *)
 let pmux1ht x = 
   snd @@ tree 2 
     (function [(c,d)] -> (c,d) 
@@ -134,6 +135,7 @@ module Decoder = struct
     decoded_imm[32] decoded_imm_uj[32]
   end
 
+  (* XXX much in common with Pipe.Decoder (for now) *)
   let decoder
     regs
     mem_rdata_q mem_rdata_latched 
