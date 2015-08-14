@@ -23,7 +23,6 @@ module Insn : sig
 end
 module Insn_v : Utils.BVec_S with type t = Insn.t
 
-
 module Is : sig
   type t = 
     | Lui_auipc_jal | Lb_lh_lw_lbu_lhu | Slli_srli_srai | Jalr_addi_slti_sltiu_xori_ori_andi
@@ -52,12 +51,11 @@ module Make(C : Config) : sig
   module Pipe : interface
     pen 
     ra1 ra2 rad
+    ra1_zero ra2_zero rad_zero
     rd1 rd2 rdd
     imm
     pc next_pc
-    instr
-    insn
-    is
+    instr insn is fclass
     alu alu_cmp
     junk
   end
@@ -77,10 +75,29 @@ module Make(C : Config) : sig
   val build_pipeline : f_stages:(module M_stage) array -> f_output:'a f_output -> 
     Comb.t I.t -> 'a
 
+  module type Stage = sig
+    val name : string
+    val f : f_stage
+  end
+
+  module Fetch : Stage
+  module Decoder : Stage
+  module Decoder2 : sig
+    module Make(B : HardCaml.Comb.S) : sig
+      val decoder : B.t -> B.t
+    end
+  end
+  module Alu : Stage
+  module Mem : Stage
+  module Commit : Stage
+
 end
 
 module Test : sig
-  val write_vlog : unit -> unit
+  module Cfg : Config 
+  module Rv : module type of Make(Cfg)
+  val write_pipe_stage : string -> int -> (module Rv.Stage) -> unit
+  val write_core : unit -> unit
   val testbench : unit -> unit
 end
 

@@ -27,6 +27,10 @@ Flag generators
   Description: Build the core generators
   Default: false
 
+Flag bloop
+  Description: Build apps requiring hardcaml-bloop
+  Default: false
+
 Executable picorv32tb
   Build$:             flag(testbenches)
   Path:               test
@@ -41,7 +45,7 @@ Executable rv32tb
   Path:               test
   MainIs:             testbench_rv32.ml
   Custom:             true
-  CompiledObject:     byte
+  CompiledObject:     best
   Install:            false
   BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
 
@@ -53,6 +57,15 @@ Executable genpicorv32
   CompiledObject:     best
   Install:            false
   BuildDepends:       hardcaml-riscv
+
+Executable instr_trap_sat
+  Build$:             flag(bloop)
+  Path:               test
+  MainIs:             instr_trap_sat.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml-riscv,hardcaml-bloop
 
 SourceRepository master
   Type:     git

@@ -35,12 +35,12 @@ module Is = struct
 end
 module Is_v = Utils.BVec(Is)
 
-module IClass = struct
+module FClass = struct
   type t = R | I | S | SB | U | UJ
     deriving(Enum,Bounded,Show)
-  let name = "iclass"
+  let name = "fclass"
 end
-module IClass_v = Utils.BVec(IClass)
+module FClass_v = Utils.BVec(FClass)
 
 module Make(C : Config) = struct
 
@@ -75,8 +75,10 @@ module Make(C : Config) = struct
   module Pipe = interface
     (* pipeline stage enable and clear *)
     pen[1] 
-    (* register port indexes *)
+    (* register addresses *)
     ra1[log_regs] ra2[log_regs] rad[log_regs]
+    (* register address zero detection *)
+    ra1_zero[1] ra2_zero[1] rad_zero[1]
     (* data to/from register file *)
     rd1[C.xlen] rd2[C.xlen] rdd[C.xlen]
     (* immediate *)
@@ -89,6 +91,8 @@ module Make(C : Config) = struct
     insn[Insn_v.n]
     (* instruction class *)
     is[Is_v.n]
+    (* instruction format *)
+    fclass[FClass_v.n]
     (* alu results *)
     alu[C.xlen] alu_cmp[1]
     (* junk *)
@@ -152,6 +156,11 @@ module Make(C : Config) = struct
     in
     
     f_output p_stages
+
+  module type Stage = sig
+    val name : string
+    val f : f_stage
+  end
 
   (* ideally we would parameterise each of the pipeline stages somehow
    * so they can refer to other pipeline stages without needing to actually
@@ -237,16 +246,7 @@ module Make(C : Config) = struct
         is [Sb_sh_sw], sresize (concat (smap instr [(31,25); (11,7)])) 32;
       ] (zero 32)
 
-    let f ~n ~inp ~comb ~pipe = 
-      let open Pipe in
-      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
-      let cur = pipe.(n) in
-
-      (* delay enable until data is ready on memory port and decoded *)
-      let pen = Seq.reg ~e:vdd pipe.(n-1).pen in
-
-      let instr = inp.I.mio_rdata in
-        
+    let decode_insn instr = 
       let instr_lui   = instr.[6:0] ==:. 0b0110111 in
       let instr_auipc = instr.[6:0] ==:. 0b0010111 in
       let instr_jal   = instr.[6:0] ==:. 0b1101111 in
@@ -257,6 +257,7 @@ module Make(C : Config) = struct
       let is_sb_sh_sw                  = instr.[6:0] ==:. 0b0100011 in
       let is_alu_reg_imm               = instr.[6:0] ==:. 0b0010011 in
       let is_alu_reg_reg               = instr.[6:0] ==:. 0b0110011 in
+      let is_fence                     = instr.[6:0] ==:. 0b0001111 in
 
       (* instructions *)
 
@@ -345,11 +346,19 @@ module Make(C : Config) = struct
         |> concat
       in
       assert (width insn = Insn_v.n);
+      insn, 
+      (instr_lui, instr_auipc, instr_jal, instr_jalr,
+       is_beq_bne_blt_bge_bltu_bgeu, is_lb_lh_lw_lbu_lhu, 
+       is_sb_sh_sw, is_alu_reg_imm, is_alu_reg_reg)
 
-      (* instruction classes *)
+    let decode_is instr insn 
+      (instr_lui, instr_auipc, instr_jal, instr_jalr,
+       is_beq_bne_blt_bge_bltu_bgeu, is_lb_lh_lw_lbu_lhu, 
+       is_sb_sh_sw, is_alu_reg_imm, is_alu_reg_reg) =
 
-      let f l = reduce (|:) (List.map (Insn_v.sel insn) l) in
+      let open Insn in
       let open Is in
+      let f l = reduce (|:) (List.map (Insn_v.sel insn) l) in
       let is = [
         Lui_auipc_jal,   (f [Lui; Auipc; Jal]);
         Lui_auipc_jal_jalr_addi_add, 
@@ -390,22 +399,47 @@ module Make(C : Config) = struct
         |> concat
       in
       assert (width is = Is_v.n);
+      is
 
-      (* immediates *)
-        
+    let decode_fclass instr insn is = 
+      let open FClass in
+      let open Insn in
+      let open Is in
+      let u = reduce (|:) @@ List.map (Insn_v.sel insn) [Auipc; Lui] in
+      let uj = Insn_v.sel insn Jal in
+      let s = Is_v.sel is Sb_sh_sw in
+      let sb = Is_v.sel is Beq_bne_blt_bge_bltu_bgeu in
+      let i = reduce (|:) @@ List.map (Is_v.sel is) 
+        [Jalr_addi_slti_sltiu_xori_ori_andi; Lb_lh_lw_lbu_lhu] 
+      in
+      let r = Is_v.sel is Alu_reg_reg in
+      let rsft = Is_v.sel is Slli_srli_srai in
+      (*let sys = Is_v sel is System in
+      let cnt = Is_v sel is Count in*)
+      ()
+
+          
+    let f ~n ~inp ~comb ~pipe = 
+      let open Pipe in
+      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
+
+      (* delay enable until data is ready on memory port and decoded *)
+      let pen = Seq.reg ~e:vdd pipe.(n-1).pen in
+
+      let instr = inp.I.mio_rdata in
+       
+      (* decoding *)
+      let insn, base_instr = decode_insn instr in
+      let is = decode_is instr insn base_instr in
+      let fclass = decode_fclass instr insn is in
       let imm_uj = imm_uj instr in
       let imm = imm instr insn is imm_uj in
 
       (* register addresses *)
-        
-      let rad, ra1, ra2 = 
-        instr.[11:7],
-        instr.[19:15],
-        instr.[24:20]
-      in
+      let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
+      let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
       (* (async) regiser file *)
-
       let rfo = 
         Rf.f 
           Rf.I.({ 
@@ -421,10 +455,90 @@ module Make(C : Config) = struct
       { pipe.(n-1) with 
         pen; 
         ra1; ra2; rad;
+        ra1_zero; ra2_zero; rad_zero;
         rd1; rd2;
         imm; 
         instr; insn; 
         is }
+
+  end
+
+  module Decoder2 = struct
+
+    (* note; parameterised over Comb.S so it can be used with the sat solver *)
+    module Make(B : HardCaml.Comb.S) = struct
+
+      open B
+
+      let decoder instr = 
+        let opcode = instr.[6:0] in
+        let funct3 = instr.[14:12] in
+        let funct7 = instr.[31:25] in
+        let funct12 = instr.[31:20] in
+
+        let f3' = binary_to_onehot funct3 in
+        let f3  = bits f3' |> List.rev |> Array.of_list in
+        let f7_0,f7_s = funct7 ==:. 0b0000000, funct7 ==:. 0b0100000 in
+        let f7_x = f7_0 |: f7_s in
+        let f12_0, f12_1 = funct12 ==:. 0b000000000000, funct12 ==:. 0b000000000001 in
+
+        let rs1, rs2, rd = instr.[19:15], instr.[24:20], instr.[11:7] in
+        let rs1_0, rs2_0, rd_0 = rs1 ==:. 0, rs2 ==:. 0, rd ==:. 0 in
+
+        let isf3 l = reduce (|:) (List.map (Array.get f3) l) in
+        let notf3 l = ~: (isf3 l) in
+
+        let lui   = opcode ==:. 0b0110111 in
+        let auipc = opcode ==:. 0b0010111 in
+        let jal   = opcode ==:. 0b1101111 in
+        let jalr  = opcode ==:. 0b1100111 &: f3.(0) in
+        let bra   = opcode ==:. 0b1100011 &: (notf3 [2;3]) in
+        let ld    = opcode ==:. 0b0000011 &: (notf3 [3;6;7]) in
+        let st    = opcode ==:. 0b0100011 &: (isf3 [0;1;2]) in
+        let opi   = opcode ==:. 0b0010011 in
+        let opr   = opcode ==:. 0b0110011 in
+        let fen   = opcode ==:. 0b0001111 in
+        let sys   = opcode ==:. 0b1110011 in
+
+        let opr = 
+          let c = isf3 [0;5] in
+          (opr &: c &: f7_x) |: (opr &: (~: c) &: f7_0)
+        in
+
+        let opi, sfti = 
+          let strict = false in
+          let f7_0, f7_x = (* opcodes/spec do not quite agree (over 32/64 bit shamt) *)
+            if strict then f7_0, f7_x
+            else 
+              let z, o = instr.[31:26] ==:. 0, instr.[31:26] ==:. 0b010000 in
+              z, z |: o
+          in
+          opi &: notf3[1;5], 
+          opi &: ((f3.(1) &: f7_0) |: (f3.(5) &: f7_x))
+        in
+
+        let fence, fencei = fen &: f3.(0), fen &: f3.(1) in
+
+        let scall, sbreak = 
+          let c = rs1_0 &: f3.(0) &: rd_0 &: sys in
+          f12_0 &: c, f12_1 &: c
+        in
+
+        let rdcycle, rdtime, rdinstret, rdhigh =
+          let f = (funct12.[11:8] ==:. 0b1100) &: (funct12.[6:2] ==:. 0b00000) in
+          let c = rs1_0 &: f3.(2) &: sys &: f in
+          let x = funct12.[1:0] in
+          x ==:. 0b00 &: c, x ==:. 0b01 &: c, x ==:. 0b10 &: c, funct12.[7:7]
+        in
+
+        let trap = ~: (reduce (|:) 
+          [lui; auipc; jal; jalr; bra; ld; st; opi; sfti; opr; 
+            fence; fencei; scall; sbreak; rdcycle; rdtime; rdinstret])
+        in
+
+        trap
+
+    end
 
   end
 
@@ -523,10 +637,12 @@ end
 
 module Test = struct
 
-  module Rv = Make(struct
+  module Cfg = struct
     let xlen = 32
     let start_addr = 0x10
-  end)
+  end
+
+  module Rv = Make(Cfg)
 
   module B = HardCaml.Api.B
 
@@ -544,12 +660,35 @@ module Test = struct
       |]
       ~f_output:Rv_output.f
 
-  let write_vlog () = 
-    let module G = HardCaml.Interface.Circ(Rv.I)(Rv_o) in
-    let circ = G.make "rv32i" pipeline in
-    let f = open_out "rv32i_tmp.v" in
+  let write_circ name circ = 
+    let f = open_out (name ^ ".v") in
     HardCaml.Rtl.Verilog.write (output_string f) circ;
     close_out f
+
+  let write_pipe_stage name stage p = 
+    let module P = (val p : Rv.Stage) in
+    let inp = Rv.I.(map (fun (n,b) -> input n b) t) in
+    let module Seq = Utils.Regs(struct let clk=inp.Rv.I.clk let clr=inp.Rv.I.clr end) in
+    let pipe = Array.init 5 (fun j -> 
+      Rv.Pipe.(map (fun (n,b) -> Seq.reg ~e:vdd (input (n^"_p_"^string_of_int j) b)) t)) 
+    in
+    let comb = Array.init 5 (fun j -> 
+      Rv.Pipe.(map (fun (n,b) -> Seq.reg ~e:vdd (input (n^"_c_"^string_of_int j) b)) t)) 
+    in
+    let o = P.f ~n:stage ~inp ~comb ~pipe in
+    let o = Rv.Pipe.(map2 (fun o (n,b) -> n,o) o t) in
+    let o = 
+      Rv.Pipe.to_list o 
+      (*|> List.filter (fun (n,o) -> not (is_const x)) o*) 
+      |> List.map (fun (n,o) -> output n (Seq.reg ~e:vdd o))
+    in
+    let circ = HardCaml.Circuit.make name o in
+    write_circ name circ
+
+  let write_core () = 
+    let module G = HardCaml.Interface.Circ(Rv.I)(Rv_o) in
+    let circ = G.make "rv32i" pipeline in
+    write_circ "rv32i" circ
 
   module Waveterm_waves = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B))
   module Waveterm_sim = HardCamlWaveTerm.Sim.Make(B)(Waveterm_waves)
@@ -581,9 +720,28 @@ module Test = struct
     in
 
     let open Rv.I in
+    let open Rv.O in
     let open Rv_o in
 
+    let module D = Utils.D32(B) in
+    let module Mem = Utils.Mem(D) in
+    let memory = Mem.init (8*1024) in (* 32 Kib *)
+
+    let mio () = 
+      let o = o.o in
+      i.mio_vld := B.gnd;
+      if B.to_int !(o.mio_req) = 1 then begin
+        i.mio_vld := B.vdd;
+        if B.to_int !(o.mio_rw) = 1 then begin
+          i.mio_rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.mio_addr)
+        end else begin
+          Mem.write ~memory ~addr:!(o.mio_addr) ~data:!(o.mio_wdata) ~strb:!(o.mio_wmask)
+        end
+      end;
+    in
+
     let cycle () = 
+      mio();
       Cs.cycle sim 
     in
 

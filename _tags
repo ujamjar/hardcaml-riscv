@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 5e4dba20e4b78112f8b54e3f0d10d001)
+# DO NOT EDIT (digest: 77cdf15c08c011fc9cbb166f57d01328)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -35,15 +35,15 @@ true: annot, bin_annot
 <test/testbench.{native,byte}>: use_HardCamlRiscV
 <test/testbench.{native,byte}>: custom
 # Executable rv32tb
-"test/testbench_rv32.byte": pkg_deriving
-"test/testbench_rv32.byte": pkg_hardcaml
-"test/testbench_rv32.byte": pkg_hardcaml-llvmsim
-"test/testbench_rv32.byte": pkg_hardcaml-waveterm.lterm
-"test/testbench_rv32.byte": pkg_hardcaml.syntax
-"test/testbench_rv32.byte": pkg_riscv
-"test/testbench_rv32.byte": use_HardCamlRiscV
+<test/testbench_rv32.{native,byte}>: pkg_deriving
+<test/testbench_rv32.{native,byte}>: pkg_hardcaml
+<test/testbench_rv32.{native,byte}>: pkg_hardcaml-llvmsim
+<test/testbench_rv32.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<test/testbench_rv32.{native,byte}>: pkg_hardcaml.syntax
+<test/testbench_rv32.{native,byte}>: pkg_riscv
+<test/testbench_rv32.{native,byte}>: use_HardCamlRiscV
 <test/*.ml{,i,y}>: pkg_hardcaml-llvmsim
-"test/testbench_rv32.byte": custom
+<test/testbench_rv32.{native,byte}>: custom
 # Executable genpicorv32
 <test/genpicorv32.{native,byte}>: pkg_deriving
 <test/genpicorv32.{native,byte}>: pkg_hardcaml
@@ -51,12 +51,22 @@ true: annot, bin_annot
 <test/genpicorv32.{native,byte}>: pkg_hardcaml.syntax
 <test/genpicorv32.{native,byte}>: pkg_riscv
 <test/genpicorv32.{native,byte}>: use_HardCamlRiscV
+<test/genpicorv32.{native,byte}>: custom
+# Executable instr_trap_sat
+<test/instr_trap_sat.{native,byte}>: pkg_deriving
+<test/instr_trap_sat.{native,byte}>: pkg_hardcaml
+<test/instr_trap_sat.{native,byte}>: pkg_hardcaml-bloop
+<test/instr_trap_sat.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<test/instr_trap_sat.{native,byte}>: pkg_hardcaml.syntax
+<test/instr_trap_sat.{native,byte}>: pkg_riscv
+<test/instr_trap_sat.{native,byte}>: use_HardCamlRiscV
 <test/*.ml{,i,y}>: pkg_deriving
 <test/*.ml{,i,y}>: pkg_hardcaml
+<test/*.ml{,i,y}>: pkg_hardcaml-bloop
 <test/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
 <test/*.ml{,i,y}>: pkg_hardcaml.syntax
 <test/*.ml{,i,y}>: pkg_riscv
 <test/*.ml{,i,y}>: use_HardCamlRiscV
-<test/genpicorv32.{native,byte}>: custom
+<test/instr_trap_sat.{native,byte}>: custom
 # OASIS_STOP
 true: debug
