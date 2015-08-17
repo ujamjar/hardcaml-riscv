@@ -31,16 +31,16 @@ Flag bloop
   Description: Build apps requiring hardcaml-bloop
   Default: false
 
-Executable picorv32tb
+Executable tesbench_picorv32
   Build$:             flag(testbenches)
   Path:               test
-  MainIs:             testbench.ml
+  MainIs:             testbench_picorv32.ml
   Custom:             true
   CompiledObject:     best
   Install:            false
   BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
 
-Executable rv32tb
+Executable testbench_rv32
   Build$:             flag(testbenches)
   Path:               test
   MainIs:             testbench_rv32.ml
@@ -49,10 +49,19 @@ Executable rv32tb
   Install:            false
   BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
 
-Executable genpicorv32
+Executable gen_picorv32
   Build$:             flag(generators)
   Path:               test
-  MainIs:             genpicorv32.ml
+  MainIs:             gen_picorv32.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml-riscv
+
+Executable gen_rv32i
+  Build$:             flag(generators)
+  Path:               test
+  MainIs:             gen_rv32i.ml
   Custom:             true
   CompiledObject:     best
   Install:            false

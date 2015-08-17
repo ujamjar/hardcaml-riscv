@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 77cdf15c08c011fc9cbb166f57d01328)
+# DO NOT EDIT (digest: d376c7ff5dd7f3728157a4b222c8a980)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -25,16 +25,16 @@ true: annot, bin_annot
 <src/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
 <src/*.ml{,i,y}>: pkg_hardcaml.syntax
 <src/*.ml{,i,y}>: pkg_riscv
-# Executable picorv32tb
-<test/testbench.{native,byte}>: pkg_deriving
-<test/testbench.{native,byte}>: pkg_hardcaml
-<test/testbench.{native,byte}>: pkg_hardcaml-llvmsim
-<test/testbench.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/testbench.{native,byte}>: pkg_hardcaml.syntax
-<test/testbench.{native,byte}>: pkg_riscv
-<test/testbench.{native,byte}>: use_HardCamlRiscV
-<test/testbench.{native,byte}>: custom
-# Executable rv32tb
+# Executable tesbench_picorv32
+<test/testbench_picorv32.{native,byte}>: pkg_deriving
+<test/testbench_picorv32.{native,byte}>: pkg_hardcaml
+<test/testbench_picorv32.{native,byte}>: pkg_hardcaml-llvmsim
+<test/testbench_picorv32.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<test/testbench_picorv32.{native,byte}>: pkg_hardcaml.syntax
+<test/testbench_picorv32.{native,byte}>: pkg_riscv
+<test/testbench_picorv32.{native,byte}>: use_HardCamlRiscV
+<test/testbench_picorv32.{native,byte}>: custom
+# Executable testbench_rv32
 <test/testbench_rv32.{native,byte}>: pkg_deriving
 <test/testbench_rv32.{native,byte}>: pkg_hardcaml
 <test/testbench_rv32.{native,byte}>: pkg_hardcaml-llvmsim
@@ -44,14 +44,22 @@ true: annot, bin_annot
 <test/testbench_rv32.{native,byte}>: use_HardCamlRiscV
 <test/*.ml{,i,y}>: pkg_hardcaml-llvmsim
 <test/testbench_rv32.{native,byte}>: custom
-# Executable genpicorv32
-<test/genpicorv32.{native,byte}>: pkg_deriving
-<test/genpicorv32.{native,byte}>: pkg_hardcaml
-<test/genpicorv32.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/genpicorv32.{native,byte}>: pkg_hardcaml.syntax
-<test/genpicorv32.{native,byte}>: pkg_riscv
-<test/genpicorv32.{native,byte}>: use_HardCamlRiscV
-<test/genpicorv32.{native,byte}>: custom
+# Executable gen_picorv32
+<test/gen_picorv32.{native,byte}>: pkg_deriving
+<test/gen_picorv32.{native,byte}>: pkg_hardcaml
+<test/gen_picorv32.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<test/gen_picorv32.{native,byte}>: pkg_hardcaml.syntax
+<test/gen_picorv32.{native,byte}>: pkg_riscv
+<test/gen_picorv32.{native,byte}>: use_HardCamlRiscV
+<test/gen_picorv32.{native,byte}>: custom
+# Executable gen_rv32i
+<test/gen_rv32i.{native,byte}>: pkg_deriving
+<test/gen_rv32i.{native,byte}>: pkg_hardcaml
+<test/gen_rv32i.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<test/gen_rv32i.{native,byte}>: pkg_hardcaml.syntax
+<test/gen_rv32i.{native,byte}>: pkg_riscv
+<test/gen_rv32i.{native,byte}>: use_HardCamlRiscV
+<test/gen_rv32i.{native,byte}>: custom
 # Executable instr_trap_sat
 <test/instr_trap_sat.{native,byte}>: pkg_deriving
 <test/instr_trap_sat.{native,byte}>: pkg_hardcaml

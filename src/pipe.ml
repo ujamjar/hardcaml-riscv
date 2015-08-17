@@ -807,7 +807,7 @@ module Test = struct
       ~f_output:Rv_output.f
 
   let write_circ name circ = 
-    let f = open_out (name ^ ".v") in
+    let f = open_out ("test/rv32i_rtl/" ^ name ^ ".v") in
     HardCaml.Rtl.Verilog.write (output_string f) circ;
     close_out f
 
