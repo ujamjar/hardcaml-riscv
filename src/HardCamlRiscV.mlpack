@@ -1,7 +1,12 @@
 # OASIS_START
-# DO NOT EDIT (digest: 99e8396e38893cb983f945a6c6248fc5)
+# DO NOT EDIT (digest: dcc41271c4176b3de5694a9ccb7e9b99)
 Utils
+Config
+Insn
+Interfaces
 Cache
+Decoder
+Alu
 Pipe
 Picorv32
 # OASIS_STOP

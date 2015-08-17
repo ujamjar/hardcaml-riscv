@@ -30,11 +30,11 @@ let instr = B.input "instr" 32
 (* circuit we want to ensure is correct *)
 module Rtl = struct
 
-  module D = HardCamlRiscV.Pipe.Make(struct
+  module Ifs = Interfaces.Make(struct
     let xlen = 32
     let start_addr = 0
   end)
-  module I = D.Decoder2.Make(B)
+  module I = Decoder.Make_insn_decoder(Ifs)(B)
 
   let insn = I.((decoder instr).insn) 
 
