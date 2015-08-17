@@ -218,6 +218,9 @@ module Make(C : Config) = struct
   end
 
   module Decoder = struct
+
+    (* ALM = 511, REG = 414 *)
+
     let name = "dec"
 
     let imm_uj instr = 
@@ -464,11 +467,31 @@ module Make(C : Config) = struct
   end
 
   module Decoder2 = struct
-
+    (* ALM = 509, REG = 405 *)
+    
     (* note; parameterised over Comb.S so it can be used with the sat solver *)
     module Make(B : HardCaml.Comb.S) = struct
 
       open B
+
+      type t = 
+        {
+          (* fully decoded instructions *)
+          insn : B.t;
+          (* various classes of instruction *)
+          trap : B.t;
+          lui : B.t;
+          auipc : B.t;
+          jal : B.t;
+          jalr : B.t;
+          bra : B.t;
+          ld : B.t;
+          st : B.t;
+          opi : B.t;
+          opr : B.t;
+          fen : B.t;
+          sys : B.t;
+        }
 
       let decoder instr = 
         let opcode = instr.[6:0] in
@@ -480,7 +503,6 @@ module Make(C : Config) = struct
         let f3  = bits f3' |> List.rev |> Array.of_list in
         let f7_0,f7_s = funct7 ==:. 0b0000000, funct7 ==:. 0b0100000 in
         let f7_x = f7_0 |: f7_s in
-        let f12_0, f12_1 = funct12 ==:. 0b000000000000, funct12 ==:. 0b000000000001 in
 
         let rs1, rs2, rd = instr.[19:15], instr.[24:20], instr.[11:7] in
         let rs1_0, rs2_0, rd_0 = rs1 ==:. 0, rs2 ==:. 0, rd ==:. 0 in
@@ -492,34 +514,18 @@ module Make(C : Config) = struct
         let auipc = opcode ==:. 0b0010111 in
         let jal   = opcode ==:. 0b1101111 in
         let jalr  = opcode ==:. 0b1100111 &: f3.(0) in
-        let bra   = opcode ==:. 0b1100011 &: (notf3 [2;3]) in
-        let ld    = opcode ==:. 0b0000011 &: (notf3 [3;6;7]) in
-        let st    = opcode ==:. 0b0100011 &: (isf3 [0;1;2]) in
+        let bra   = opcode ==:. 0b1100011 in
+        let ld    = opcode ==:. 0b0000011 in
+        let st    = opcode ==:. 0b0100011 in
         let opi   = opcode ==:. 0b0010011 in
         let opr   = opcode ==:. 0b0110011 in
         let fen   = opcode ==:. 0b0001111 in
         let sys   = opcode ==:. 0b1110011 in
 
-        let opr = 
-          let c = isf3 [0;5] in
-          (opr &: c &: f7_x) |: (opr &: (~: c) &: f7_0)
-        in
-
-        let opi, sfti = 
-          let strict = false in
-          let f7_0, f7_x = (* opcodes/spec do not quite agree (over 32/64 bit shamt) *)
-            if strict then f7_0, f7_x
-            else 
-              let z, o = instr.[31:26] ==:. 0, instr.[31:26] ==:. 0b010000 in
-              z, z |: o
-          in
-          opi &: notf3[1;5], 
-          opi &: ((f3.(1) &: f7_0) |: (f3.(5) &: f7_x))
-        in
-
         let fence, fencei = fen &: f3.(0), fen &: f3.(1) in
 
         let scall, sbreak = 
+          let f12_0, f12_1 = funct12 ==:. 0b000000000000, funct12 ==:. 0b000000000001 in
           let c = rs1_0 &: f3.(0) &: rd_0 &: sys in
           f12_0 &: c, f12_1 &: c
         in
@@ -531,14 +537,146 @@ module Make(C : Config) = struct
           x ==:. 0b00 &: c, x ==:. 0b01 &: c, x ==:. 0b10 &: c, funct12.[7:7]
         in
 
-        let trap = ~: (reduce (|:) 
-          [lui; auipc; jal; jalr; bra; ld; st; opi; sfti; opr; 
-            fence; fencei; scall; sbreak; rdcycle; rdtime; rdinstret])
+        let trap = 
+          let bra = bra &: notf3 [2;3] in
+          let ld  = ld  &: notf3 [3;6;7] in
+          let st  = st  &: isf3 [0;1;2] in
+          let opr = 
+            let c = isf3 [0;5] in
+            opr &: ((c &: f7_x) |: ((~: c) &: f7_0))
+          in
+          let opi, sfti = 
+            opi &: notf3[1;5], 
+            opi &: ((f3.(1) &: f7_0) |: (f3.(5) &: f7_x))
+          in
+          ~: (reduce (|:) 
+            [lui; auipc; jal; jalr; bra; ld; st; opi; sfti; opr; 
+             fence; fencei; scall; sbreak; rdcycle; rdtime; rdinstret])
         in
 
-        trap
+        let open Insn in
+        let insn = [
+          Lui, lui; 
+          Auipc, auipc; 
+          Jal, jal; 
+          Jalr, jalr; 
+          Beq, bra &: f3.(0); 
+          Bne, bra &: f3.(1); 
+          Blt, bra &: f3.(4); 
+          Bge, bra &: f3.(5); 
+          Bltu, bra &: f3.(6); 
+          Bgeu, bra &: f3.(7); 
+          Lb, ld &: f3.(0); 
+          Lh, ld &: f3.(1); 
+          Lw, ld &: f3.(2); 
+          Lbu, ld &: f3.(4); 
+          Lhu, ld &: f3.(5); 
+          Sb, st &: f3.(0); 
+          Sh, st &: f3.(1); 
+          Sw, st &: f3.(2); 
+          Addi, opi &: f3.(0); 
+          Slti, opi &: f3.(2); 
+          Sltiu, opi &: f3.(3); 
+          Xori, opi &: f3.(4); 
+          Ori, opi &: f3.(6); 
+          Andi, opi &: f3.(7); 
+          Slli, opi &: f3.(1) &: f7_0; 
+          Srli, opi &: f3.(5) &: f7_0; 
+          Srai, opi &: f3.(5) &: f7_s; 
+          Add, opr &: f3.(0) &: f7_0; 
+          Sub, opr &: f3.(0) &: f7_s; 
+          Sll, opr &: f3.(1) &: f7_0; 
+          Slt, opr &: f3.(2) &: f7_0; 
+          Sltu, opr &: f3.(3) &: f7_0; 
+          Xor, opr &: f3.(4) &: f7_0; 
+          Srl, opr &: f3.(5) &: f7_0; 
+          Sra, opr &: f3.(5) &: f7_s; 
+          Or, opr &: f3.(6) &: f7_0; 
+          And, opr &: f3.(7) &: f7_0; 
+          Fence, fence; 
+          Fenchi, fencei; 
+          Scall, scall; 
+          Sbreak, sbreak;
+          Rdcycle, rdcycle &: ~: rdhigh; 
+          Rdcycleh, rdcycle &: rdhigh; 
+          Rdtime, rdtime &: ~: rdhigh; 
+          Rdtimeh, rdtime &: rdhigh; 
+          Rdinstret, rdinstret &: ~: rdhigh; 
+          Rdinstreth, rdinstret &: rdhigh; 
+          Invalid, trap;
+        ] in
+        let insn = 
+          List.map (fun (i,v) -> Enum.from_enum<Insn.t> i, v) insn
+          |> List.sort (fun (a,_) (b,_) -> - (compare a b)) 
+          |> List.map snd
+          |> concat
+        in
+
+        { insn; trap; lui; auipc; jal; jalr; bra; ld; st; opi; opr; fen; sys }
 
     end
+
+    let name = "dec2"
+
+    let imm_uj instr = 
+      let d = sresize (instr.[31:12] @: gnd) 32 in
+      let rec f off = function
+        | [] -> []
+        | (h,l) :: tl -> 
+          let w = h-l+1 in
+          (l, select d (off+w-1) off) :: f (off + w) tl
+      in
+      concat @@ List.map snd @@ List.sort (fun a b -> compare (fst b) (fst a)) @@ 
+        f 0 [0,0; 19,12; 11,11; 10,1; 31,20]
+
+    let f ~n ~inp ~comb ~pipe = 
+
+      let open Pipe in
+      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
+      let module D = Make(HardCaml.Signal.Comb) in
+
+      let instr = inp.I.mio_rdata in
+      let d = D.decoder instr in
+
+      (* extract immediate field *)
+      let imm_uj = imm_uj instr in
+      let imm = 
+        let smap x l = List.map (fun (h,l) -> x.[h:l]) l in
+        pmux [
+          d.D.jal, imm_uj;
+          d.D.lui |: d.D.auipc, instr.[31:12] @: zero 12;
+          d.D.jalr |: d.D.ld |: d.D.opi, sresize instr.[31:20] 32;
+          d.D.bra, sresize (concat ((smap instr [(31,31); (7,7); (30,25); (11,8)]) @ [gnd])) 32;
+          d.D.st, sresize (concat (smap instr [(31,25); (11,7)])) 32;
+        ] (zero 32)
+      in
+
+      (* register addresses *)
+      let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
+      let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
+
+      (* (async) regiser file *)
+      let rfo = 
+        Rf.f 
+          Rf.I.({ 
+            clk=inp.I.clk; clr=inp.I.clr;
+            (* write from commit stage *)
+            wr=gnd; wa=zero log_regs; d=pipe.(4).rdd; 
+            (* read *)
+            ra1; ra2; 
+          })
+      in
+      let rd1, rd2 = rfo.Rf.O.q1, rfo.Rf.O.q2 in
+        
+      let pen = Seq.reg ~e:vdd pipe.(n-1).pen in
+
+      { pipe.(n-1) with 
+        pen; 
+        ra1; ra2; rad;
+        ra1_zero; ra2_zero; rad_zero;
+        rd1; rd2;
+        imm; 
+        instr; insn=d.D.insn }
 
   end
 
@@ -572,6 +710,14 @@ module Make(C : Config) = struct
       ] in
 
       { pipe.(n-1) with alu; alu_cmp }
+
+  end
+
+  module Alu2 = struct
+
+    let name = "alu2"
+
+    let f ~n ~inp ~comb ~pipe = pipe.(n-1)
 
   end
 

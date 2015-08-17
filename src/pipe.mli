@@ -84,8 +84,27 @@ module Make(C : Config) : sig
   module Decoder : Stage
   module Decoder2 : sig
     module Make(B : HardCaml.Comb.S) : sig
-      val decoder : B.t -> B.t
+        type t = 
+          {
+            (* fully decoded instructions *)
+            insn : B.t;
+            (* various classes of instruction *)
+            trap : B.t;
+            lui : B.t;
+            auipc : B.t;
+            jal : B.t;
+            jalr : B.t;
+            bra : B.t;
+            ld : B.t;
+            st : B.t;
+            opi : B.t;
+            opr : B.t;
+            fen : B.t;
+            sys : B.t;
+          }
+      val decoder : B.t -> t 
     end
+    include Stage
   end
   module Alu : Stage
   module Mem : Stage
