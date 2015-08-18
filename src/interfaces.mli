@@ -5,13 +5,27 @@ module type S = sig
   val num_regs : int
   val log_regs : int
 
+  module Mi : interface
+    rdata vld
+  end
+  module Mi_instr : module type of Mi
+  module Mi_data : module type of Mi
+
   module I : interface
     clk clr
-    mio_rdata mio_vld
+    (mi : Mi_instr)
+    (md : Mi_data)
   end
 
+  module Mo : interface
+    addr wdata req rw wmask  
+  end
+  module Mo_instr : module type of Mo
+  module Mo_data : module type of Mo
+
   module O : interface
-    mio_addr mio_wdata mio_req mio_rw mio_wmask  
+    (mi : Mo_instr)
+    (md : Mo_data)
   end
 
   module Class : interface
@@ -21,7 +35,7 @@ module type S = sig
     bra
     ld st
     opi opr
-    fen sys
+    fen sys rdc rdco
     f3 f7
   end
 
@@ -34,6 +48,8 @@ module type S = sig
     instr insn (iclass : Class)
     cond_branch
     rf_we
+    (mi : Mo_instr)
+    (md : Mo_data)
     junk
   end
 

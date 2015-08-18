@@ -110,6 +110,7 @@ module Make(C : Config.S) = struct
     in
     
     f_output p_stages
+
   (* ideally we would parameterise each of the pipeline stages somehow
    * so they can refer to other pipeline stages without needing to actually
    * know the pipeline number.  The goal would then to be able to generate
@@ -131,18 +132,28 @@ module Make(C : Config.S) = struct
       let pc = pc -- "fetch_pc" in
       let junk = I.to_list inp |> concat |> bits |> reduce (|:) in (* XXX TO BE REMOVED *)
       { zero_stage () with 
-        pc; junk; pen=vdd }
+        pc; junk; pen=vdd;
+        mi = {
+          Mo_instr.addr = pc;
+          wdata = zero xlen;
+          (*req = vdd;*)
+          req = Seq.reg ~cv:vdd ~e:vdd vdd;
+          rw = vdd;
+          wmask = zero (xlen / 8); 
+        } 
+      } 
+
   end
 
   module Decoder = struct
     let name = "dec"
     let f ~n ~inp ~comb ~pipe = 
       let module D = Decoder.Make(Ifs) in
-      let open Ifs.Stage in
+      let open Stage in
       D.decoder ~inp 
-        ~pipe:{pipe.(n-1) with rf_we = pipe.(com).rf_we;
-                               rad = pipe.(com).rad;
-                               rdd = pipe.(com).rdd }
+        ~pipe:{ pipe.(n-1) with rf_we = pipe.(com).rf_we;
+                                rad = pipe.(com).rad;
+                                rdd = pipe.(com).rdd }
   end
 
   module Alu = struct
@@ -154,29 +165,72 @@ module Make(C : Config.S) = struct
 
   module Mem = struct
     let name = "mem"
-    let f ~n ~inp ~comb ~pipe = pipe.(n-1)
+    let f ~n ~inp ~comb ~pipe = 
+      let open Stage in
+      let open Class in
+      (* note; XXX don't (currently) allow unaligned accesses and
+       *           they should cause a trap *)
+      let p = pipe.(n-1) in
+      let i = p.iclass in
+      let ofs = p.rdd.[1:0] in 
+      let addr = p.rdd in
+      (* byte, half or word transfer *)
+      let size = p.iclass.f3.[1:0] in
+      (* sign extend *)
+      let sext = p.iclass.f3.[2:2] in
+      (* write data mask *)
+      let wmask = 
+        mux size [
+          mux ofs.[1:0] (List.map constb ["0001";"0010";"0100";"1000"]);
+          mux ofs.[1:1] (List.map constb ["0011";"1100"]);
+          constb "1111";
+        ]
+      in
+      (* write data *)
+      let wdata = 
+        let sft n s = sll (uresize p.rdm.[n-1:0] 32) s in
+        mux size [
+          mux ofs.[1:0] (List.map (sft 8) [0;8;16;24]);
+          mux ofs.[1:1] (List.map (sft 16) [0;16]);
+          p.rdm;
+        ]
+      in
+      let req = i.st |: i.ld in (* is a memory request *)
+      let rdm = 
+        let res x = mux2 sext (sresize x 32) (uresize x 32) in
+        let rdm = inp.I.md.Mi_data.rdata in
+        let rdm8 = res @@ mux ofs.[1:0] [ rdm.[7:0]; rdm.[15:8]; rdm.[23:16]; rdm.[31:24] ] in
+        let rdm16 = res @@ mux ofs.[1:1] [ rdm.[15:0]; rdm.[31:16] ] in
+        mux size [ rdm8; rdm16; rdm ]
+      in
+      let rw = i.ld in
+      let rdd = mux2 rw rdm p.rdd in
+      { p with
+        rdd;
+        md = Mo_data.({
+          addr; wdata;
+          req; rw; wmask; 
+        })
+      }
+
   end
 
   module Commit = struct
     let name = "com"
     let f ~n ~inp ~comb ~pipe = 
-      let open Ifs.Stage in
-      let open Ifs.Class in
+      let open Stage in
+      let open Class in
       let i = pipe.(n-1).iclass in
       { pipe.(n-1) with
-        rf_we = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.sys); (* XXX some sys will write *)
+        rf_we = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc); 
       }
   end
 
   module Output = struct
     let f pipe = 
-      let open Stage in
       O.({
-        mio_addr = pipe.(fet).pc;
-        mio_wdata = zero C.xlen; 
-        mio_req = gnd; 
-        mio_rw = pipe.(com).junk;
-        mio_wmask = zero (C.xlen/8);
+        mi = pipe.(fet).Stage.mi;
+        md = pipe.(mem).Stage.md;
       })
   end
 

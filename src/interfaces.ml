@@ -5,13 +5,27 @@ module type S = sig
   val num_regs : int
   val log_regs : int
 
+  module Mi : interface
+    rdata vld
+  end
+  module Mi_instr : module type of Mi
+  module Mi_data : module type of Mi
+
   module I : interface
     clk clr
-    mio_rdata mio_vld
+    (mi : Mi_instr)
+    (md : Mi_data)
   end
 
+  module Mo : interface
+    addr wdata req rw wmask  
+  end
+  module Mo_instr : module type of Mo
+  module Mo_data : module type of Mo
+
   module O : interface
-    mio_addr mio_wdata mio_req mio_rw mio_wmask  
+    (mi : Mo_instr)
+    (md : Mo_data)
   end
 
   module Class : interface
@@ -21,7 +35,7 @@ module type S = sig
     bra
     ld st
     opi opr
-    fen sys
+    fen sys rdc rdco
     f3 f7
   end
 
@@ -34,6 +48,8 @@ module type S = sig
     instr insn (iclass : Class)
     cond_branch
     rf_we
+    (mi : Mo_instr)
+    (md : Mo_data)
     junk
   end
 
@@ -56,14 +72,30 @@ module Make(C : Config.S) = struct
   let num_regs = 32
   let log_regs = HardCaml.Utils.clog2 num_regs
 
+  let prefix name (n,b) = name^"_"^n, b 
+
+  module Mi = interface
+    rdata[C.xlen] vld[1]
+  end
+  module Mi_instr = struct include Mi let t = map (prefix "mio_instr") t end
+  module Mi_data = struct include Mi let t = map (prefix "mio_data") t end
+
   (* interface to core *)
   module I = interface
     clk[1] clr[1]
-    mio_rdata[C.xlen] mio_vld[1]
+    (mi : Mi_instr)
+    (md : Mi_data)
   end
 
+  module Mo = interface
+    addr[C.xlen] wdata[C.xlen] req[1] rw[1] wmask[C.xlen/8]   
+  end
+  module Mo_instr = struct include Mo let t = map (prefix "mio_instr") t end
+  module Mo_data = struct include Mo let t = map (prefix "mio_data") t end
+
   module O = interface
-    mio_addr[C.xlen] mio_wdata[C.xlen] mio_req[1] mio_rw[1] mio_wmask[C.xlen/8]   
+    (mi : Mo_instr)
+    (md : Mo_data)
   end
 
   module Class = interface
@@ -74,6 +106,7 @@ module Make(C : Config.S) = struct
     ld[1] st[1]
     opi[1] opr[1]
     fen[1] sys[1]
+    rdc[1] rdco[3]
     f3[3] f7[1]
   end
 
@@ -114,16 +147,18 @@ module Make(C : Config.S) = struct
     cond_branch[1]
     (* reg file write enable *)
     rf_we[1]
+    (* instruction/data memory i/o *)
+    (mi : Mo_instr)
+    (md : Mo_data)
     (* junk TO BE REMOVED  *)
     junk[1]
   end
 
-  let pipename name (n,b) = name^"_"^n, b 
-  module Stage_fet = struct include Stage let t = map (pipename "fet") t end
-  module Stage_dec = struct include Stage let t = map (pipename "dec") t end
-  module Stage_alu = struct include Stage let t = map (pipename "alu") t end
-  module Stage_mem = struct include Stage let t = map (pipename "mem") t end
-  module Stage_com = struct include Stage let t = map (pipename "com") t end
+  module Stage_fet = struct include Stage let t = map (prefix "fet") t end
+  module Stage_dec = struct include Stage let t = map (prefix "dec") t end
+  module Stage_alu = struct include Stage let t = map (prefix "alu") t end
+  module Stage_mem = struct include Stage let t = map (prefix "mem") t end
+  module Stage_com = struct include Stage let t = map (prefix "com") t end
   module O_debug = interface
     (o : O)
     (fet : Stage_fet)

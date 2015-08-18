@@ -48,11 +48,11 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       f12_0 &: c, f12_1 &: c
     in
 
-    let rdcycle, rdtime, rdinstret, rdhigh =
+    let rdc, rdco = 
       let f = (funct12.[11:8] ==:. 0b1100) &: (funct12.[6:2] ==:. 0b00000) in
       let c = rs1_0 &: f3.(2) &: sys &: f in
       let x = funct12.[1:0] in
-      x ==:. 0b00 &: c, x ==:. 0b01 &: c, x ==:. 0b10 &: c, funct12.[7:7]
+      x <>:. 0b11 &: c, funct12.[1:0] @: funct12.[7:7]
     in
 
     let trap = 
@@ -69,7 +69,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       in
       ~: (reduce (|:) 
         [lui; auipc; jal; jalr; bra; ld; st; opi; sfti; opr; 
-          fence; fencei; scall; sbreak; rdcycle; rdtime; rdinstret])
+          fence; fencei; scall; sbreak; rdc])
     in
 
     let open Insn.T in
@@ -115,12 +115,12 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       Fenchi, fencei; 
       Scall, scall; 
       Sbreak, sbreak;
-      Rdcycle, rdcycle &: ~: rdhigh; 
-      Rdcycleh, rdcycle &: rdhigh; 
-      Rdtime, rdtime &: ~: rdhigh; 
-      Rdtimeh, rdtime &: rdhigh; 
-      Rdinstret, rdinstret &: ~: rdhigh; 
-      Rdinstreth, rdinstret &: rdhigh; 
+      Rdcycle, rdc &: (rdco ==:. 0b000); 
+      Rdcycleh, rdc &: (rdco ==:. 0b001); 
+      Rdtime, rdc &: (rdco ==:. 0b010); 
+      Rdtimeh, rdc &: (rdco ==:. 0b011); 
+      Rdinstret, rdc &: (rdco ==:. 0b100); 
+      Rdinstreth, rdc &: (rdco ==:. 0b101); 
       Trap, trap;
     ] in
     let insn = 
@@ -133,7 +133,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     { insn; 
       iclass = { 
         Class.trap; 
-        lui; auipc; jal; jalr; bra; ld; st; opi; opr; fen; sys; 
+        lui; auipc; jal; jalr; bra; ld; st; opi; opr; fen; sys; rdc; rdco;
         f7 = instr.[30:30]; f3=funct3; 
       } 
     }
@@ -203,12 +203,13 @@ module Make(Ifs : Interfaces.S) = struct
 
   let decoder ~inp ~pipe = 
 
-    let open Ifs.Stage in
+    let open Ifs in
     let module Seq = Utils.Regs(struct let clk=inp.Ifs.I.clk let clr=inp.Ifs.I.clr end) in
+    let open Stage in
     let open Insn in
-    let open Ifs.Class in
+    let open Class in
 
-    let instr = inp.Ifs.I.mio_rdata in
+    let instr = inp.I.mi.Mi_instr.rdata in
     let d = decoder instr in
     let c = d.iclass in
 

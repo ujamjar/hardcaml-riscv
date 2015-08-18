@@ -17,12 +17,10 @@ module Make(Ifs : Interfaces.S) = struct
 
     let c = p.iclass in
 
-    let addsub = 
-      let addctl = mux2 (c.auipc |: c.jal |: c.ld |: c.st) gnd c.f7 in
-      addsub addctl p.rd1 p.rd2 
-    in
+    let addctl = c.auipc |: c.jal |: c.ld |: c.st in
+    let addsub = addsub (mux2 addctl gnd c.f7) p.rd1 p.rd2 in
 
-    let alu_op = mux c.f3 [
+    let alu_op = mux (mux2 addctl (zero 3) c.f3) [
       addsub;
       log_shift sll p.rd1 shamt;
       uresize slt Ifs.xlen;
@@ -47,3 +45,4 @@ module Make(Ifs : Interfaces.S) = struct
     { p with rdd; cond_branch }
 
 end
+

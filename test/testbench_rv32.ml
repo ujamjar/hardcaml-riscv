@@ -52,9 +52,9 @@ let testbench () =
     in
     Some( 
       [f ( "clk",1); f ("clr",1)] @
-      (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), Waveterm_waves.H)) @
       Rv.Ifs.I.(to_list @@ map f t) @ 
-      Rv_o.(to_list @@ map f t) )
+      Rv_o.(to_list @@ map f t) @
+      (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), Waveterm_waves.H)) )
   in
   let sim, waves = 
     if waves then 
@@ -63,8 +63,9 @@ let testbench () =
     else sim, None
   in
 
-  let open Rv.Ifs.I in
-  let open Rv.Ifs.O in
+  let open Rv.Ifs in
+  let open I in
+  let open O in
   let open Rv_o in
 
   let module D = Utils.D32(B) in
@@ -73,31 +74,47 @@ let testbench () =
 
   let () = begin
     let open Riscv.RV32I.Asm in
+    for i=0 to 1024-1 do
+      memory.(i) <- Int32.of_int (i*4);
+    done;
     memory.(4) <- addi ~rd:1 ~rs1:0 ~imm12:100;
     memory.(5) <- addi ~rd:2 ~rs1:0 ~imm12:50;
     memory.(6) <- add ~rd:3 ~rs1:1 ~rs2:2;
+    memory.(7) <- sw ~rs1:2 ~rs2:3 ~imm12hi:0 ~imm12lo:0;
+    memory.(8) <- lw ~rs1:1 ~rd:4 ~imm12:300; 
+    memory.(100) <- 0x999l;
   end in
 
-  let mio () = 
-    let o = o.o in
-    i.mio_vld := B.gnd;
-    if B.to_int !(o.mio_req) = 1 then begin
-      i.mio_vld := B.vdd;
-      if B.to_int !(o.mio_rw) = 1 then begin
-        i.mio_rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.mio_addr)
+  let mio_data () = 
+    let open Mi_data in
+    let open Mo_data in
+    let o = o.o.md in
+    i.md.vld := B.gnd;
+    if B.to_int !(o.req) = 1 then begin
+      i.md.vld := B.vdd;
+      if B.to_int !(o.rw) = 1 then begin
+        i.md.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
       end else begin
-        Mem.write ~memory ~addr:!(o.mio_addr) ~data:!(o.mio_wdata) ~strb:!(o.mio_wmask)
+        Mem.write ~memory ~addr:!(o.addr) ~data:!(o.wdata) ~strb:!(o.wmask)
       end
-    end;
+    end
+    (*let o = o.o.md in
+    i.md.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr);
+    if (B.to_int !(o.rw) <> 1) && (B.to_int !(o.req) = 1) then begin
+      Mem.write ~memory ~addr:!(o.addr) ~data:!(o.wdata) ~strb:!(o.wmask)
+    end*)
   in
 
-  let mio_temp () = 
-    let o = o'.o in
-    i.mio_rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.mio_addr)
+  let mio_instr () = 
+    let open Mi_instr in
+    let open Mo_instr in
+    i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o'.o.mi.addr)
   in
 
   let cycle () = 
-    mio_temp();
+    mio_instr();
+    Cs.cycle_comb0 sim;
+    mio_data();
     Cs.cycle sim 
   in
 
