@@ -66,6 +66,50 @@ module Make(C : Config.S) = struct
     
     f_output p_stages
 
+  let build_comb ~f_stages ~f_output inp = 
+    let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
+    (* number of stages *)
+    let n_stages = Array.length f_stages in
+    (* pipeline stage after registering *)
+    let p_stages = Array.init n_stages wired_stage in
+    (* pipeline stage before registering *)
+    let w_stages = Array.init n_stages wired_stage in
+
+    (* generate the stages *)
+    let o_stages = 
+      Array.mapi 
+        (fun n f -> 
+          let module F = (val f : Stage) in
+          F.f ~n ~inp ~comb:w_stages ~pipe:p_stages) 
+        f_stages 
+    in
+
+    (* wiring *)
+    let () = 
+      let open Stage in
+      let internal_names = false in
+      for i=0 to n_stages-1 do
+        let module F = (val f_stages.(i) : Stage) in
+        (* get pipeline enable and clear *)
+        let e = o_stages.(i).pen in
+        let map f st = 
+          let st = Stage.map2 (fun a b -> a,b) st o_stages.(i) in
+          let st = Stage.map2 (fun (a,b) (n,_) -> a,b,n) st t in
+          ignore @@ Stage.map f st
+        in
+        let map name f st = map (* optional internal naming *)
+          (fun (w,o,n) -> 
+            w <== if internal_names then (f o) -- (F.name ^ name ^ n)
+                  else f o) st 
+        in
+        (* wire up combinatorial output of stages *)
+        map "_c_" (fun o -> o) w_stages.(i);
+        (* wire up pipelined output of stages *)
+        map "_p_" (fun o -> o) p_stages.(i)
+      done
+    in
+    
+    f_output p_stages
   (* ideally we would parameterise each of the pipeline stages somehow
    * so they can refer to other pipeline stages without needing to actually
    * know the pipeline number.  The goal would then to be able to generate
@@ -94,7 +138,11 @@ module Make(C : Config.S) = struct
     let name = "dec"
     let f ~n ~inp ~comb ~pipe = 
       let module D = Decoder.Make(Ifs) in
-      D.decoder ~inp ~pipe:pipe.(n-1)
+      let open Ifs.Stage in
+      D.decoder ~inp 
+        ~pipe:{pipe.(n-1) with rf_we = pipe.(com).rf_we;
+                               rad = pipe.(com).rad;
+                               rdd = pipe.(com).rdd }
   end
 
   module Alu = struct
@@ -111,7 +159,13 @@ module Make(C : Config.S) = struct
 
   module Commit = struct
     let name = "com"
-    let f ~n ~inp ~comb ~pipe = pipe.(n-1)
+    let f ~n ~inp ~comb ~pipe = 
+      let open Ifs.Stage in
+      let open Ifs.Class in
+      let i = pipe.(n-1).iclass in
+      { pipe.(n-1) with
+        rf_we = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.sys); (* XXX some sys will write *)
+      }
   end
 
   module Output = struct

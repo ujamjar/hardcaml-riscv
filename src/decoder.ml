@@ -220,14 +220,14 @@ module Make(Ifs : Interfaces.S) = struct
     let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
     let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
-    (* (async) regiser file *)
+    (* (async) regiser file - XXX not really convinced this should be here *)
     let module Rf = Rf(Ifs) in
     let rfo = 
       Rf.f 
         Rf.I.({ 
           clk=inp.Ifs.I.clk; clr=inp.Ifs.I.clr;
           (* write from commit stage *)
-          wr=gnd; wa=zero Ifs.log_regs; d=pipe.rdd (* XXX *); 
+          wr=pipe.rf_we; wa=pipe.rad; d=pipe.rdd (* XXX *); 
           (* read *)
           ra1; ra2; 
         })

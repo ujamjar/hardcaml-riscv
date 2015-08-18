@@ -19,6 +19,9 @@ module Make(C : Config.S) : sig
   val build_pipeline : f_stages:(module Stage) array -> f_output:'a f_output -> 
     Comb.t Ifs.I.t -> 'a
 
+  val build_comb : f_stages:(module Stage) array -> f_output:'a f_output -> 
+    Comb.t Ifs.I.t -> 'a
+
   module Fetch : Stage
   module Decoder : Stage
   module Alu : Stage

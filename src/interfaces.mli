@@ -33,6 +33,7 @@ module type S = sig
     pc next_pc
     instr insn (iclass : Class)
     cond_branch
+    rf_we
     junk
   end
 

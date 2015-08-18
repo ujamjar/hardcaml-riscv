@@ -1,4 +1,5 @@
 open HardCamlRiscV
+open Printf
 
 module Cfg = struct
   let xlen = 32
@@ -11,7 +12,7 @@ module Rv_o = Rv.Ifs.O_debug
 module Rv_output = Rv.Output_debug
 
 let pipeline = 
-  Rv.build_pipeline
+  Rv.build_comb
     ~f_stages:[| 
       (module Rv.Fetch : Rv.Stage); 
       (module Rv.Decoder : Rv.Stage); 
@@ -51,6 +52,7 @@ let testbench () =
     in
     Some( 
       [f ( "clk",1); f ("clr",1)] @
+      (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), Waveterm_waves.H)) @
       Rv.Ifs.I.(to_list @@ map f t) @ 
       Rv_o.(to_list @@ map f t) )
   in
@@ -90,7 +92,7 @@ let testbench () =
   in
 
   let mio_temp () = 
-    let o = o.o in
+    let o = o'.o in
     i.mio_rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.mio_addr)
   in
 

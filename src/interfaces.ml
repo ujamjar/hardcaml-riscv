@@ -33,6 +33,7 @@ module type S = sig
     pc next_pc
     instr insn (iclass : Class)
     cond_branch
+    rf_we
     junk
   end
 
@@ -111,6 +112,8 @@ module Make(C : Config.S) = struct
     (iclass : Class)
     (* take a conditional branch *)
     cond_branch[1]
+    (* reg file write enable *)
+    rf_we[1]
     (* junk TO BE REMOVED  *)
     junk[1]
   end
