@@ -35,11 +35,3 @@ module Make(C : Config.S) : sig
 
 end
 
-module Test : sig
-  module Cfg : Config.S
-  module Rv : module type of Make(Cfg)
-  val write_pipe_stage : string -> int -> (module Rv.Stage) -> unit
-  val write_core : unit -> unit
-  val testbench : unit -> unit
-end
-

@@ -177,8 +177,9 @@ end
 module Make(Ifs : Interfaces.S) = struct
 
   open HardCaml.Signal.Comb 
+  module Insn = Make_insn_decoder(Ifs)(HardCaml.Signal.Comb) 
 
-  let imm_uj instr = 
+  let imm_uj ~instr = 
     let d = sresize (instr.[31:12] @: gnd) Ifs.xlen in
     let rec f off = function
       | [] -> []
@@ -189,30 +190,31 @@ module Make(Ifs : Interfaces.S) = struct
     concat @@ List.map snd @@ List.sort (fun a b -> compare (fst b) (fst a)) @@ 
       f 0 [0,0; 19,12; 11,11; 10,1; 31,20]
 
-  let decoder ~n ~inp ~pipe = 
+  let imm ~c ~instr ~imm_uj = 
+    let open Ifs.Class in
+    let smap x l = List.map (fun (h,l) -> x.[h:l]) l in
+    pmux [
+      c.jal, imm_uj;
+      c.lui |: c.auipc, instr.[31:12] @: zero 12;
+      c.jalr |: c.ld |: c.opi, sresize instr.[31:20] Ifs.xlen;
+      c.bra, sresize (concat ((smap instr [(31,31); (7,7); (30,25); (11,8)]) @ [gnd])) Ifs.xlen;
+      c.st, sresize (concat (smap instr [(31,25); (11,7)])) Ifs.xlen;
+    ] (zero Ifs.xlen)
+
+  let decoder ~inp ~pipe = 
 
     let open Ifs.Stage in
     let module Seq = Utils.Regs(struct let clk=inp.Ifs.I.clk let clr=inp.Ifs.I.clr end) in
-    let module D = Make_insn_decoder(Ifs)(HardCaml.Signal.Comb) in
-    let open D in
+    let open Insn in
     let open Ifs.Class in
 
     let instr = inp.Ifs.I.mio_rdata in
-    let d = D.decoder instr in
+    let d = decoder instr in
     let c = d.iclass in
 
     (* extract immediate field *)
     let imm_uj = imm_uj instr in
-    let imm = 
-      let smap x l = List.map (fun (h,l) -> x.[h:l]) l in
-      pmux [
-        c.jal, imm_uj;
-        c.lui |: c.auipc, instr.[31:12] @: zero 12;
-        c.jalr |: c.ld |: c.opi, sresize instr.[31:20] Ifs.xlen;
-        c.bra, sresize (concat ((smap instr [(31,31); (7,7); (30,25); (11,8)]) @ [gnd])) Ifs.xlen;
-        c.st, sresize (concat (smap instr [(31,25); (11,7)])) Ifs.xlen;
-      ] (zero Ifs.xlen)
-    in
+    let imm = imm ~c ~instr ~imm_uj in
 
     (* register addresses *)
     let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
@@ -225,7 +227,7 @@ module Make(Ifs : Interfaces.S) = struct
         Rf.I.({ 
           clk=inp.Ifs.I.clk; clr=inp.Ifs.I.clr;
           (* write from commit stage *)
-          wr=gnd; wa=zero Ifs.log_regs; d=pipe.rdd; 
+          wr=gnd; wa=zero Ifs.log_regs; d=pipe.rdd (* XXX *); 
           (* read *)
           ra1; ra2; 
         })

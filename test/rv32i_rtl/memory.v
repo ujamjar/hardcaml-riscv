@@ -1,14 +1,26 @@
 module memory (
     junk_p_2,
-    alu_cmp_p_2,
-    alu_p_2,
-    fclass_p_2,
-    is_p_2,
+    cond_branch_p_2,
+    f7_p_2,
+    f3_p_2,
+    sys_p_2,
+    fen_p_2,
+    opr_p_2,
+    opi_p_2,
+    st_p_2,
+    ld_p_2,
+    bra_p_2,
+    jalr_p_2,
+    jal_p_2,
+    auipc_p_2,
+    lui_p_2,
+    trap_p_2,
     insn_p_2,
     instr_p_2,
     next_pc_p_2,
     pc_p_2,
     imm_p_2,
+    rdm_p_2,
     rdd_p_2,
     rd2_p_2,
     rd1_p_2,
@@ -31,28 +43,52 @@ module memory (
     rd1,
     rd2,
     rdd,
+    rdm,
     imm,
     pc,
     next_pc,
     instr,
     insn,
-    is,
-    fclass,
-    alu,
-    alu_cmp,
+    trap,
+    lui,
+    auipc,
+    jal,
+    jalr,
+    bra,
+    ld,
+    st,
+    opi,
+    opr,
+    fen,
+    sys,
+    f3,
+    f7,
+    cond_branch,
     junk
 );
 
     input junk_p_2;
-    input alu_cmp_p_2;
-    input [31:0] alu_p_2;
-    input [5:0] fclass_p_2;
-    input [14:0] is_p_2;
+    input cond_branch_p_2;
+    input f7_p_2;
+    input [2:0] f3_p_2;
+    input sys_p_2;
+    input fen_p_2;
+    input opr_p_2;
+    input opi_p_2;
+    input st_p_2;
+    input ld_p_2;
+    input bra_p_2;
+    input jalr_p_2;
+    input jal_p_2;
+    input auipc_p_2;
+    input lui_p_2;
+    input trap_p_2;
     input [47:0] insn_p_2;
     input [31:0] instr_p_2;
     input [31:0] next_pc_p_2;
     input [31:0] pc_p_2;
     input [31:0] imm_p_2;
+    input [31:0] rdm_p_2;
     input [31:0] rdd_p_2;
     input [31:0] rd2_p_2;
     input [31:0] rd1_p_2;
@@ -75,404 +111,644 @@ module memory (
     output [31:0] rd1;
     output [31:0] rd2;
     output [31:0] rdd;
+    output [31:0] rdm;
     output [31:0] imm;
     output [31:0] pc;
     output [31:0] next_pc;
     output [31:0] instr;
     output [47:0] insn;
-    output [14:0] is;
-    output [5:0] fclass;
-    output [31:0] alu;
-    output alu_cmp;
+    output trap;
+    output lui;
+    output auipc;
+    output jal;
+    output jalr;
+    output bra;
+    output ld;
+    output st;
+    output opi;
+    output opr;
+    output fen;
+    output sys;
+    output [2:0] f3;
+    output f7;
+    output cond_branch;
     output junk;
 
     /* signal declarations */
-    wire _6080 = 1'b0;
-    wire _6081 = 1'b0;
-    wire _5365 = 1'b0;
-    wire _5366 = 1'b0;
-    reg _5367;
-    reg _6082;
-    wire _6076 = 1'b0;
-    wire _6077 = 1'b0;
-    wire _5369 = 1'b0;
-    wire _5370 = 1'b0;
-    reg _5371;
-    reg _6078;
-    wire [31:0] _6072 = 32'b00000000000000000000000000000000;
-    wire [31:0] _6073 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5373 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5374 = 32'b00000000000000000000000000000000;
-    reg [31:0] _5375;
-    reg [31:0] _6074;
-    wire [5:0] _6068 = 6'b000000;
-    wire [5:0] _6069 = 6'b000000;
-    wire [5:0] _5377 = 6'b000000;
-    wire [5:0] _5378 = 6'b000000;
-    reg [5:0] _5379;
-    reg [5:0] _6070;
-    wire [14:0] _6064 = 15'b000000000000000;
-    wire [14:0] _6065 = 15'b000000000000000;
-    wire [14:0] _5381 = 15'b000000000000000;
-    wire [14:0] _5382 = 15'b000000000000000;
-    reg [14:0] _5383;
-    reg [14:0] _6066;
-    wire [47:0] _6060 = 48'b000000000000000000000000000000000000000000000000;
-    wire [47:0] _6061 = 48'b000000000000000000000000000000000000000000000000;
-    wire [47:0] _5385 = 48'b000000000000000000000000000000000000000000000000;
-    wire [47:0] _5386 = 48'b000000000000000000000000000000000000000000000000;
-    reg [47:0] _5387;
-    reg [47:0] _6062;
-    wire [31:0] _6056 = 32'b00000000000000000000000000000000;
-    wire [31:0] _6057 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5389 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5390 = 32'b00000000000000000000000000000000;
-    reg [31:0] _5391;
-    reg [31:0] _6058;
-    wire [31:0] _6052 = 32'b00000000000000000000000000000000;
-    wire [31:0] _6053 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5393 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5394 = 32'b00000000000000000000000000000000;
-    reg [31:0] _5395;
-    reg [31:0] _6054;
-    wire [31:0] _6048 = 32'b00000000000000000000000000000000;
-    wire [31:0] _6049 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5397 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5398 = 32'b00000000000000000000000000000000;
-    reg [31:0] _5399;
-    reg [31:0] _6050;
-    wire [31:0] _6044 = 32'b00000000000000000000000000000000;
-    wire [31:0] _6045 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5401 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5402 = 32'b00000000000000000000000000000000;
-    reg [31:0] _5403;
-    reg [31:0] _6046;
-    wire [31:0] _6040 = 32'b00000000000000000000000000000000;
-    wire [31:0] _6041 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5405 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5406 = 32'b00000000000000000000000000000000;
-    reg [31:0] _5407;
-    reg [31:0] _6042;
-    wire [31:0] _6036 = 32'b00000000000000000000000000000000;
-    wire [31:0] _6037 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5409 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5410 = 32'b00000000000000000000000000000000;
-    reg [31:0] _5411;
-    reg [31:0] _6038;
-    wire [31:0] _6032 = 32'b00000000000000000000000000000000;
-    wire [31:0] _6033 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5413 = 32'b00000000000000000000000000000000;
-    wire [31:0] _5414 = 32'b00000000000000000000000000000000;
-    reg [31:0] _5415;
-    reg [31:0] _6034;
-    wire _6028 = 1'b0;
-    wire _6029 = 1'b0;
+    wire _6556 = 1'b0;
+    wire _6557 = 1'b0;
+    wire _5409 = 1'b0;
+    wire _5410 = 1'b0;
+    reg _5411;
+    reg _6558;
+    wire _6552 = 1'b0;
+    wire _6553 = 1'b0;
+    wire _5413 = 1'b0;
+    wire _5414 = 1'b0;
+    reg _5415;
+    reg _6554;
+    wire _6548 = 1'b0;
+    wire _6549 = 1'b0;
     wire _5417 = 1'b0;
     wire _5418 = 1'b0;
     reg _5419;
-    reg _6030;
-    wire _6024 = 1'b0;
-    wire _6025 = 1'b0;
-    wire _5421 = 1'b0;
-    wire _5422 = 1'b0;
-    reg _5423;
-    reg _6026;
-    wire _6020 = 1'b0;
-    wire _6021 = 1'b0;
+    reg _6550;
+    wire [2:0] _6544 = 3'b000;
+    wire [2:0] _6545 = 3'b000;
+    wire [2:0] _5421 = 3'b000;
+    wire [2:0] _5422 = 3'b000;
+    reg [2:0] _5423;
+    reg [2:0] _6546;
+    wire _6540 = 1'b0;
+    wire _6541 = 1'b0;
     wire _5425 = 1'b0;
     wire _5426 = 1'b0;
     reg _5427;
-    reg _6022;
-    wire [4:0] _6016 = 5'b00000;
-    wire [4:0] _6017 = 5'b00000;
-    wire [4:0] _5429 = 5'b00000;
-    wire [4:0] _5430 = 5'b00000;
-    reg [4:0] _5431;
-    reg [4:0] _6018;
-    wire [4:0] _6012 = 5'b00000;
-    wire [4:0] _6013 = 5'b00000;
-    wire [4:0] _5433 = 5'b00000;
-    wire [4:0] _5434 = 5'b00000;
-    reg [4:0] _5435;
-    reg [4:0] _6014;
-    wire [4:0] _6008 = 5'b00000;
-    wire [4:0] _6009 = 5'b00000;
-    wire [4:0] _5437 = 5'b00000;
-    wire [4:0] _5438 = 5'b00000;
-    reg [4:0] _5439;
-    reg [4:0] _6010;
-    wire _6004 = 1'b0;
-    wire _6005 = 1'b0;
+    reg _6542;
+    wire _6536 = 1'b0;
+    wire _6537 = 1'b0;
+    wire _5429 = 1'b0;
+    wire _5430 = 1'b0;
+    reg _5431;
+    reg _6538;
+    wire _6532 = 1'b0;
+    wire _6533 = 1'b0;
+    wire _5433 = 1'b0;
+    wire _5434 = 1'b0;
+    reg _5435;
+    reg _6534;
+    wire _6528 = 1'b0;
+    wire _6529 = 1'b0;
+    wire _5437 = 1'b0;
+    wire _5438 = 1'b0;
+    reg _5439;
+    reg _6530;
+    wire _6524 = 1'b0;
+    wire _6525 = 1'b0;
     wire _5441 = 1'b0;
-    wire vdd = 1'b1;
     wire _5442 = 1'b0;
     reg _5443;
-    reg _6006;
+    reg _6526;
+    wire _6520 = 1'b0;
+    wire _6521 = 1'b0;
+    wire _5445 = 1'b0;
+    wire _5446 = 1'b0;
+    reg _5447;
+    reg _6522;
+    wire _6516 = 1'b0;
+    wire _6517 = 1'b0;
+    wire _5449 = 1'b0;
+    wire _5450 = 1'b0;
+    reg _5451;
+    reg _6518;
+    wire _6512 = 1'b0;
+    wire _6513 = 1'b0;
+    wire _5453 = 1'b0;
+    wire _5454 = 1'b0;
+    reg _5455;
+    reg _6514;
+    wire _6508 = 1'b0;
+    wire _6509 = 1'b0;
+    wire _5457 = 1'b0;
+    wire _5458 = 1'b0;
+    reg _5459;
+    reg _6510;
+    wire _6504 = 1'b0;
+    wire _6505 = 1'b0;
+    wire _5461 = 1'b0;
+    wire _5462 = 1'b0;
+    reg _5463;
+    reg _6506;
+    wire _6500 = 1'b0;
+    wire _6501 = 1'b0;
+    wire _5465 = 1'b0;
+    wire _5466 = 1'b0;
+    reg _5467;
+    reg _6502;
+    wire _6496 = 1'b0;
+    wire _6497 = 1'b0;
+    wire _5469 = 1'b0;
+    wire _5470 = 1'b0;
+    reg _5471;
+    reg _6498;
+    wire [47:0] _6492 = 48'b000000000000000000000000000000000000000000000000;
+    wire [47:0] _6493 = 48'b000000000000000000000000000000000000000000000000;
+    wire [47:0] _5473 = 48'b000000000000000000000000000000000000000000000000;
+    wire [47:0] _5474 = 48'b000000000000000000000000000000000000000000000000;
+    reg [47:0] _5475;
+    reg [47:0] _6494;
+    wire [31:0] _6488 = 32'b00000000000000000000000000000000;
+    wire [31:0] _6489 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5477 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5478 = 32'b00000000000000000000000000000000;
+    reg [31:0] _5479;
+    reg [31:0] _6490;
+    wire [31:0] _6484 = 32'b00000000000000000000000000000000;
+    wire [31:0] _6485 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5481 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5482 = 32'b00000000000000000000000000000000;
+    reg [31:0] _5483;
+    reg [31:0] _6486;
+    wire [31:0] _6480 = 32'b00000000000000000000000000000000;
+    wire [31:0] _6481 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5485 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5486 = 32'b00000000000000000000000000000000;
+    reg [31:0] _5487;
+    reg [31:0] _6482;
+    wire [31:0] _6476 = 32'b00000000000000000000000000000000;
+    wire [31:0] _6477 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5489 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5490 = 32'b00000000000000000000000000000000;
+    reg [31:0] _5491;
+    reg [31:0] _6478;
+    wire [31:0] _6472 = 32'b00000000000000000000000000000000;
+    wire [31:0] _6473 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5493 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5494 = 32'b00000000000000000000000000000000;
+    reg [31:0] _5495;
+    reg [31:0] _6474;
+    wire [31:0] _6468 = 32'b00000000000000000000000000000000;
+    wire [31:0] _6469 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5497 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5498 = 32'b00000000000000000000000000000000;
+    reg [31:0] _5499;
+    reg [31:0] _6470;
+    wire [31:0] _6464 = 32'b00000000000000000000000000000000;
+    wire [31:0] _6465 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5501 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5502 = 32'b00000000000000000000000000000000;
+    reg [31:0] _5503;
+    reg [31:0] _6466;
+    wire [31:0] _6460 = 32'b00000000000000000000000000000000;
+    wire [31:0] _6461 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5505 = 32'b00000000000000000000000000000000;
+    wire [31:0] _5506 = 32'b00000000000000000000000000000000;
+    reg [31:0] _5507;
+    reg [31:0] _6462;
+    wire _6456 = 1'b0;
+    wire _6457 = 1'b0;
+    wire _5509 = 1'b0;
+    wire _5510 = 1'b0;
+    reg _5511;
+    reg _6458;
+    wire _6452 = 1'b0;
+    wire _6453 = 1'b0;
+    wire _5513 = 1'b0;
+    wire _5514 = 1'b0;
+    reg _5515;
+    reg _6454;
+    wire _6448 = 1'b0;
+    wire _6449 = 1'b0;
+    wire _5517 = 1'b0;
+    wire _5518 = 1'b0;
+    reg _5519;
+    reg _6450;
+    wire [4:0] _6444 = 5'b00000;
+    wire [4:0] _6445 = 5'b00000;
+    wire [4:0] _5521 = 5'b00000;
+    wire [4:0] _5522 = 5'b00000;
+    reg [4:0] _5523;
+    reg [4:0] _6446;
+    wire [4:0] _6440 = 5'b00000;
+    wire [4:0] _6441 = 5'b00000;
+    wire [4:0] _5525 = 5'b00000;
+    wire [4:0] _5526 = 5'b00000;
+    reg [4:0] _5527;
+    reg [4:0] _6442;
+    wire [4:0] _6436 = 5'b00000;
+    wire [4:0] _6437 = 5'b00000;
+    wire [4:0] _5529 = 5'b00000;
+    wire [4:0] _5530 = 5'b00000;
+    reg [4:0] _5531;
+    reg [4:0] _6438;
+    wire _6432 = 1'b0;
+    wire _6433 = 1'b0;
+    wire _5533 = 1'b0;
+    wire vdd = 1'b1;
+    wire _5534 = 1'b0;
+    reg _5535;
+    reg _6434;
 
     /* logic */
     always @(posedge clk) begin
         if (clr)
-            _5367 <= _5365;
-        else
-            _5367 <= junk_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6082 <= _6080;
-        else
-            _6082 <= _5367;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5371 <= _5369;
-        else
-            _5371 <= alu_cmp_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6078 <= _6076;
-        else
-            _6078 <= _5371;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5375 <= _5373;
-        else
-            _5375 <= alu_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6074 <= _6072;
-        else
-            _6074 <= _5375;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5379 <= _5377;
-        else
-            _5379 <= fclass_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6070 <= _6068;
-        else
-            _6070 <= _5379;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5383 <= _5381;
-        else
-            _5383 <= is_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6066 <= _6064;
-        else
-            _6066 <= _5383;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5387 <= _5385;
-        else
-            _5387 <= insn_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6062 <= _6060;
-        else
-            _6062 <= _5387;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5391 <= _5389;
-        else
-            _5391 <= instr_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6058 <= _6056;
-        else
-            _6058 <= _5391;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5395 <= _5393;
-        else
-            _5395 <= next_pc_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6054 <= _6052;
-        else
-            _6054 <= _5395;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5399 <= _5397;
-        else
-            _5399 <= pc_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6050 <= _6048;
-        else
-            _6050 <= _5399;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5403 <= _5401;
-        else
-            _5403 <= imm_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6046 <= _6044;
-        else
-            _6046 <= _5403;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _5407 <= _5405;
-        else
-            _5407 <= rdd_p_2;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _6042 <= _6040;
-        else
-            _6042 <= _5407;
-    end
-    always @(posedge clk) begin
-        if (clr)
             _5411 <= _5409;
         else
-            _5411 <= rd2_p_2;
+            _5411 <= junk_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6038 <= _6036;
+            _6558 <= _6556;
         else
-            _6038 <= _5411;
+            _6558 <= _5411;
     end
     always @(posedge clk) begin
         if (clr)
             _5415 <= _5413;
         else
-            _5415 <= rd1_p_2;
+            _5415 <= cond_branch_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6034 <= _6032;
+            _6554 <= _6552;
         else
-            _6034 <= _5415;
+            _6554 <= _5415;
     end
     always @(posedge clk) begin
         if (clr)
             _5419 <= _5417;
         else
-            _5419 <= rad_zero_p_2;
+            _5419 <= f7_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6030 <= _6028;
+            _6550 <= _6548;
         else
-            _6030 <= _5419;
+            _6550 <= _5419;
     end
     always @(posedge clk) begin
         if (clr)
             _5423 <= _5421;
         else
-            _5423 <= ra2_zero_p_2;
+            _5423 <= f3_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6026 <= _6024;
+            _6546 <= _6544;
         else
-            _6026 <= _5423;
+            _6546 <= _5423;
     end
     always @(posedge clk) begin
         if (clr)
             _5427 <= _5425;
         else
-            _5427 <= ra1_zero_p_2;
+            _5427 <= sys_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6022 <= _6020;
+            _6542 <= _6540;
         else
-            _6022 <= _5427;
+            _6542 <= _5427;
     end
     always @(posedge clk) begin
         if (clr)
             _5431 <= _5429;
         else
-            _5431 <= rad_p_2;
+            _5431 <= fen_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6018 <= _6016;
+            _6538 <= _6536;
         else
-            _6018 <= _5431;
+            _6538 <= _5431;
     end
     always @(posedge clk) begin
         if (clr)
             _5435 <= _5433;
         else
-            _5435 <= ra2_p_2;
+            _5435 <= opr_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6014 <= _6012;
+            _6534 <= _6532;
         else
-            _6014 <= _5435;
+            _6534 <= _5435;
     end
     always @(posedge clk) begin
         if (clr)
             _5439 <= _5437;
         else
-            _5439 <= ra1_p_2;
+            _5439 <= opi_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6010 <= _6008;
+            _6530 <= _6528;
         else
-            _6010 <= _5439;
+            _6530 <= _5439;
     end
     always @(posedge clk) begin
         if (clr)
             _5443 <= _5441;
         else
-            _5443 <= pen_p_2;
+            _5443 <= st_p_2;
     end
     always @(posedge clk) begin
         if (clr)
-            _6006 <= _6004;
+            _6526 <= _6524;
         else
-            _6006 <= _5443;
+            _6526 <= _5443;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5447 <= _5445;
+        else
+            _5447 <= ld_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6522 <= _6520;
+        else
+            _6522 <= _5447;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5451 <= _5449;
+        else
+            _5451 <= bra_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6518 <= _6516;
+        else
+            _6518 <= _5451;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5455 <= _5453;
+        else
+            _5455 <= jalr_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6514 <= _6512;
+        else
+            _6514 <= _5455;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5459 <= _5457;
+        else
+            _5459 <= jal_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6510 <= _6508;
+        else
+            _6510 <= _5459;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5463 <= _5461;
+        else
+            _5463 <= auipc_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6506 <= _6504;
+        else
+            _6506 <= _5463;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5467 <= _5465;
+        else
+            _5467 <= lui_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6502 <= _6500;
+        else
+            _6502 <= _5467;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5471 <= _5469;
+        else
+            _5471 <= trap_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6498 <= _6496;
+        else
+            _6498 <= _5471;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5475 <= _5473;
+        else
+            _5475 <= insn_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6494 <= _6492;
+        else
+            _6494 <= _5475;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5479 <= _5477;
+        else
+            _5479 <= instr_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6490 <= _6488;
+        else
+            _6490 <= _5479;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5483 <= _5481;
+        else
+            _5483 <= next_pc_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6486 <= _6484;
+        else
+            _6486 <= _5483;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5487 <= _5485;
+        else
+            _5487 <= pc_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6482 <= _6480;
+        else
+            _6482 <= _5487;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5491 <= _5489;
+        else
+            _5491 <= imm_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6478 <= _6476;
+        else
+            _6478 <= _5491;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5495 <= _5493;
+        else
+            _5495 <= rdm_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6474 <= _6472;
+        else
+            _6474 <= _5495;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5499 <= _5497;
+        else
+            _5499 <= rdd_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6470 <= _6468;
+        else
+            _6470 <= _5499;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5503 <= _5501;
+        else
+            _5503 <= rd2_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6466 <= _6464;
+        else
+            _6466 <= _5503;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5507 <= _5505;
+        else
+            _5507 <= rd1_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6462 <= _6460;
+        else
+            _6462 <= _5507;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5511 <= _5509;
+        else
+            _5511 <= rad_zero_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6458 <= _6456;
+        else
+            _6458 <= _5511;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5515 <= _5513;
+        else
+            _5515 <= ra2_zero_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6454 <= _6452;
+        else
+            _6454 <= _5515;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5519 <= _5517;
+        else
+            _5519 <= ra1_zero_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6450 <= _6448;
+        else
+            _6450 <= _5519;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5523 <= _5521;
+        else
+            _5523 <= rad_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6446 <= _6444;
+        else
+            _6446 <= _5523;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5527 <= _5525;
+        else
+            _5527 <= ra2_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6442 <= _6440;
+        else
+            _6442 <= _5527;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5531 <= _5529;
+        else
+            _5531 <= ra1_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6438 <= _6436;
+        else
+            _6438 <= _5531;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _5535 <= _5533;
+        else
+            _5535 <= pen_p_2;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _6434 <= _6432;
+        else
+            _6434 <= _5535;
     end
 
     /* aliases */
 
     /* output assignments */
-    assign pen = _6006;
-    assign ra1 = _6010;
-    assign ra2 = _6014;
-    assign rad = _6018;
-    assign ra1_zero = _6022;
-    assign ra2_zero = _6026;
-    assign rad_zero = _6030;
-    assign rd1 = _6034;
-    assign rd2 = _6038;
-    assign rdd = _6042;
-    assign imm = _6046;
-    assign pc = _6050;
-    assign next_pc = _6054;
-    assign instr = _6058;
-    assign insn = _6062;
-    assign is = _6066;
-    assign fclass = _6070;
-    assign alu = _6074;
-    assign alu_cmp = _6078;
-    assign junk = _6082;
+    assign pen = _6434;
+    assign ra1 = _6438;
+    assign ra2 = _6442;
+    assign rad = _6446;
+    assign ra1_zero = _6450;
+    assign ra2_zero = _6454;
+    assign rad_zero = _6458;
+    assign rd1 = _6462;
+    assign rd2 = _6466;
+    assign rdd = _6470;
+    assign rdm = _6474;
+    assign imm = _6478;
+    assign pc = _6482;
+    assign next_pc = _6486;
+    assign instr = _6490;
+    assign insn = _6494;
+    assign trap = _6498;
+    assign lui = _6502;
+    assign auipc = _6506;
+    assign jal = _6510;
+    assign jalr = _6514;
+    assign bra = _6518;
+    assign ld = _6522;
+    assign st = _6526;
+    assign opi = _6530;
+    assign opr = _6534;
+    assign fen = _6538;
+    assign sys = _6542;
+    assign f3 = _6546;
+    assign f7 = _6550;
+    assign cond_branch = _6554;
+    assign junk = _6558;
 
 endmodule

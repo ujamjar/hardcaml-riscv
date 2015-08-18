@@ -1,25 +1,10 @@
 module decoder (
     junk_p_0,
     cond_branch_p_0,
-    f7_p_0,
-    f3_p_0,
-    sys_p_0,
-    fen_p_0,
-    opr_p_0,
-    opi_p_0,
-    st_p_0,
-    ld_p_0,
-    bra_p_0,
-    jalr_p_0,
-    jal_p_0,
-    auipc_p_0,
-    lui_p_0,
-    trap_p_0,
     next_pc_p_0,
     pc_p_0,
     imm_p_0,
     rdd_p_0,
-    rdd_p_4,
     mio_rdata,
     clr,
     clk,
@@ -60,25 +45,10 @@ module decoder (
 
     input junk_p_0;
     input cond_branch_p_0;
-    input f7_p_0;
-    input f3_p_0;
-    input sys_p_0;
-    input fen_p_0;
-    input opr_p_0;
-    input opi_p_0;
-    input st_p_0;
-    input ld_p_0;
-    input bra_p_0;
-    input jalr_p_0;
-    input jal_p_0;
-    input auipc_p_0;
-    input lui_p_0;
-    input trap_p_0;
     input [31:0] next_pc_p_0;
     input [31:0] pc_p_0;
     input [31:0] imm_p_0;
     input [31:0] rdd_p_0;
-    input [31:0] rdd_p_4;
     input [31:0] mio_rdata;
     input clr;
     input clk;
@@ -111,7 +81,7 @@ module decoder (
     output opr;
     output fen;
     output sys;
-    output f3;
+    output [2:0] f3;
     output f7;
     output cond_branch;
     output junk;
@@ -131,87 +101,46 @@ module decoder (
     reg _3575;
     wire _3569 = 1'b0;
     wire _3570 = 1'b0;
-    wire _1574 = 1'b0;
-    wire _1575 = 1'b0;
-    reg _1576;
+    wire _3049;
     reg _3571;
-    wire _3565 = 1'b0;
-    wire _3566 = 1'b0;
-    wire _1578 = 1'b0;
-    wire _1579 = 1'b0;
-    reg _1580;
-    reg _3567;
+    wire [2:0] _3565 = 3'b000;
+    wire [2:0] _3566 = 3'b000;
+    reg [2:0] _3567;
     wire _3561 = 1'b0;
     wire _3562 = 1'b0;
-    wire _1582 = 1'b0;
-    wire _1583 = 1'b0;
-    reg _1584;
     reg _3563;
     wire _3557 = 1'b0;
     wire _3558 = 1'b0;
-    wire _1586 = 1'b0;
-    wire _1587 = 1'b0;
-    reg _1588;
     reg _3559;
     wire _3553 = 1'b0;
     wire _3554 = 1'b0;
-    wire _1590 = 1'b0;
-    wire _1591 = 1'b0;
-    reg _1592;
     reg _3555;
     wire _3549 = 1'b0;
     wire _3550 = 1'b0;
-    wire _1594 = 1'b0;
-    wire _1595 = 1'b0;
-    reg _1596;
     reg _3551;
     wire _3545 = 1'b0;
     wire _3546 = 1'b0;
-    wire _1598 = 1'b0;
-    wire _1599 = 1'b0;
-    reg _1600;
     reg _3547;
     wire _3541 = 1'b0;
     wire _3542 = 1'b0;
-    wire _1602 = 1'b0;
-    wire _1603 = 1'b0;
-    reg _1604;
     reg _3543;
     wire _3537 = 1'b0;
     wire _3538 = 1'b0;
-    wire _1606 = 1'b0;
-    wire _1607 = 1'b0;
-    reg _1608;
     reg _3539;
     wire _3533 = 1'b0;
     wire _3534 = 1'b0;
-    wire _1610 = 1'b0;
-    wire _1611 = 1'b0;
-    reg _1612;
     reg _3535;
     wire _3529 = 1'b0;
     wire _3530 = 1'b0;
-    wire _1614 = 1'b0;
-    wire _1615 = 1'b0;
-    reg _1616;
     reg _3531;
     wire _3525 = 1'b0;
     wire _3526 = 1'b0;
-    wire _1618 = 1'b0;
-    wire _1619 = 1'b0;
-    reg _1620;
     reg _3527;
     wire _3521 = 1'b0;
     wire _3522 = 1'b0;
-    wire _1622 = 1'b0;
-    wire _1623 = 1'b0;
-    reg _1624;
     reg _3523;
     wire _3517 = 1'b0;
     wire _3518 = 1'b0;
-    wire _1626 = 1'b0;
-    wire _1627 = 1'b0;
-    reg _1628;
     reg _3519;
     wire [47:0] _3513 = 48'b000000000000000000000000000000000000000000000000;
     wire [47:0] _3514 = 48'b000000000000000000000000000000000000000000000000;
@@ -396,9 +325,6 @@ module decoder (
     reg [31:0] _3495;
     wire [31:0] _3489 = 32'b00000000000000000000000000000000;
     wire [31:0] _3490 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1654 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1655 = 32'b00000000000000000000000000000000;
-    reg [31:0] _1656;
     reg [31:0] _3491;
     wire [31:0] _3485 = 32'b00000000000000000000000000000000;
     wire [31:0] _3486 = 32'b00000000000000000000000000000000;
@@ -837,9 +763,9 @@ module decoder (
     wire _3289;
     wire [31:0] _3290 = 32'b00000000000000000000000000000000;
     wire [31:0] _3291 = 32'b00000000000000000000000000000000;
-    wire [31:0] _2166 = 32'b00000000000000000000000000000000;
-    wire [31:0] _2167 = 32'b00000000000000000000000000000000;
-    reg [31:0] _2168;
+    wire [31:0] _1654 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1655 = 32'b00000000000000000000000000000000;
+    reg [31:0] _1656;
     reg [31:0] reg_01;
     wire [31:0] _3287 = 32'b00000000000000000000000000000000;
     reg [31:0] _3444;
@@ -907,173 +833,90 @@ module decoder (
         else
             _3575 <= _1572;
     end
-    always @(posedge clk) begin
-        if (clr)
-            _1576 <= _1574;
-        else
-            _1576 <= f7_p_0;
-    end
+    assign _3049 = mio_rdata[30:30];
     always @(posedge clk) begin
         if (clr)
             _3571 <= _3569;
         else
-            _3571 <= _1576;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1580 <= _1578;
-        else
-            _1580 <= f3_p_0;
+            _3571 <= _3049;
     end
     always @(posedge clk) begin
         if (clr)
             _3567 <= _3565;
         else
-            _3567 <= _1580;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1584 <= _1582;
-        else
-            _1584 <= sys_p_0;
+            _3567 <= _2846;
     end
     always @(posedge clk) begin
         if (clr)
             _3563 <= _3561;
         else
-            _3563 <= _1584;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1588 <= _1586;
-        else
-            _1588 <= fen_p_0;
+            _3563 <= _2920;
     end
     always @(posedge clk) begin
         if (clr)
             _3559 <= _3557;
         else
-            _3559 <= _1588;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1592 <= _1590;
-        else
-            _1592 <= opr_p_0;
+            _3559 <= _2918;
     end
     always @(posedge clk) begin
         if (clr)
             _3555 <= _3553;
         else
-            _3555 <= _1592;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1596 <= _1594;
-        else
-            _1596 <= opi_p_0;
+            _3555 <= _2916;
     end
     always @(posedge clk) begin
         if (clr)
             _3551 <= _3549;
         else
-            _3551 <= _1596;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1600 <= _1598;
-        else
-            _1600 <= st_p_0;
+            _3551 <= _2914;
     end
     always @(posedge clk) begin
         if (clr)
             _3547 <= _3545;
         else
-            _3547 <= _1600;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1604 <= _1602;
-        else
-            _1604 <= ld_p_0;
+            _3547 <= _2912;
     end
     always @(posedge clk) begin
         if (clr)
             _3543 <= _3541;
         else
-            _3543 <= _1604;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1608 <= _1606;
-        else
-            _1608 <= bra_p_0;
+            _3543 <= _2910;
     end
     always @(posedge clk) begin
         if (clr)
             _3539 <= _3537;
         else
-            _3539 <= _1608;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1612 <= _1610;
-        else
-            _1612 <= jalr_p_0;
+            _3539 <= _2908;
     end
     always @(posedge clk) begin
         if (clr)
             _3535 <= _3533;
         else
-            _3535 <= _1612;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1616 <= _1614;
-        else
-            _1616 <= jal_p_0;
+            _3535 <= _2906;
     end
     always @(posedge clk) begin
         if (clr)
             _3531 <= _3529;
         else
-            _3531 <= _1616;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1620 <= _1618;
-        else
-            _1620 <= auipc_p_0;
+            _3531 <= _2903;
     end
     always @(posedge clk) begin
         if (clr)
             _3527 <= _3525;
         else
-            _3527 <= _1620;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1624 <= _1622;
-        else
-            _1624 <= lui_p_0;
+            _3527 <= _2901;
     end
     always @(posedge clk) begin
         if (clr)
             _3523 <= _3521;
         else
-            _3523 <= _1624;
-    end
-    always @(posedge clk) begin
-        if (clr)
-            _1628 <= _1626;
-        else
-            _1628 <= trap_p_0;
+            _3523 <= _2899;
     end
     always @(posedge clk) begin
         if (clr)
             _3519 <= _3517;
         else
-            _3519 <= _1628;
+            _3519 <= _2992;
     end
     assign _3047 = _2908 & _2876;
     assign _3046 = _2908 & _2877;
@@ -1271,12 +1114,6 @@ module decoder (
     end
     always @(posedge clk) begin
         if (clr)
-            _1656 <= _1654;
-        else
-            _1656 <= rdd_p_0;
-    end
-    always @(posedge clk) begin
-        if (clr)
             _3491 <= _3489;
         else
             _3491 <= _1656;
@@ -1430,7 +1267,7 @@ module decoder (
             reg_31 <= _3440;
         else
             if (_3439)
-                reg_31 <= _2168;
+                reg_31 <= _1656;
     end
     assign _3433 = _3286[30:30];
     assign _3434 = gnd & _3433;
@@ -1439,7 +1276,7 @@ module decoder (
             reg_30 <= _3435;
         else
             if (_3434)
-                reg_30 <= _2168;
+                reg_30 <= _1656;
     end
     assign _3428 = _3286[29:29];
     assign _3429 = gnd & _3428;
@@ -1448,7 +1285,7 @@ module decoder (
             reg_29 <= _3430;
         else
             if (_3429)
-                reg_29 <= _2168;
+                reg_29 <= _1656;
     end
     assign _3423 = _3286[28:28];
     assign _3424 = gnd & _3423;
@@ -1457,7 +1294,7 @@ module decoder (
             reg_28 <= _3425;
         else
             if (_3424)
-                reg_28 <= _2168;
+                reg_28 <= _1656;
     end
     assign _3418 = _3286[27:27];
     assign _3419 = gnd & _3418;
@@ -1466,7 +1303,7 @@ module decoder (
             reg_27 <= _3420;
         else
             if (_3419)
-                reg_27 <= _2168;
+                reg_27 <= _1656;
     end
     assign _3413 = _3286[26:26];
     assign _3414 = gnd & _3413;
@@ -1475,7 +1312,7 @@ module decoder (
             reg_26 <= _3415;
         else
             if (_3414)
-                reg_26 <= _2168;
+                reg_26 <= _1656;
     end
     assign _3408 = _3286[25:25];
     assign _3409 = gnd & _3408;
@@ -1484,7 +1321,7 @@ module decoder (
             reg_25 <= _3410;
         else
             if (_3409)
-                reg_25 <= _2168;
+                reg_25 <= _1656;
     end
     assign _3403 = _3286[24:24];
     assign _3404 = gnd & _3403;
@@ -1493,7 +1330,7 @@ module decoder (
             reg_24 <= _3405;
         else
             if (_3404)
-                reg_24 <= _2168;
+                reg_24 <= _1656;
     end
     assign _3398 = _3286[23:23];
     assign _3399 = gnd & _3398;
@@ -1502,7 +1339,7 @@ module decoder (
             reg_23 <= _3400;
         else
             if (_3399)
-                reg_23 <= _2168;
+                reg_23 <= _1656;
     end
     assign _3393 = _3286[22:22];
     assign _3394 = gnd & _3393;
@@ -1511,7 +1348,7 @@ module decoder (
             reg_22 <= _3395;
         else
             if (_3394)
-                reg_22 <= _2168;
+                reg_22 <= _1656;
     end
     assign _3388 = _3286[21:21];
     assign _3389 = gnd & _3388;
@@ -1520,7 +1357,7 @@ module decoder (
             reg_21 <= _3390;
         else
             if (_3389)
-                reg_21 <= _2168;
+                reg_21 <= _1656;
     end
     assign _3383 = _3286[20:20];
     assign _3384 = gnd & _3383;
@@ -1529,7 +1366,7 @@ module decoder (
             reg_20 <= _3385;
         else
             if (_3384)
-                reg_20 <= _2168;
+                reg_20 <= _1656;
     end
     assign _3378 = _3286[19:19];
     assign _3379 = gnd & _3378;
@@ -1538,7 +1375,7 @@ module decoder (
             reg_19 <= _3380;
         else
             if (_3379)
-                reg_19 <= _2168;
+                reg_19 <= _1656;
     end
     assign _3373 = _3286[18:18];
     assign _3374 = gnd & _3373;
@@ -1547,7 +1384,7 @@ module decoder (
             reg_18 <= _3375;
         else
             if (_3374)
-                reg_18 <= _2168;
+                reg_18 <= _1656;
     end
     assign _3368 = _3286[17:17];
     assign _3369 = gnd & _3368;
@@ -1556,7 +1393,7 @@ module decoder (
             reg_17 <= _3370;
         else
             if (_3369)
-                reg_17 <= _2168;
+                reg_17 <= _1656;
     end
     assign _3363 = _3286[16:16];
     assign _3364 = gnd & _3363;
@@ -1565,7 +1402,7 @@ module decoder (
             reg_16 <= _3365;
         else
             if (_3364)
-                reg_16 <= _2168;
+                reg_16 <= _1656;
     end
     assign _3358 = _3286[15:15];
     assign _3359 = gnd & _3358;
@@ -1574,7 +1411,7 @@ module decoder (
             reg_15 <= _3360;
         else
             if (_3359)
-                reg_15 <= _2168;
+                reg_15 <= _1656;
     end
     assign _3353 = _3286[14:14];
     assign _3354 = gnd & _3353;
@@ -1583,7 +1420,7 @@ module decoder (
             reg_14 <= _3355;
         else
             if (_3354)
-                reg_14 <= _2168;
+                reg_14 <= _1656;
     end
     assign _3348 = _3286[13:13];
     assign _3349 = gnd & _3348;
@@ -1592,7 +1429,7 @@ module decoder (
             reg_13 <= _3350;
         else
             if (_3349)
-                reg_13 <= _2168;
+                reg_13 <= _1656;
     end
     assign _3343 = _3286[12:12];
     assign _3344 = gnd & _3343;
@@ -1601,7 +1438,7 @@ module decoder (
             reg_12 <= _3345;
         else
             if (_3344)
-                reg_12 <= _2168;
+                reg_12 <= _1656;
     end
     assign _3338 = _3286[11:11];
     assign _3339 = gnd & _3338;
@@ -1610,7 +1447,7 @@ module decoder (
             reg_11 <= _3340;
         else
             if (_3339)
-                reg_11 <= _2168;
+                reg_11 <= _1656;
     end
     assign _3333 = _3286[10:10];
     assign _3334 = gnd & _3333;
@@ -1619,7 +1456,7 @@ module decoder (
             reg_10 <= _3335;
         else
             if (_3334)
-                reg_10 <= _2168;
+                reg_10 <= _1656;
     end
     assign _3328 = _3286[9:9];
     assign _3329 = gnd & _3328;
@@ -1628,7 +1465,7 @@ module decoder (
             reg_09 <= _3330;
         else
             if (_3329)
-                reg_09 <= _2168;
+                reg_09 <= _1656;
     end
     assign _3323 = _3286[8:8];
     assign _3324 = gnd & _3323;
@@ -1637,7 +1474,7 @@ module decoder (
             reg_08 <= _3325;
         else
             if (_3324)
-                reg_08 <= _2168;
+                reg_08 <= _1656;
     end
     assign _3318 = _3286[7:7];
     assign _3319 = gnd & _3318;
@@ -1646,7 +1483,7 @@ module decoder (
             reg_07 <= _3320;
         else
             if (_3319)
-                reg_07 <= _2168;
+                reg_07 <= _1656;
     end
     assign _3313 = _3286[6:6];
     assign _3314 = gnd & _3313;
@@ -1655,7 +1492,7 @@ module decoder (
             reg_06 <= _3315;
         else
             if (_3314)
-                reg_06 <= _2168;
+                reg_06 <= _1656;
     end
     assign _3308 = _3286[5:5];
     assign _3309 = gnd & _3308;
@@ -1664,7 +1501,7 @@ module decoder (
             reg_05 <= _3310;
         else
             if (_3309)
-                reg_05 <= _2168;
+                reg_05 <= _1656;
     end
     assign _3303 = _3286[4:4];
     assign _3304 = gnd & _3303;
@@ -1673,7 +1510,7 @@ module decoder (
             reg_04 <= _3305;
         else
             if (_3304)
-                reg_04 <= _2168;
+                reg_04 <= _1656;
     end
     assign _3298 = _3286[3:3];
     assign _3299 = gnd & _3298;
@@ -1682,7 +1519,7 @@ module decoder (
             reg_03 <= _3300;
         else
             if (_3299)
-                reg_03 <= _2168;
+                reg_03 <= _1656;
     end
     assign _3293 = _3286[2:2];
     assign _3294 = gnd & _3293;
@@ -1691,7 +1528,7 @@ module decoder (
             reg_02 <= _3295;
         else
             if (_3294)
-                reg_02 <= _2168;
+                reg_02 <= _1656;
     end
     assign _3127 = ~ _3122;
     assign _3130 = _3128 & _3127;
@@ -1862,16 +1699,16 @@ module decoder (
     assign _3289 = gnd & _3288;
     always @(posedge clk) begin
         if (clr)
-            _2168 <= _2166;
+            _1656 <= _1654;
         else
-            _2168 <= rdd_p_4;
+            _1656 <= rdd_p_0;
     end
     always @(posedge clk) begin
         if (clr)
             reg_01 <= _3290;
         else
             if (_3289)
-                reg_01 <= _2168;
+                reg_01 <= _1656;
     end
     always @* begin
         case (_3113)

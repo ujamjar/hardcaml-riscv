@@ -36,12 +36,6 @@ module type S = sig
     junk
   end
 
-  module Stage_fet : module type of Stage
-  module Stage_dec : module type of Stage
-  module Stage_alu : module type of Stage
-  module Stage_mem : module type of Stage
-  module Stage_com : module type of Stage
-
   module O_debug : interface
     (o : O)
     (fet : Stage)
@@ -129,11 +123,11 @@ module Make(C : Config.S) = struct
   module Stage_com = struct include Stage let t = map (pipename "com") t end
   module O_debug = interface
     (o : O)
-    (fet : Stage)
-    (dec : Stage)
-    (alu : Stage)
-    (mem : Stage)
-    (com : Stage)
+    (fet : Stage_fet)
+    (dec : Stage_dec)
+    (alu : Stage_alu)
+    (mem : Stage_mem)
+    (com : Stage_com)
   end
 
 end

@@ -36,12 +36,6 @@ module type S = sig
     junk
   end
 
-  module Stage_fet : module type of Stage
-  module Stage_dec : module type of Stage
-  module Stage_alu : module type of Stage
-  module Stage_mem : module type of Stage
-  module Stage_com : module type of Stage
-
   module O_debug : interface
     (o : O)
     (fet : Stage)

@@ -14,9 +14,11 @@ module Make(Ifs : Interfaces.S) : sig
 
   open HardCaml.Signal.Comb
 
-  val imm_uj : t -> t
+  val imm_uj : instr:t -> t
 
-  val decoder : n:int -> inp:t Ifs.I.t -> pipe:t Ifs.Stage.t -> t Ifs.Stage.t
+  val imm : c:t Ifs.Class.t -> instr:t -> imm_uj:t -> t
+
+  val decoder : inp:t Ifs.I.t -> pipe:t Ifs.Stage.t -> t Ifs.Stage.t
 
 end
 

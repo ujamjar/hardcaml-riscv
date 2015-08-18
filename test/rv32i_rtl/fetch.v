@@ -69,7 +69,7 @@ module fetch (
     output opr;
     output fen;
     output sys;
-    output f3;
+    output [2:0] f3;
     output f7;
     output cond_branch;
     output junk;
@@ -156,10 +156,10 @@ module fetch (
     wire _1550 = 1'b0;
     wire _1403 = 1'b0;
     reg _1551;
-    wire _1545 = 1'b0;
-    wire _1546 = 1'b0;
-    wire _1404 = 1'b0;
-    reg _1547;
+    wire [2:0] _1545 = 3'b000;
+    wire [2:0] _1546 = 3'b000;
+    wire [2:0] _1404 = 3'b000;
+    reg [2:0] _1547;
     wire _1541 = 1'b0;
     wire _1542 = 1'b0;
     wire _1405 = 1'b0;
