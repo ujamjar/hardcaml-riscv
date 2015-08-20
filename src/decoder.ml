@@ -234,7 +234,7 @@ module Make(Ifs : Interfaces.S) = struct
         })
     in
     let rd1, rdm = rfo.Rf.O.q1, rfo.Rf.O.q2 in
-    let rd1 = mux2 c.jal pipe.pc rd1 in
+    let rd1 = rd1 in
     let rd2 = mux2 
       (c.opi |: c.lui |: c.auipc |: c.ld |: c.st |: c.jal |: c.jalr) 
       imm rdm 

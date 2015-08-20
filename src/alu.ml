@@ -17,7 +17,7 @@ module Make(Ifs : Interfaces.S) = struct
 
     let c = p.iclass in
 
-    let addctl = c.auipc |: c.jal |: c.ld |: c.st in
+    let addctl = c.auipc |: c.jal |: c.jalr |: c.ld |: c.st in
     let addsub = addsub (mux2 addctl gnd c.f7) p.rd1 p.rd2 in
 
     let alu_op = mux (mux2 addctl (zero 3) c.f3) [
@@ -38,8 +38,7 @@ module Make(Ifs : Interfaces.S) = struct
       pmux [
         c.lui, p.rd2;
         c.auipc, addsub;
-        c.jal |: c.jalr, p.pc +:. 4; (* XXX we could put pc in rs1 and 'imm' in rs2 instead *)
-        c.bra, p.pc +: p.imm;
+        c.bra |: c.jal, p.pc +: p.imm;
       ] alu_op
     in
 

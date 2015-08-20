@@ -227,11 +227,11 @@ module Make(C : Config.S) = struct
       let p = pipe.(n-1) in
       let i = p.iclass in
       let branch = i.jal |: i.jalr |: (i.bra &: p.branch) in
+      let rdd = mux2 (i.jal |: i.jalr) (p.pc +:. 4) p.rdd in
+      let rwe = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc) in
+      let pc = p.rdd in (* jal + jalr *)
       { pipe.(n-1) with
-        rwe = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc); 
-        branch;
-        rdd = p.pc +:. 4;
-        pc = p.rdd; (* maybe? *)
+        rwe; branch; rdd; pc;
       }
   end
 
