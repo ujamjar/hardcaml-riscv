@@ -44,10 +44,10 @@ module type S = sig
     ra1 ra2 rad
     ra1_zero ra2_zero rad_zero
     rd1 rd2 rdd rdm imm
-    pc next_pc
+    pc 
     instr insn (iclass : Class)
-    cond_branch
-    rf_we
+    branch
+    rwe
     (mi : Mo_instr)
     (md : Mo_data)
     junk
@@ -136,17 +136,17 @@ module Make(C : Config.S) = struct
     (* immediate *)
     imm[C.xlen]
     (* program counter *)
-    pc[C.xlen] next_pc[C.xlen]
+    pc[C.xlen] 
     (* instruction from memory *)
     instr[32]
     (* decoded instruction *)
     insn[Insn.V.n]
     (* instruction class *)
     (iclass : Class)
-    (* take a conditional branch *)
-    cond_branch[1]
+    (* take a branch *)
+    branch[1]
     (* reg file write enable *)
-    rf_we[1]
+    rwe[1]
     (* instruction/data memory i/o *)
     (mi : Mo_instr)
     (md : Mo_data)

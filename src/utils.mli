@@ -54,3 +54,16 @@ end
 (** one hot control inputs. log depth muxes *)
 val pmux1ht : (Signal.Comb.t * Signal.Comb.t) list -> Signal.Comb.t
 
+(** immediate formatting *)
+val i_imm : (imm12:int -> int32) -> imm:int -> int32
+
+val sh_imm : (shamt:int -> int32) -> imm:int -> int32
+
+val s_imm : (imm12hi:int -> imm12lo:int -> int32) -> imm:int -> int32
+
+val b_imm : (bimm12hi:int -> bimm12lo:int -> int32) -> imm:int -> int32
+
+val u_imm : (imm20:int -> int32) -> imm:int -> int32
+
+val j_imm : (jimm20:int -> int32) -> imm:int -> int32
+

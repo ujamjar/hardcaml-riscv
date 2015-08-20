@@ -31,7 +31,8 @@ module Make(Ifs : Interfaces.S) = struct
       p.rd1 &: p.rd2;
     ] in
 
-    let cond_branch = mux c.f3 [ eq; neq; gnd; gnd; slt; sge; sltu; sgeu ] in
+    (* outcome of conditional branch *)
+    let branch = mux c.f3 [ eq; neq; gnd; gnd; slt; sge; sltu; sgeu ] in
 
     let rdd = 
       pmux [
@@ -42,7 +43,7 @@ module Make(Ifs : Interfaces.S) = struct
       ] alu_op
     in
 
-    { p with rdd; cond_branch }
+    { p with rdd; branch }
 
 end
 

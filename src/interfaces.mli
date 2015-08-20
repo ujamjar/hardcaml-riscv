@@ -44,10 +44,10 @@ module type S = sig
     ra1 ra2 rad
     ra1_zero ra2_zero rad_zero
     rd1 rd2 rdd rdm imm
-    pc next_pc
+    pc 
     instr insn (iclass : Class)
-    cond_branch
-    rf_we
+    branch
+    rwe
     (mi : Mo_instr)
     (md : Mo_data)
     junk

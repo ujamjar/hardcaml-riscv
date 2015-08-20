@@ -10,6 +10,7 @@ module Make(C : Config.S) = struct
 
   let wired_stage _ = Stage.(map (fun (n,b) -> wire b) t)
   let zero_stage _ = Stage.(map (fun (n,b) -> zero b) t)
+  let empty_stage _ = Stage.(map (fun (n,b) -> empty) t)
 
   type stage = Comb.t Stage.t
   type stages = stage array
@@ -128,8 +129,10 @@ module Make(C : Config.S) = struct
     let f ~n ~inp ~comb ~pipe = 
       let open Stage in
       let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
-      let pc = Seq.reg_fb ~cv:(consti C.xlen C.start_addr) ~e:vdd ~w:C.xlen (fun d -> d +:. 4) in
-      let pc = pc -- "fetch_pc" in
+      let pcom = pipe.(com) in
+      let pc = Seq.reg_fb ~cv:(consti C.xlen C.start_addr) ~e:vdd ~w:C.xlen 
+        (fun d -> mux2 pcom.branch pcom.pc (d +:. 4)) 
+      in
       let junk = I.to_list inp |> concat |> bits |> reduce (|:) in (* XXX TO BE REMOVED *)
       { zero_stage () with 
         pc; junk; pen=vdd;
@@ -151,7 +154,7 @@ module Make(C : Config.S) = struct
       let module D = Decoder.Make(Ifs) in
       let open Stage in
       D.decoder ~inp 
-        ~pipe:{ pipe.(n-1) with rf_we = pipe.(com).rf_we;
+        ~pipe:{ pipe.(n-1) with rwe = pipe.(com).rwe;
                                 rad = pipe.(com).rad;
                                 rdd = pipe.(com).rdd }
   end
@@ -195,7 +198,7 @@ module Make(C : Config.S) = struct
           p.rdm;
         ]
       in
-      let req = i.st |: i.ld in (* is a memory request *)
+      (* read data *)
       let rdm = 
         let res x = mux2 sext (sresize x 32) (uresize x 32) in
         let rdm = inp.I.md.Mi_data.rdata in
@@ -203,6 +206,7 @@ module Make(C : Config.S) = struct
         let rdm16 = res @@ mux ofs.[1:1] [ rdm.[15:0]; rdm.[31:16] ] in
         mux size [ rdm8; rdm16; rdm ]
       in
+      let req = i.st |: i.ld in (* is a memory request *)
       let rw = i.ld in
       let rdd = mux2 rw rdm p.rdd in
       { p with
@@ -220,9 +224,14 @@ module Make(C : Config.S) = struct
     let f ~n ~inp ~comb ~pipe = 
       let open Stage in
       let open Class in
-      let i = pipe.(n-1).iclass in
+      let p = pipe.(n-1) in
+      let i = p.iclass in
+      let branch = i.jal |: i.jalr |: (i.bra &: p.branch) in
       { pipe.(n-1) with
-        rf_we = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc); 
+        rwe = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc); 
+        branch;
+        rdd = p.pc +:. 4;
+        pc = p.rdd; (* maybe? *)
       }
   end
 

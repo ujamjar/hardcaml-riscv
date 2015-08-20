@@ -10,6 +10,10 @@ module Rv = Pipe.Make(Cfg)
 module B = HardCaml.Api.B
 module Rv_o = Rv.Ifs.O_debug
 module Rv_output = Rv.Output_debug
+(*
+module Rv_o = Rv.Ifs.O
+module Rv_output = Rv.Output
+*)
 
 let pipeline = 
   Rv.build_comb
@@ -36,6 +40,7 @@ let testbench () =
 
   (* waveform viewer *)
   let wave_cfg = 
+    let nop = Riscv.RV32I.Asm.addi ~rd:0 ~rs1:0 ~imm12:0 in (* XXX should be pre-defined...*)
     let decode_insn b = 
       if B.(to_int (b ==:. 0) = 1) then "---"
       else
@@ -74,14 +79,19 @@ let testbench () =
 
   let () = begin
     let open Riscv.RV32I.Asm in
-    for i=0 to 1024-1 do
+    (*for i=0 to 1024-1 do
       memory.(i) <- Int32.of_int (i*4);
-    done;
+    done;*)
+    let nop = addi ~rd:0 ~rs1:0 ~imm12:0 in
     memory.(4) <- addi ~rd:1 ~rs1:0 ~imm12:100;
     memory.(5) <- addi ~rd:2 ~rs1:0 ~imm12:50;
     memory.(6) <- add ~rd:3 ~rs1:1 ~rs2:2;
     memory.(7) <- sw ~rs1:2 ~rs2:3 ~imm12hi:0 ~imm12lo:0;
     memory.(8) <- lw ~rs1:1 ~rd:4 ~imm12:300; 
+    memory.(9) <- jal ~rd:5 ~jimm20:(11*2);
+    memory.(10) <- 0l; (* XXX *)
+    memory.(11) <- jalr ~rd:6 ~rs1:0 ~imm12:(13*4);
+    memory.(12) <- 0l; (* XXX *)
     memory.(100) <- 0x999l;
   end in
 
@@ -89,6 +99,7 @@ let testbench () =
     let open Mi_data in
     let open Mo_data in
     let o = o.o.md in
+    (*let o = o.md in*)
     i.md.vld := B.gnd;
     if B.to_int !(o.req) = 1 then begin
       i.md.vld := B.vdd;
@@ -98,17 +109,14 @@ let testbench () =
         Mem.write ~memory ~addr:!(o.addr) ~data:!(o.wdata) ~strb:!(o.wmask)
       end
     end
-    (*let o = o.o.md in
-    i.md.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr);
-    if (B.to_int !(o.rw) <> 1) && (B.to_int !(o.req) = 1) then begin
-      Mem.write ~memory ~addr:!(o.addr) ~data:!(o.wdata) ~strb:!(o.wmask)
-    end*)
   in
 
   let mio_instr () = 
     let open Mi_instr in
     let open Mo_instr in
-    i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o'.o.mi.addr)
+    let o = o'.o.mi in
+    (*let o = o'.mi in*)
+    i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
   in
 
   let cycle () = 

@@ -76,6 +76,15 @@ Executable instr_trap_sat
   Install:            false
   BuildDepends:       hardcaml-riscv,hardcaml-bloop
 
+Executable imm_encoding
+  Build$:             flag(testbenches)
+  Path:               test
+  MainIs:             imm_encoding.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml-riscv
+
 SourceRepository master
   Type:     git
   Location: https://github.com/ujamjar/hardcaml-riscv.git

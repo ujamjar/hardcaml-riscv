@@ -10,6 +10,28 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       iclass : B.t Class.t;
     }
 
+  let imm_uj ~instr = 
+    let d = sresize (instr.[31:12] @: gnd) Ifs.xlen in
+    let rec f off = function
+      | [] -> []
+      | (h,l) :: tl -> 
+        let w = h-l+1 in
+        (l, select d (off+w-1) off) :: f (off + w) tl
+    in
+    concat @@ List.map snd @@ List.sort (fun a b -> compare (fst b) (fst a)) @@ 
+      f 0 [0,0; 19,12; 11,11; 10,1; 31,20]
+
+  let imm ~c ~instr ~imm_uj = 
+    let open Ifs.Class in
+    let smap x l = List.map (fun (h,l) -> x.[h:l]) l in
+    pmux [
+      c.jal, imm_uj;
+      c.lui |: c.auipc, instr.[31:12] @: zero 12;
+      c.jalr |: c.ld |: c.opi, sresize instr.[31:20] Ifs.xlen;
+      c.bra, sresize (concat ((smap instr [(31,31); (7,7); (30,25); (11,8)]) @ [gnd])) Ifs.xlen;
+      c.st, sresize (concat (smap instr [(31,25); (11,7)])) Ifs.xlen;
+    ] (zero Ifs.xlen)
+
   let decoder instr = 
     (* ALM = 509, REG = 405 *)
     let opcode = instr.[6:0] in
@@ -179,28 +201,6 @@ module Make(Ifs : Interfaces.S) = struct
   open HardCaml.Signal.Comb 
   module Insn = Make_insn_decoder(Ifs)(HardCaml.Signal.Comb) 
 
-  let imm_uj ~instr = 
-    let d = sresize (instr.[31:12] @: gnd) Ifs.xlen in
-    let rec f off = function
-      | [] -> []
-      | (h,l) :: tl -> 
-        let w = h-l+1 in
-        (l, select d (off+w-1) off) :: f (off + w) tl
-    in
-    concat @@ List.map snd @@ List.sort (fun a b -> compare (fst b) (fst a)) @@ 
-      f 0 [0,0; 19,12; 11,11; 10,1; 31,20]
-
-  let imm ~c ~instr ~imm_uj = 
-    let open Ifs.Class in
-    let smap x l = List.map (fun (h,l) -> x.[h:l]) l in
-    pmux [
-      c.jal, imm_uj;
-      c.lui |: c.auipc, instr.[31:12] @: zero 12;
-      c.jalr |: c.ld |: c.opi, sresize instr.[31:20] Ifs.xlen;
-      c.bra, sresize (concat ((smap instr [(31,31); (7,7); (30,25); (11,8)]) @ [gnd])) Ifs.xlen;
-      c.st, sresize (concat (smap instr [(31,25); (11,7)])) Ifs.xlen;
-    ] (zero Ifs.xlen)
-
   let decoder ~inp ~pipe = 
 
     let open Ifs in
@@ -228,13 +228,17 @@ module Make(Ifs : Interfaces.S) = struct
         Rf.I.({ 
           clk=inp.Ifs.I.clk; clr=inp.Ifs.I.clr;
           (* write from commit stage *)
-          wr=pipe.rf_we; wa=pipe.rad; d=pipe.rdd (* XXX *); 
+          wr=pipe.rwe; wa=pipe.rad; d=pipe.rdd (* XXX *); 
           (* read *)
           ra1; ra2; 
         })
     in
-    let rd1, rdm = rfo.Rf.O.q1, rfo.Rf.O.q2 in 
-    let rd2 = mux2 (c.opi |: c.lui |: c.auipc |: c.ld |: c.st) imm rdm in 
+    let rd1, rdm = rfo.Rf.O.q1, rfo.Rf.O.q2 in
+    let rd1 = mux2 c.jal pipe.pc rd1 in
+    let rd2 = mux2 
+      (c.opi |: c.lui |: c.auipc |: c.ld |: c.st |: c.jal |: c.jalr) 
+      imm rdm 
+    in 
 
     let pen = Seq.reg ~e:vdd pipe.pen in
 
@@ -242,7 +246,7 @@ module Make(Ifs : Interfaces.S) = struct
       pen; 
       ra1; ra2; rad;
       ra1_zero; ra2_zero; rad_zero;
-      rd1; rd2; rdm;
+      rd1; rd2; rdm; imm;
       instr; insn=d.insn; iclass=d.iclass; }
 
 end
