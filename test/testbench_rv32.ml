@@ -97,6 +97,9 @@ let testbench () =
     memory.(15) <- 0l;
     memory.(16) <- Utils.b_imm (beq ~rs1:1 ~rs2:2) ~imm:8; (* dont jump *)
     memory.(17) <- and_ ~rd:0 ~rs1:0 ~rs2:0;
+    (* check lui and auipc *)
+    memory.(18) <- Utils.u_imm (lui ~rd:10) ~imm:(12*4096);
+    memory.(19) <- Utils.u_imm (auipc ~rd:11) ~imm:(13*4096);
     memory.(100) <- 0x999l;
   end in
 

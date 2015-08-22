@@ -8,19 +8,23 @@ end
 
 module Rv = Pipe.Make(Cfg)
 module B = HardCaml.Api.B
+(*
 module Rv_o = Rv.Ifs.O_debug
 module Rv_output = Rv.Output_debug
+*)
+module Rv_o = Rv.Ifs.O
+module Rv_output = Rv.Output
 
-let pipeline = 
-  Rv.build_pipeline
-    ~f_stages:[| 
-      (module Rv.Fetch : Rv.Stage); 
-      (module Rv.Decoder : Rv.Stage); 
-      (module Rv.Alu : Rv.Stage); 
-      (module Rv.Mem : Rv.Stage); 
-      (module Rv.Commit : Rv.Stage);
-    |]
-    ~f_output:Rv_output.f
+let f_stages = [| 
+  (module Rv.Fetch : Rv.Stage); 
+  (module Rv.Decoder : Rv.Stage); 
+  (module Rv.Alu : Rv.Stage); 
+  (module Rv.Mem : Rv.Stage); 
+  (module Rv.Commit : Rv.Stage);
+|]
+
+let pipeline = Rv.build_pipeline ~f_stages ~f_output:Rv_output.f
+let comb = Rv.build_comb ~f_stages ~f_output:Rv_output.f
 
 let write_circ name circ = 
   let f = open_out ("test/rv32i_rtl/" ^ name ^ ".v") in
@@ -49,7 +53,7 @@ let write_pipe_stage name stage p =
 
 let write_core () = 
   let module G = HardCaml.Interface.Circ(Rv.Ifs.I)(Rv_o) in
-  let circ = G.make "rv32i" pipeline in
+  let circ = G.make "rv32i" comb in
   write_circ "rv32i" circ
 
 let () = write_pipe_stage "fetch" 0 (module Rv.Fetch : Rv.Stage)

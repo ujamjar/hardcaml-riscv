@@ -1,6 +1,10 @@
 module fetch (
-    mio_vld,
-    mio_rdata,
+    mio_data_vld,
+    mio_data_rdata,
+    mio_instr_vld,
+    mio_instr_rdata,
+    pc_p_4,
+    branch_p_4,
     clr,
     clk,
     pen,
@@ -16,7 +20,6 @@ module fetch (
     rdm,
     imm,
     pc,
-    next_pc,
     instr,
     insn,
     trap,
@@ -31,14 +34,31 @@ module fetch (
     opr,
     fen,
     sys,
+    rdc,
+    rdco,
     f3,
     f7,
-    cond_branch,
+    branch,
+    rwe,
+    mio_instr_addr,
+    mio_instr_wdata,
+    mio_instr_req,
+    mio_instr_rw,
+    mio_instr_wmask,
+    mio_data_addr,
+    mio_data_wdata,
+    mio_data_req,
+    mio_data_rw,
+    mio_data_wmask,
     junk
 );
 
-    input mio_vld;
-    input [31:0] mio_rdata;
+    input mio_data_vld;
+    input [31:0] mio_data_rdata;
+    input mio_instr_vld;
+    input [31:0] mio_instr_rdata;
+    input [31:0] pc_p_4;
+    input branch_p_4;
     input clr;
     input clk;
     output pen;
@@ -54,7 +74,6 @@ module fetch (
     output [31:0] rdm;
     output [31:0] imm;
     output [31:0] pc;
-    output [31:0] next_pc;
     output [31:0] instr;
     output [47:0] insn;
     output trap;
@@ -69,521 +88,823 @@ module fetch (
     output opr;
     output fen;
     output sys;
+    output rdc;
+    output [2:0] rdco;
     output [2:0] f3;
     output f7;
-    output cond_branch;
+    output branch;
+    output rwe;
+    output [31:0] mio_instr_addr;
+    output [31:0] mio_instr_wdata;
+    output mio_instr_req;
+    output mio_instr_rw;
+    output [3:0] mio_instr_wmask;
+    output [31:0] mio_data_addr;
+    output [31:0] mio_data_wdata;
+    output mio_data_req;
+    output mio_data_rw;
+    output [3:0] mio_data_wmask;
     output junk;
 
     /* signal declarations */
-    wire _1557 = 1'b0;
-    wire _1558 = 1'b0;
-    wire _1332;
-    wire _1333;
-    wire _1334;
-    wire _1335;
-    wire _1336;
-    wire _1337;
-    wire _1338;
-    wire _1339;
-    wire _1340;
-    wire _1341;
-    wire _1342;
-    wire _1343;
-    wire _1344;
-    wire _1345;
-    wire _1346;
-    wire _1347;
-    wire _1348;
-    wire _1349;
-    wire _1350;
-    wire _1351;
-    wire _1352;
-    wire _1353;
-    wire _1354;
-    wire _1355;
-    wire _1356;
-    wire _1357;
-    wire _1358;
-    wire _1359;
-    wire _1360;
-    wire _1361;
-    wire _1362;
-    wire _1363;
-    wire _1364;
-    wire _1365;
-    wire [34:0] _1331;
-    wire _1366;
-    wire _1367;
-    wire _1368;
-    wire _1369;
-    wire _1370;
-    wire _1371;
-    wire _1372;
-    wire _1373;
-    wire _1374;
-    wire _1375;
-    wire _1376;
-    wire _1377;
-    wire _1378;
-    wire _1379;
-    wire _1380;
-    wire _1381;
-    wire _1382;
-    wire _1383;
-    wire _1384;
-    wire _1385;
-    wire _1386;
-    wire _1387;
-    wire _1388;
-    wire _1389;
-    wire _1390;
-    wire _1391;
-    wire _1392;
-    wire _1393;
-    wire _1394;
-    wire _1395;
-    wire _1396;
-    wire _1397;
-    wire _1398;
-    wire _1399;
-    wire _1400;
-    reg _1559;
-    wire _1553 = 1'b0;
-    wire _1554 = 1'b0;
-    wire _1402 = 1'b0;
-    reg _1555;
-    wire _1549 = 1'b0;
-    wire _1550 = 1'b0;
-    wire _1403 = 1'b0;
-    reg _1551;
-    wire [2:0] _1545 = 3'b000;
-    wire [2:0] _1546 = 3'b000;
-    wire [2:0] _1404 = 3'b000;
-    reg [2:0] _1547;
-    wire _1541 = 1'b0;
-    wire _1542 = 1'b0;
-    wire _1405 = 1'b0;
-    reg _1543;
-    wire _1537 = 1'b0;
-    wire _1538 = 1'b0;
-    wire _1406 = 1'b0;
-    reg _1539;
-    wire _1533 = 1'b0;
-    wire _1534 = 1'b0;
-    wire _1407 = 1'b0;
-    reg _1535;
-    wire _1529 = 1'b0;
-    wire _1530 = 1'b0;
-    wire _1408 = 1'b0;
-    reg _1531;
-    wire _1525 = 1'b0;
-    wire _1526 = 1'b0;
-    wire _1409 = 1'b0;
-    reg _1527;
-    wire _1521 = 1'b0;
-    wire _1522 = 1'b0;
-    wire _1410 = 1'b0;
-    reg _1523;
-    wire _1517 = 1'b0;
-    wire _1518 = 1'b0;
-    wire _1411 = 1'b0;
-    reg _1519;
-    wire _1513 = 1'b0;
-    wire _1514 = 1'b0;
-    wire _1412 = 1'b0;
-    reg _1515;
-    wire _1509 = 1'b0;
-    wire _1510 = 1'b0;
-    wire _1413 = 1'b0;
-    reg _1511;
-    wire _1505 = 1'b0;
-    wire _1506 = 1'b0;
-    wire _1414 = 1'b0;
-    reg _1507;
-    wire _1501 = 1'b0;
-    wire _1502 = 1'b0;
-    wire _1415 = 1'b0;
-    reg _1503;
-    wire _1497 = 1'b0;
-    wire _1498 = 1'b0;
-    wire _1416 = 1'b0;
-    reg _1499;
-    wire [47:0] _1493 = 48'b000000000000000000000000000000000000000000000000;
-    wire [47:0] _1494 = 48'b000000000000000000000000000000000000000000000000;
-    wire [47:0] _1417 = 48'b000000000000000000000000000000000000000000000000;
-    reg [47:0] _1495;
-    wire [31:0] _1489 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1490 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1418 = 32'b00000000000000000000000000000000;
-    reg [31:0] _1491;
-    wire [31:0] _1485 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1486 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1419 = 32'b00000000000000000000000000000000;
-    reg [31:0] _1487;
-    wire [31:0] _1481 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1482 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1325 = 32'b00000000000000000000000000010000;
-    wire [31:0] _1327 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1329 = 32'b00000000000000000000000000000100;
-    wire [31:0] _1330;
-    wire [31:0] _1326;
-    reg [31:0] fetch_pc;
-    reg [31:0] _1483;
-    wire [31:0] _1477 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1478 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1421 = 32'b00000000000000000000000000000000;
-    reg [31:0] _1479;
-    wire [31:0] _1473 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1474 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1422 = 32'b00000000000000000000000000000000;
-    reg [31:0] _1475;
-    wire [31:0] _1469 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1470 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1423 = 32'b00000000000000000000000000000000;
-    reg [31:0] _1471;
-    wire [31:0] _1465 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1466 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1424 = 32'b00000000000000000000000000000000;
-    reg [31:0] _1467;
-    wire [31:0] _1461 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1462 = 32'b00000000000000000000000000000000;
-    wire [31:0] _1425 = 32'b00000000000000000000000000000000;
-    reg [31:0] _1463;
-    wire _1457 = 1'b0;
-    wire _1458 = 1'b0;
-    wire _1426 = 1'b0;
-    reg _1459;
-    wire _1453 = 1'b0;
-    wire _1454 = 1'b0;
-    wire _1427 = 1'b0;
-    reg _1455;
-    wire _1449 = 1'b0;
-    wire _1450 = 1'b0;
-    wire _1428 = 1'b0;
-    reg _1451;
-    wire [4:0] _1445 = 5'b00000;
-    wire [4:0] _1446 = 5'b00000;
-    wire [4:0] _1429 = 5'b00000;
-    reg [4:0] _1447;
-    wire [4:0] _1441 = 5'b00000;
-    wire [4:0] _1442 = 5'b00000;
-    wire [4:0] _1430 = 5'b00000;
-    reg [4:0] _1443;
-    wire [4:0] _1437 = 5'b00000;
-    wire [4:0] _1438 = 5'b00000;
-    wire [4:0] _1431 = 5'b00000;
-    reg [4:0] _1439;
-    wire _1433 = 1'b0;
-    wire _1434 = 1'b0;
+    wire _2170 = 1'b0;
+    wire _2171 = 1'b0;
+    wire _1815;
+    wire _1816;
+    wire _1817;
+    wire _1818;
+    wire _1819;
+    wire _1820;
+    wire _1821;
+    wire _1822;
+    wire _1823;
+    wire _1824;
+    wire _1825;
+    wire _1826;
+    wire _1827;
+    wire _1828;
+    wire _1829;
+    wire _1830;
+    wire _1831;
+    wire _1832;
+    wire _1833;
+    wire _1834;
+    wire _1835;
+    wire _1836;
+    wire _1837;
+    wire _1838;
+    wire _1839;
+    wire _1840;
+    wire _1841;
+    wire _1842;
+    wire _1843;
+    wire _1844;
+    wire _1845;
+    wire _1846;
+    wire _1847;
+    wire _1848;
+    wire _1849;
+    wire _1850;
+    wire _1851;
+    wire _1852;
+    wire _1853;
+    wire _1854;
+    wire _1855;
+    wire _1856;
+    wire _1857;
+    wire _1858;
+    wire _1859;
+    wire _1860;
+    wire _1861;
+    wire _1862;
+    wire _1863;
+    wire _1864;
+    wire _1865;
+    wire _1866;
+    wire _1867;
+    wire _1868;
+    wire _1869;
+    wire _1870;
+    wire _1871;
+    wire _1872;
+    wire _1873;
+    wire _1874;
+    wire _1875;
+    wire _1876;
+    wire _1877;
+    wire _1878;
+    wire _1879;
+    wire _1880;
+    wire _1881;
+    wire [67:0] _1814;
+    wire _1882;
+    wire _1883;
+    wire _1884;
+    wire _1885;
+    wire _1886;
+    wire _1887;
+    wire _1888;
+    wire _1889;
+    wire _1890;
+    wire _1891;
+    wire _1892;
+    wire _1893;
+    wire _1894;
+    wire _1895;
+    wire _1896;
+    wire _1897;
+    wire _1898;
+    wire _1899;
+    wire _1900;
+    wire _1901;
+    wire _1902;
+    wire _1903;
+    wire _1904;
+    wire _1905;
+    wire _1906;
+    wire _1907;
+    wire _1908;
+    wire _1909;
+    wire _1910;
+    wire _1911;
+    wire _1912;
+    wire _1913;
+    wire _1914;
+    wire _1915;
+    wire _1916;
+    wire _1917;
+    wire _1918;
+    wire _1919;
+    wire _1920;
+    wire _1921;
+    wire _1922;
+    wire _1923;
+    wire _1924;
+    wire _1925;
+    wire _1926;
+    wire _1927;
+    wire _1928;
+    wire _1929;
+    wire _1930;
+    wire _1931;
+    wire _1932;
+    wire _1933;
+    wire _1934;
+    wire _1935;
+    wire _1936;
+    wire _1937;
+    wire _1938;
+    wire _1939;
+    wire _1940;
+    wire _1941;
+    wire _1942;
+    wire _1943;
+    wire _1944;
+    wire _1945;
+    wire _1946;
+    wire _1947;
+    wire _1948;
+    wire _1949;
+    reg _2172;
+    wire [3:0] _2166 = 4'b0000;
+    wire [3:0] _2167 = 4'b0000;
+    wire [3:0] _1951 = 4'b0000;
+    reg [3:0] _2168;
+    wire _2162 = 1'b0;
+    wire _2163 = 1'b0;
+    wire _1952 = 1'b0;
+    reg _2164;
+    wire _2158 = 1'b0;
+    wire _2159 = 1'b0;
+    wire _1953 = 1'b0;
+    reg _2160;
+    wire [31:0] _2154 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2155 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1954 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2156;
+    wire [31:0] _2150 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2151 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1955 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2152;
+    wire [3:0] _2146 = 4'b0000;
+    wire [3:0] _2147 = 4'b0000;
+    wire [3:0] _1994 = 4'b0000;
+    reg [3:0] _2148;
+    wire _2142 = 1'b0;
+    wire _2143 = 1'b0;
+    reg _2144;
+    wire _2138 = 1'b0;
+    wire _2139 = 1'b0;
+    wire _1995 = 1'b0;
+    reg _1996;
+    reg _2140;
+    wire [31:0] _2134 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2135 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1997 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2136;
+    wire [31:0] _2130 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2131 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2132;
+    wire _2126 = 1'b0;
+    wire _2127 = 1'b0;
+    wire _1961 = 1'b0;
+    reg _2128;
+    wire _2122 = 1'b0;
+    wire _2123 = 1'b0;
+    wire _1962 = 1'b0;
+    reg _2124;
+    wire _2118 = 1'b0;
+    wire _2119 = 1'b0;
+    wire _1963 = 1'b0;
+    reg _2120;
+    wire [2:0] _2114 = 3'b000;
+    wire [2:0] _2115 = 3'b000;
+    wire [2:0] _1964 = 3'b000;
+    reg [2:0] _2116;
+    wire [2:0] _2110 = 3'b000;
+    wire [2:0] _2111 = 3'b000;
+    wire [2:0] _1965 = 3'b000;
+    reg [2:0] _2112;
+    wire _2106 = 1'b0;
+    wire _2107 = 1'b0;
+    wire _1966 = 1'b0;
+    reg _2108;
+    wire _2102 = 1'b0;
+    wire _2103 = 1'b0;
+    wire _1967 = 1'b0;
+    reg _2104;
+    wire _2098 = 1'b0;
+    wire _2099 = 1'b0;
+    wire _1968 = 1'b0;
+    reg _2100;
+    wire _2094 = 1'b0;
+    wire _2095 = 1'b0;
+    wire _1969 = 1'b0;
+    reg _2096;
+    wire _2090 = 1'b0;
+    wire _2091 = 1'b0;
+    wire _1970 = 1'b0;
+    reg _2092;
+    wire _2086 = 1'b0;
+    wire _2087 = 1'b0;
+    wire _1971 = 1'b0;
+    reg _2088;
+    wire _2082 = 1'b0;
+    wire _2083 = 1'b0;
+    wire _1972 = 1'b0;
+    reg _2084;
+    wire _2078 = 1'b0;
+    wire _2079 = 1'b0;
+    wire _1973 = 1'b0;
+    reg _2080;
+    wire _2074 = 1'b0;
+    wire _2075 = 1'b0;
+    wire _1974 = 1'b0;
+    reg _2076;
+    wire _2070 = 1'b0;
+    wire _2071 = 1'b0;
+    wire _1975 = 1'b0;
+    reg _2072;
+    wire _2066 = 1'b0;
+    wire _2067 = 1'b0;
+    wire _1976 = 1'b0;
+    reg _2068;
+    wire _2062 = 1'b0;
+    wire _2063 = 1'b0;
+    wire _1977 = 1'b0;
+    reg _2064;
+    wire _2058 = 1'b0;
+    wire _2059 = 1'b0;
+    wire _1978 = 1'b0;
+    reg _2060;
+    wire [47:0] _2054 = 48'b000000000000000000000000000000000000000000000000;
+    wire [47:0] _2055 = 48'b000000000000000000000000000000000000000000000000;
+    wire [47:0] _1979 = 48'b000000000000000000000000000000000000000000000000;
+    reg [47:0] _2056;
+    wire [31:0] _2050 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2051 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1980 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2052;
+    wire [31:0] _2046 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2047 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1807 = 32'b00000000000000000000000000010000;
+    wire [31:0] _1809 = 32'b00000000000000000000000000000000;
+    wire [31:0] _876 = 32'b00000000000000000000000000000000;
+    wire [31:0] _877 = 32'b00000000000000000000000000000000;
+    reg [31:0] _878;
+    wire [31:0] _1811 = 32'b00000000000000000000000000000100;
+    wire [31:0] _1812;
+    wire _800 = 1'b0;
+    wire _801 = 1'b0;
+    reg _802;
+    wire [31:0] _1813;
+    wire [31:0] _1808;
+    reg [31:0] _1810;
+    reg [31:0] _2048;
+    wire [31:0] _2042 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2043 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1982 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2044;
+    wire [31:0] _2038 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2039 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1983 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2040;
+    wire [31:0] _2034 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2035 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1984 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2036;
+    wire [31:0] _2030 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2031 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1985 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2032;
+    wire [31:0] _2026 = 32'b00000000000000000000000000000000;
+    wire [31:0] _2027 = 32'b00000000000000000000000000000000;
+    wire [31:0] _1986 = 32'b00000000000000000000000000000000;
+    reg [31:0] _2028;
+    wire _2022 = 1'b0;
+    wire _2023 = 1'b0;
+    wire _1987 = 1'b0;
+    reg _2024;
+    wire _2018 = 1'b0;
+    wire _2019 = 1'b0;
+    wire _1988 = 1'b0;
+    reg _2020;
+    wire _2014 = 1'b0;
+    wire _2015 = 1'b0;
+    wire _1989 = 1'b0;
+    reg _2016;
+    wire [4:0] _2010 = 5'b00000;
+    wire [4:0] _2011 = 5'b00000;
+    wire [4:0] _1990 = 5'b00000;
+    reg [4:0] _2012;
+    wire [4:0] _2006 = 5'b00000;
+    wire [4:0] _2007 = 5'b00000;
+    wire [4:0] _1991 = 5'b00000;
+    reg [4:0] _2008;
+    wire [4:0] _2002 = 5'b00000;
+    wire [4:0] _2003 = 5'b00000;
+    wire [4:0] _1992 = 5'b00000;
+    reg [4:0] _2004;
+    wire _1998 = 1'b0;
+    wire _1999 = 1'b0;
     wire vdd = 1'b1;
-    reg _1435;
+    reg _2000;
 
     /* logic */
-    assign _1332 = _1331[0:0];
-    assign _1333 = _1331[1:1];
-    assign _1334 = _1331[2:2];
-    assign _1335 = _1331[3:3];
-    assign _1336 = _1331[4:4];
-    assign _1337 = _1331[5:5];
-    assign _1338 = _1331[6:6];
-    assign _1339 = _1331[7:7];
-    assign _1340 = _1331[8:8];
-    assign _1341 = _1331[9:9];
-    assign _1342 = _1331[10:10];
-    assign _1343 = _1331[11:11];
-    assign _1344 = _1331[12:12];
-    assign _1345 = _1331[13:13];
-    assign _1346 = _1331[14:14];
-    assign _1347 = _1331[15:15];
-    assign _1348 = _1331[16:16];
-    assign _1349 = _1331[17:17];
-    assign _1350 = _1331[18:18];
-    assign _1351 = _1331[19:19];
-    assign _1352 = _1331[20:20];
-    assign _1353 = _1331[21:21];
-    assign _1354 = _1331[22:22];
-    assign _1355 = _1331[23:23];
-    assign _1356 = _1331[24:24];
-    assign _1357 = _1331[25:25];
-    assign _1358 = _1331[26:26];
-    assign _1359 = _1331[27:27];
-    assign _1360 = _1331[28:28];
-    assign _1361 = _1331[29:29];
-    assign _1362 = _1331[30:30];
-    assign _1363 = _1331[31:31];
-    assign _1364 = _1331[32:32];
-    assign _1365 = _1331[33:33];
-    assign _1331 = { clk, clr, mio_rdata, mio_vld };
-    assign _1366 = _1331[34:34];
-    assign _1367 = _1366 | _1365;
-    assign _1368 = _1367 | _1364;
-    assign _1369 = _1368 | _1363;
-    assign _1370 = _1369 | _1362;
-    assign _1371 = _1370 | _1361;
-    assign _1372 = _1371 | _1360;
-    assign _1373 = _1372 | _1359;
-    assign _1374 = _1373 | _1358;
-    assign _1375 = _1374 | _1357;
-    assign _1376 = _1375 | _1356;
-    assign _1377 = _1376 | _1355;
-    assign _1378 = _1377 | _1354;
-    assign _1379 = _1378 | _1353;
-    assign _1380 = _1379 | _1352;
-    assign _1381 = _1380 | _1351;
-    assign _1382 = _1381 | _1350;
-    assign _1383 = _1382 | _1349;
-    assign _1384 = _1383 | _1348;
-    assign _1385 = _1384 | _1347;
-    assign _1386 = _1385 | _1346;
-    assign _1387 = _1386 | _1345;
-    assign _1388 = _1387 | _1344;
-    assign _1389 = _1388 | _1343;
-    assign _1390 = _1389 | _1342;
-    assign _1391 = _1390 | _1341;
-    assign _1392 = _1391 | _1340;
-    assign _1393 = _1392 | _1339;
-    assign _1394 = _1393 | _1338;
-    assign _1395 = _1394 | _1337;
-    assign _1396 = _1395 | _1336;
-    assign _1397 = _1396 | _1335;
-    assign _1398 = _1397 | _1334;
-    assign _1399 = _1398 | _1333;
-    assign _1400 = _1399 | _1332;
+    assign _1815 = _1814[0:0];
+    assign _1816 = _1814[1:1];
+    assign _1817 = _1814[2:2];
+    assign _1818 = _1814[3:3];
+    assign _1819 = _1814[4:4];
+    assign _1820 = _1814[5:5];
+    assign _1821 = _1814[6:6];
+    assign _1822 = _1814[7:7];
+    assign _1823 = _1814[8:8];
+    assign _1824 = _1814[9:9];
+    assign _1825 = _1814[10:10];
+    assign _1826 = _1814[11:11];
+    assign _1827 = _1814[12:12];
+    assign _1828 = _1814[13:13];
+    assign _1829 = _1814[14:14];
+    assign _1830 = _1814[15:15];
+    assign _1831 = _1814[16:16];
+    assign _1832 = _1814[17:17];
+    assign _1833 = _1814[18:18];
+    assign _1834 = _1814[19:19];
+    assign _1835 = _1814[20:20];
+    assign _1836 = _1814[21:21];
+    assign _1837 = _1814[22:22];
+    assign _1838 = _1814[23:23];
+    assign _1839 = _1814[24:24];
+    assign _1840 = _1814[25:25];
+    assign _1841 = _1814[26:26];
+    assign _1842 = _1814[27:27];
+    assign _1843 = _1814[28:28];
+    assign _1844 = _1814[29:29];
+    assign _1845 = _1814[30:30];
+    assign _1846 = _1814[31:31];
+    assign _1847 = _1814[32:32];
+    assign _1848 = _1814[33:33];
+    assign _1849 = _1814[34:34];
+    assign _1850 = _1814[35:35];
+    assign _1851 = _1814[36:36];
+    assign _1852 = _1814[37:37];
+    assign _1853 = _1814[38:38];
+    assign _1854 = _1814[39:39];
+    assign _1855 = _1814[40:40];
+    assign _1856 = _1814[41:41];
+    assign _1857 = _1814[42:42];
+    assign _1858 = _1814[43:43];
+    assign _1859 = _1814[44:44];
+    assign _1860 = _1814[45:45];
+    assign _1861 = _1814[46:46];
+    assign _1862 = _1814[47:47];
+    assign _1863 = _1814[48:48];
+    assign _1864 = _1814[49:49];
+    assign _1865 = _1814[50:50];
+    assign _1866 = _1814[51:51];
+    assign _1867 = _1814[52:52];
+    assign _1868 = _1814[53:53];
+    assign _1869 = _1814[54:54];
+    assign _1870 = _1814[55:55];
+    assign _1871 = _1814[56:56];
+    assign _1872 = _1814[57:57];
+    assign _1873 = _1814[58:58];
+    assign _1874 = _1814[59:59];
+    assign _1875 = _1814[60:60];
+    assign _1876 = _1814[61:61];
+    assign _1877 = _1814[62:62];
+    assign _1878 = _1814[63:63];
+    assign _1879 = _1814[64:64];
+    assign _1880 = _1814[65:65];
+    assign _1881 = _1814[66:66];
+    assign _1814 = { clk, clr, mio_instr_rdata, mio_instr_vld, mio_data_rdata, mio_data_vld };
+    assign _1882 = _1814[67:67];
+    assign _1883 = _1882 | _1881;
+    assign _1884 = _1883 | _1880;
+    assign _1885 = _1884 | _1879;
+    assign _1886 = _1885 | _1878;
+    assign _1887 = _1886 | _1877;
+    assign _1888 = _1887 | _1876;
+    assign _1889 = _1888 | _1875;
+    assign _1890 = _1889 | _1874;
+    assign _1891 = _1890 | _1873;
+    assign _1892 = _1891 | _1872;
+    assign _1893 = _1892 | _1871;
+    assign _1894 = _1893 | _1870;
+    assign _1895 = _1894 | _1869;
+    assign _1896 = _1895 | _1868;
+    assign _1897 = _1896 | _1867;
+    assign _1898 = _1897 | _1866;
+    assign _1899 = _1898 | _1865;
+    assign _1900 = _1899 | _1864;
+    assign _1901 = _1900 | _1863;
+    assign _1902 = _1901 | _1862;
+    assign _1903 = _1902 | _1861;
+    assign _1904 = _1903 | _1860;
+    assign _1905 = _1904 | _1859;
+    assign _1906 = _1905 | _1858;
+    assign _1907 = _1906 | _1857;
+    assign _1908 = _1907 | _1856;
+    assign _1909 = _1908 | _1855;
+    assign _1910 = _1909 | _1854;
+    assign _1911 = _1910 | _1853;
+    assign _1912 = _1911 | _1852;
+    assign _1913 = _1912 | _1851;
+    assign _1914 = _1913 | _1850;
+    assign _1915 = _1914 | _1849;
+    assign _1916 = _1915 | _1848;
+    assign _1917 = _1916 | _1847;
+    assign _1918 = _1917 | _1846;
+    assign _1919 = _1918 | _1845;
+    assign _1920 = _1919 | _1844;
+    assign _1921 = _1920 | _1843;
+    assign _1922 = _1921 | _1842;
+    assign _1923 = _1922 | _1841;
+    assign _1924 = _1923 | _1840;
+    assign _1925 = _1924 | _1839;
+    assign _1926 = _1925 | _1838;
+    assign _1927 = _1926 | _1837;
+    assign _1928 = _1927 | _1836;
+    assign _1929 = _1928 | _1835;
+    assign _1930 = _1929 | _1834;
+    assign _1931 = _1930 | _1833;
+    assign _1932 = _1931 | _1832;
+    assign _1933 = _1932 | _1831;
+    assign _1934 = _1933 | _1830;
+    assign _1935 = _1934 | _1829;
+    assign _1936 = _1935 | _1828;
+    assign _1937 = _1936 | _1827;
+    assign _1938 = _1937 | _1826;
+    assign _1939 = _1938 | _1825;
+    assign _1940 = _1939 | _1824;
+    assign _1941 = _1940 | _1823;
+    assign _1942 = _1941 | _1822;
+    assign _1943 = _1942 | _1821;
+    assign _1944 = _1943 | _1820;
+    assign _1945 = _1944 | _1819;
+    assign _1946 = _1945 | _1818;
+    assign _1947 = _1946 | _1817;
+    assign _1948 = _1947 | _1816;
+    assign _1949 = _1948 | _1815;
     always @(posedge clk) begin
         if (clr)
-            _1559 <= _1557;
+            _2172 <= _2170;
         else
-            _1559 <= _1400;
+            _2172 <= _1949;
     end
     always @(posedge clk) begin
         if (clr)
-            _1555 <= _1553;
+            _2168 <= _2166;
         else
-            _1555 <= _1402;
+            _2168 <= _1951;
     end
     always @(posedge clk) begin
         if (clr)
-            _1551 <= _1549;
+            _2164 <= _2162;
         else
-            _1551 <= _1403;
+            _2164 <= _1952;
     end
     always @(posedge clk) begin
         if (clr)
-            _1547 <= _1545;
+            _2160 <= _2158;
         else
-            _1547 <= _1404;
+            _2160 <= _1953;
     end
     always @(posedge clk) begin
         if (clr)
-            _1543 <= _1541;
+            _2156 <= _2154;
         else
-            _1543 <= _1405;
+            _2156 <= _1954;
     end
     always @(posedge clk) begin
         if (clr)
-            _1539 <= _1537;
+            _2152 <= _2150;
         else
-            _1539 <= _1406;
+            _2152 <= _1955;
     end
     always @(posedge clk) begin
         if (clr)
-            _1535 <= _1533;
+            _2148 <= _2146;
         else
-            _1535 <= _1407;
+            _2148 <= _1994;
     end
     always @(posedge clk) begin
         if (clr)
-            _1531 <= _1529;
+            _2144 <= _2142;
         else
-            _1531 <= _1408;
+            _2144 <= vdd;
     end
     always @(posedge clk) begin
         if (clr)
-            _1527 <= _1525;
+            _1996 <= vdd;
         else
-            _1527 <= _1409;
+            _1996 <= vdd;
     end
     always @(posedge clk) begin
         if (clr)
-            _1523 <= _1521;
+            _2140 <= _2138;
         else
-            _1523 <= _1410;
+            _2140 <= _1996;
     end
     always @(posedge clk) begin
         if (clr)
-            _1519 <= _1517;
+            _2136 <= _2134;
         else
-            _1519 <= _1411;
+            _2136 <= _1997;
     end
     always @(posedge clk) begin
         if (clr)
-            _1515 <= _1513;
+            _2132 <= _2130;
         else
-            _1515 <= _1412;
+            _2132 <= _1810;
     end
     always @(posedge clk) begin
         if (clr)
-            _1511 <= _1509;
+            _2128 <= _2126;
         else
-            _1511 <= _1413;
+            _2128 <= _1961;
     end
     always @(posedge clk) begin
         if (clr)
-            _1507 <= _1505;
+            _2124 <= _2122;
         else
-            _1507 <= _1414;
+            _2124 <= _1962;
     end
     always @(posedge clk) begin
         if (clr)
-            _1503 <= _1501;
+            _2120 <= _2118;
         else
-            _1503 <= _1415;
+            _2120 <= _1963;
     end
     always @(posedge clk) begin
         if (clr)
-            _1499 <= _1497;
+            _2116 <= _2114;
         else
-            _1499 <= _1416;
+            _2116 <= _1964;
     end
     always @(posedge clk) begin
         if (clr)
-            _1495 <= _1493;
+            _2112 <= _2110;
         else
-            _1495 <= _1417;
+            _2112 <= _1965;
     end
     always @(posedge clk) begin
         if (clr)
-            _1491 <= _1489;
+            _2108 <= _2106;
         else
-            _1491 <= _1418;
+            _2108 <= _1966;
     end
     always @(posedge clk) begin
         if (clr)
-            _1487 <= _1485;
+            _2104 <= _2102;
         else
-            _1487 <= _1419;
-    end
-    assign _1330 = fetch_pc + _1329;
-    assign _1326 = _1330;
-    always @(posedge clk) begin
-        if (clr)
-            fetch_pc <= _1325;
-        else
-            fetch_pc <= _1326;
+            _2104 <= _1967;
     end
     always @(posedge clk) begin
         if (clr)
-            _1483 <= _1481;
+            _2100 <= _2098;
         else
-            _1483 <= fetch_pc;
+            _2100 <= _1968;
     end
     always @(posedge clk) begin
         if (clr)
-            _1479 <= _1477;
+            _2096 <= _2094;
         else
-            _1479 <= _1421;
+            _2096 <= _1969;
     end
     always @(posedge clk) begin
         if (clr)
-            _1475 <= _1473;
+            _2092 <= _2090;
         else
-            _1475 <= _1422;
+            _2092 <= _1970;
     end
     always @(posedge clk) begin
         if (clr)
-            _1471 <= _1469;
+            _2088 <= _2086;
         else
-            _1471 <= _1423;
+            _2088 <= _1971;
     end
     always @(posedge clk) begin
         if (clr)
-            _1467 <= _1465;
+            _2084 <= _2082;
         else
-            _1467 <= _1424;
+            _2084 <= _1972;
     end
     always @(posedge clk) begin
         if (clr)
-            _1463 <= _1461;
+            _2080 <= _2078;
         else
-            _1463 <= _1425;
+            _2080 <= _1973;
     end
     always @(posedge clk) begin
         if (clr)
-            _1459 <= _1457;
+            _2076 <= _2074;
         else
-            _1459 <= _1426;
+            _2076 <= _1974;
     end
     always @(posedge clk) begin
         if (clr)
-            _1455 <= _1453;
+            _2072 <= _2070;
         else
-            _1455 <= _1427;
+            _2072 <= _1975;
     end
     always @(posedge clk) begin
         if (clr)
-            _1451 <= _1449;
+            _2068 <= _2066;
         else
-            _1451 <= _1428;
+            _2068 <= _1976;
     end
     always @(posedge clk) begin
         if (clr)
-            _1447 <= _1445;
+            _2064 <= _2062;
         else
-            _1447 <= _1429;
+            _2064 <= _1977;
     end
     always @(posedge clk) begin
         if (clr)
-            _1443 <= _1441;
+            _2060 <= _2058;
         else
-            _1443 <= _1430;
+            _2060 <= _1978;
     end
     always @(posedge clk) begin
         if (clr)
-            _1439 <= _1437;
+            _2056 <= _2054;
         else
-            _1439 <= _1431;
+            _2056 <= _1979;
     end
     always @(posedge clk) begin
         if (clr)
-            _1435 <= _1433;
+            _2052 <= _2050;
         else
-            _1435 <= vdd;
+            _2052 <= _1980;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _878 <= _876;
+        else
+            _878 <= pc_p_4;
+    end
+    assign _1812 = _1810 + _1811;
+    always @(posedge clk) begin
+        if (clr)
+            _802 <= _800;
+        else
+            _802 <= branch_p_4;
+    end
+    assign _1813 = _802 ? _878 : _1812;
+    assign _1808 = _1813;
+    always @(posedge clk) begin
+        if (clr)
+            _1810 <= _1807;
+        else
+            _1810 <= _1808;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2048 <= _2046;
+        else
+            _2048 <= _1810;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2044 <= _2042;
+        else
+            _2044 <= _1982;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2040 <= _2038;
+        else
+            _2040 <= _1983;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2036 <= _2034;
+        else
+            _2036 <= _1984;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2032 <= _2030;
+        else
+            _2032 <= _1985;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2028 <= _2026;
+        else
+            _2028 <= _1986;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2024 <= _2022;
+        else
+            _2024 <= _1987;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2020 <= _2018;
+        else
+            _2020 <= _1988;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2016 <= _2014;
+        else
+            _2016 <= _1989;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2012 <= _2010;
+        else
+            _2012 <= _1990;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2008 <= _2006;
+        else
+            _2008 <= _1991;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2004 <= _2002;
+        else
+            _2004 <= _1992;
+    end
+    always @(posedge clk) begin
+        if (clr)
+            _2000 <= _1998;
+        else
+            _2000 <= vdd;
     end
 
     /* aliases */
 
     /* output assignments */
-    assign pen = _1435;
-    assign ra1 = _1439;
-    assign ra2 = _1443;
-    assign rad = _1447;
-    assign ra1_zero = _1451;
-    assign ra2_zero = _1455;
-    assign rad_zero = _1459;
-    assign rd1 = _1463;
-    assign rd2 = _1467;
-    assign rdd = _1471;
-    assign rdm = _1475;
-    assign imm = _1479;
-    assign pc = _1483;
-    assign next_pc = _1487;
-    assign instr = _1491;
-    assign insn = _1495;
-    assign trap = _1499;
-    assign lui = _1503;
-    assign auipc = _1507;
-    assign jal = _1511;
-    assign jalr = _1515;
-    assign bra = _1519;
-    assign ld = _1523;
-    assign st = _1527;
-    assign opi = _1531;
-    assign opr = _1535;
-    assign fen = _1539;
-    assign sys = _1543;
-    assign f3 = _1547;
-    assign f7 = _1551;
-    assign cond_branch = _1555;
-    assign junk = _1559;
+    assign pen = _2000;
+    assign ra1 = _2004;
+    assign ra2 = _2008;
+    assign rad = _2012;
+    assign ra1_zero = _2016;
+    assign ra2_zero = _2020;
+    assign rad_zero = _2024;
+    assign rd1 = _2028;
+    assign rd2 = _2032;
+    assign rdd = _2036;
+    assign rdm = _2040;
+    assign imm = _2044;
+    assign pc = _2048;
+    assign instr = _2052;
+    assign insn = _2056;
+    assign trap = _2060;
+    assign lui = _2064;
+    assign auipc = _2068;
+    assign jal = _2072;
+    assign jalr = _2076;
+    assign bra = _2080;
+    assign ld = _2084;
+    assign st = _2088;
+    assign opi = _2092;
+    assign opr = _2096;
+    assign fen = _2100;
+    assign sys = _2104;
+    assign rdc = _2108;
+    assign rdco = _2112;
+    assign f3 = _2116;
+    assign f7 = _2120;
+    assign branch = _2124;
+    assign rwe = _2128;
+    assign mio_instr_addr = _2132;
+    assign mio_instr_wdata = _2136;
+    assign mio_instr_req = _2140;
+    assign mio_instr_rw = _2144;
+    assign mio_instr_wmask = _2148;
+    assign mio_data_addr = _2152;
+    assign mio_data_wdata = _2156;
+    assign mio_data_req = _2160;
+    assign mio_data_rw = _2164;
+    assign mio_data_wmask = _2168;
+    assign junk = _2172;
 
 endmodule

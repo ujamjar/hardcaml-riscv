@@ -230,9 +230,7 @@ module Make(C : Config.S) = struct
       let rdd = mux2 (i.jal |: i.jalr) (p.pc +:. 4) p.rdd in
       let rwe = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc) in
       let pc = p.rdd in (* jal + jalr *)
-      { pipe.(n-1) with
-        rwe; branch; rdd; pc;
-      }
+      { pipe.(n-1) with rwe; branch; rdd; pc; }
   end
 
   module Output = struct
