@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: aec19a17634840a58979fa1a7a224cd4)
+# DO NOT EDIT (digest: ce327b0f56e3a115799b2faf362a3808)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -40,15 +40,15 @@ true: annot, bin_annot
 <test/testbench_picorv32.{native,byte}>: use_HardCamlRiscV
 <test/testbench_picorv32.{native,byte}>: custom
 # Executable testbench_rv32
-<test/testbench_rv32.{native,byte}>: pkg_deriving
-<test/testbench_rv32.{native,byte}>: pkg_hardcaml
-<test/testbench_rv32.{native,byte}>: pkg_hardcaml-llvmsim
-<test/testbench_rv32.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/testbench_rv32.{native,byte}>: pkg_hardcaml.syntax
-<test/testbench_rv32.{native,byte}>: pkg_riscv
-<test/testbench_rv32.{native,byte}>: use_HardCamlRiscV
+"test/testbench_rv32.byte": pkg_deriving
+"test/testbench_rv32.byte": pkg_hardcaml
+"test/testbench_rv32.byte": pkg_hardcaml-llvmsim
+"test/testbench_rv32.byte": pkg_hardcaml-waveterm.lterm
+"test/testbench_rv32.byte": pkg_hardcaml.syntax
+"test/testbench_rv32.byte": pkg_riscv
+"test/testbench_rv32.byte": use_HardCamlRiscV
 <test/*.ml{,i,y}>: pkg_hardcaml-llvmsim
-<test/testbench_rv32.{native,byte}>: custom
+"test/testbench_rv32.byte": custom
 # Executable gen_picorv32
 <test/gen_picorv32.{native,byte}>: pkg_deriving
 <test/gen_picorv32.{native,byte}>: pkg_hardcaml

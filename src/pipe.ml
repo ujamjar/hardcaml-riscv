@@ -166,6 +166,12 @@ module Make(C : Config.S) = struct
       Alu.alu pipe.(n-1)
   end
 
+  module Alu_bypass = struct
+    let name = "alu_bypass"
+    let f ~n ~inp ~comb ~pipe = 
+      pipe.(n-1)
+  end
+
   module Mem = struct
     let name = "mem"
     let f ~n ~inp ~comb ~pipe = 

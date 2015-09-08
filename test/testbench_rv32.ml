@@ -30,7 +30,7 @@ module Waveterm_waves = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B)
 module Waveterm_sim = HardCamlWaveTerm.Sim.Make(B)(Waveterm_waves)
 module Waveterm_ui = HardCamlWaveLTerm.Ui.Make(B)(Waveterm_waves)
 
-let waves = true
+let waves = false
 
 let testbench () = 
 
@@ -40,7 +40,7 @@ let testbench () =
 
   (* waveform viewer *)
   let wave_cfg = 
-    let nop = Riscv.RV32I.Asm.addi ~rd:0 ~rs1:0 ~imm12:0 in (* XXX should be pre-defined...*)
+    let nop = Riscv.RV32I.Asm.addi ~rd:0 ~rs1:0 ~imm:0 in 
     let decode_insn b = 
       if B.(to_int (b ==:. 0) = 1) then "---"
       else
@@ -82,24 +82,24 @@ let testbench () =
     (*for i=0 to 1024-1 do
       memory.(i) <- Int32.of_int (i*4);
     done;*)
-    let nop = addi ~rd:0 ~rs1:0 ~imm12:0 in
-    memory.( 4) <- addi ~rd:1 ~rs1:0 ~imm12:100;
-    memory.( 5) <- addi ~rd:2 ~rs1:0 ~imm12:50;
+    let nop = addi ~rd:0 ~rs1:0 ~imm:0 in
+    memory.( 4) <- addi ~rd:1 ~rs1:0 ~imm:100;
+    memory.( 5) <- addi ~rd:2 ~rs1:0 ~imm:50;
     memory.( 6) <- add ~rd:3 ~rs1:1 ~rs2:2;
-    memory.( 7) <- sw ~rs1:2 ~rs2:3 ~imm12hi:0 ~imm12lo:0; 
-    memory.( 8) <- lw ~rs1:1 ~rd:4 ~imm12:300; 
-    memory.( 9) <- Utils.j_imm (jal ~rd:5) ~imm:8;
+    memory.( 7) <- sw ~rs1:2 ~rs2:3 ~imm:0; 
+    memory.( 8) <- lw ~rs1:1 ~rd:4 ~imm:300; 
+    memory.( 9) <- jal ~rd:5 ~imm:8;
     memory.(10) <- 0l; 
-    memory.(11) <- Utils.i_imm (jalr ~rd:6 ~rs1:5) ~imm:12;
+    memory.(11) <- jalr ~rd:6 ~rs1:5 ~imm:12;
     memory.(12) <- 0l; 
     memory.(13) <- xor_ ~rd:0 ~rs1:0 ~rs2:0;
-    memory.(14) <- Utils.b_imm (bne ~rs1:1 ~rs2:2) ~imm:8; (* skip next *)
+    memory.(14) <- bne ~rs1:1 ~rs2:2 ~imm:8; (* skip next *)
     memory.(15) <- 0l;
-    memory.(16) <- Utils.b_imm (beq ~rs1:1 ~rs2:2) ~imm:8; (* dont jump *)
+    memory.(16) <- beq ~rs1:1 ~rs2:2 ~imm:8; (* dont jump *)
     memory.(17) <- and_ ~rd:0 ~rs1:0 ~rs2:0;
     (* check lui and auipc *)
-    memory.(18) <- Utils.u_imm (lui ~rd:10) ~imm:(12*4096);
-    memory.(19) <- Utils.u_imm (auipc ~rd:11) ~imm:(13*4096);
+    memory.(18) <- lui ~rd:10 ~imm:(12*4096);
+    memory.(19) <- auipc ~rd:11 ~imm:(13*4096);
     memory.(100) <- 0x999l;
   end in
 
@@ -147,6 +147,7 @@ let testbench () =
     | None -> ()
     | Some(waves) ->
       Lwt_main.run (Waveterm_ui.run Waveterm_waves.({ cfg=default; waves }))
-  end
+  end;
+  printf "Done.\n"
 
 let () = testbench()
