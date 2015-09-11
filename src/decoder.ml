@@ -96,54 +96,53 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
     let open Insn.T in
     let insn = [
-      Lui, lui; 
-      Auipc, auipc; 
-      Jal, jal; 
-      Jalr, jalr; 
-      Beq, bra &: f3.(0); 
-      Bne, bra &: f3.(1); 
-      Blt, bra &: f3.(4); 
-      Bge, bra &: f3.(5); 
-      Bltu, bra &: f3.(6); 
-      Bgeu, bra &: f3.(7); 
-      Lb, ld &: f3.(0); 
-      Lh, ld &: f3.(1); 
-      Lw, ld &: f3.(2); 
-      Lbu, ld &: f3.(4); 
-      Lhu, ld &: f3.(5); 
-      Sb, st &: f3.(0); 
-      Sh, st &: f3.(1); 
-      Sw, st &: f3.(2); 
-      Addi, opi &: f3.(0); 
-      Slti, opi &: f3.(2); 
-      Sltiu, opi &: f3.(3); 
-      Xori, opi &: f3.(4); 
-      Ori, opi &: f3.(6); 
-      Andi, opi &: f3.(7); 
-      Slli, opi &: f3.(1) &: f7_0; 
-      Srli, opi &: f3.(5) &: f7_0; 
-      Srai, opi &: f3.(5) &: f7_s; 
-      Add, opr &: f3.(0) &: f7_0; 
-      Sub, opr &: f3.(0) &: f7_s; 
-      Sll, opr &: f3.(1) &: f7_0; 
-      Slt, opr &: f3.(2) &: f7_0; 
-      Sltu, opr &: f3.(3) &: f7_0; 
-      Xor, opr &: f3.(4) &: f7_0; 
-      Srl, opr &: f3.(5) &: f7_0; 
-      Sra, opr &: f3.(5) &: f7_s; 
-      Or, opr &: f3.(6) &: f7_0; 
-      And, opr &: f3.(7) &: f7_0; 
-      Fence, fence; 
-      Fenchi, fencei; 
-      Scall, scall; 
-      Sbreak, sbreak;
-      Rdcycle, rdc &: (rdco ==:. 0b000); 
-      Rdcycleh, rdc &: (rdco ==:. 0b001); 
-      Rdtime, rdc &: (rdco ==:. 0b010); 
-      Rdtimeh, rdc &: (rdco ==:. 0b011); 
-      Rdinstret, rdc &: (rdco ==:. 0b100); 
-      Rdinstreth, rdc &: (rdco ==:. 0b101); 
-      Trap, trap;
+      `lui, lui; 
+      `auipc, auipc; 
+      `jal, jal; 
+      `jalr, jalr; 
+      `beq, bra &: f3.(0); 
+      `bne, bra &: f3.(1); 
+      `blt, bra &: f3.(4); 
+      `bge, bra &: f3.(5); 
+      `bltu, bra &: f3.(6); 
+      `bgeu, bra &: f3.(7); 
+      `lb, ld &: f3.(0); 
+      `lh, ld &: f3.(1); 
+      `lw, ld &: f3.(2); 
+      `lbu, ld &: f3.(4); 
+      `lhu, ld &: f3.(5); 
+      `sb, st &: f3.(0); 
+      `sh, st &: f3.(1); 
+      `sw, st &: f3.(2); 
+      `addi, opi &: f3.(0); 
+      `slti, opi &: f3.(2); 
+      `sltiu, opi &: f3.(3); 
+      `xori, opi &: f3.(4); 
+      `ori, opi &: f3.(6); 
+      `andi, opi &: f3.(7); 
+      `slli32, opi &: f3.(1) &: f7_0; 
+      `srli32, opi &: f3.(5) &: f7_0; 
+      `srai32, opi &: f3.(5) &: f7_s; 
+      `add, opr &: f3.(0) &: f7_0; 
+      `sub, opr &: f3.(0) &: f7_s; 
+      `sll, opr &: f3.(1) &: f7_0; 
+      `slt, opr &: f3.(2) &: f7_0; 
+      `sltu, opr &: f3.(3) &: f7_0; 
+      `xor_, opr &: f3.(4) &: f7_0; 
+      `srl, opr &: f3.(5) &: f7_0; 
+      `sra, opr &: f3.(5) &: f7_s; 
+      `or_, opr &: f3.(6) &: f7_0; 
+      `and_, opr &: f3.(7) &: f7_0; 
+      `fence, fence; 
+      `fence_i, fencei; 
+      `scall, scall; 
+      `sbreak, sbreak;
+      `_rdcycle, rdc &: (rdco ==:. 0b000); 
+      `_rdcycleh, rdc &: (rdco ==:. 0b001); 
+      `_rdtime, rdc &: (rdco ==:. 0b010); 
+      `_rdtimeh, rdc &: (rdco ==:. 0b011); 
+      `_rdinstret, rdc &: (rdco ==:. 0b100); 
+      `_rdinstreth, rdc &: (rdco ==:. 0b101); 
     ] in
     let insn = 
       List.map (fun (i,v) -> Enum.from_enum<Insn.T.t> i, v) insn
@@ -151,6 +150,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       |> List.map snd
       |> concat
     in
+    let insn = trap @: insn in
 
     { insn; 
       iclass = { 

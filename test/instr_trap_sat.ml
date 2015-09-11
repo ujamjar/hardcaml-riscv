@@ -42,7 +42,7 @@ end
 
 module Ref = struct
 
-  let idxs = [ (* in insn vector order...arghh *)
+  (*let idxs = [ (* in insn vector order...arghh *)
     `lui; `auipc; `jal; `jalr;
     `beq; `bne; `blt; `bge; `bltu; `bgeu;
     `lb; `lh; `lw; `lbu; `lhu;
@@ -61,10 +61,10 @@ module Ref = struct
       x, (Int32.(logor ms 0x02000000l), mt) in
     let mm' = List.map (fun x -> fix x) [ `slli; `srli; `srai ] in
     mm' @ mm
-
+*)
   (* simple reference implementation *)
   let insn = 
-    let x = List.map (fun x -> List.assoc x rv32i_mask_match) idxs in
+    (*let x = List.map (fun x -> List.assoc x rv32i_mask_match) idxs in
     let x = x @ 
       List.map (fun i -> List.assoc i Riscv.RVSYS.T.mask_match) [
         `scall; `sbreak
@@ -74,7 +74,8 @@ module Ref = struct
       List.map (fun i -> List.assoc i Riscv.RVPSEUDO.T.mask_match) [
         `_rdcycle; `_rdcycleh; `_rdtime; `_rdtimeh; `_rdinstret; `_rdinstreth; 
       ] 
-    in
+    in*)
+    let x = List.map (fun x -> List.assoc x Riscv.RV32I.T.mask_match) Insn.V.list in
     let open B in
     let f (mask,mat) = 
       (instr &: (consti32 32 mask)) ==: consti32 32 mat

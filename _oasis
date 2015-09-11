@@ -45,7 +45,7 @@ Executable testbench_rv32
   Path:               test
   MainIs:             testbench_rv32.ml
   Custom:             true
-  CompiledObject:     byte
+  CompiledObject:     best
   Install:            false
   BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
 
