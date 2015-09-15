@@ -53,13 +53,17 @@ module type S = sig
     junk
   end
 
-  module O_debug : interface
-    (o : O)
+  module Stages : interface
     (fet : Stage)
     (dec : Stage)
     (alu : Stage)
     (mem : Stage)
     (com : Stage)
+  end
+  
+  module O_debug : interface
+    (o : O)
+    (dbg : Stages)
   end
 
 end

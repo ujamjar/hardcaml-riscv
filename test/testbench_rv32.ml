@@ -1,11 +1,11 @@
 open HardCamlRiscV
 open Printf
 
+(* rv32 core *)
 module Cfg = struct
   let xlen = 32
   let start_addr = 0x10
 end
-
 module Rv = Pipe.Make(Cfg)
 module B = HardCaml.Api.B
 module Rv_o = Rv.Ifs.O_debug
@@ -15,66 +15,76 @@ module Rv_o = Rv.Ifs.O
 module Rv_output = Rv.Output
 *)
 
-let pipeline = 
-  Rv.build_comb
-    ~f_stages:[| 
-      (module Rv.Fetch : Rv.Stage); 
-      (module Rv.Decoder : Rv.Stage); 
-      (module Rv.Alu : Rv.Stage); 
-      (module Rv.Mem : Rv.Stage); 
-      (module Rv.Commit : Rv.Stage);
-    |]
-    ~f_output:Rv_output.f
-
+(* waveform viewer *)
 module Waveterm_waves = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B))
 module Waveterm_sim = HardCamlWaveTerm.Sim.Make(B)(Waveterm_waves)
 module Waveterm_ui = HardCamlWaveLTerm.Ui.Make(B)(Waveterm_waves)
-
 let waves = false
 
-let testbench () = 
+(* memory model *)
+module D = Utils.D32(B) 
+module Mem = Utils.Mem(D) 
+
+(* configure waveform display *)
+let wave_cfg = 
+  let decode_insn b = 
+    if B.(to_int (b ==:. 0) = 1) then "---"
+    else
+      let idx = B.(to_int (onehot_to_binary b)) in
+      Insn.T.(Show_t.show (Enum_t.to_enum idx))
+  in
+  let f = function (n,b) -> 
+    match n with
+    | "dec_insn" | "fet_insn" | "alu_insn" | "mem_insn" | "com_insn" ->
+      n, Waveterm_waves.F(decode_insn)
+    | _ -> 
+      if b=1 then n, Waveterm_waves.B
+      else n, Waveterm_waves.H
+  in
+  Some( 
+    [f ( "clk",1); f ("clr",1)] @
+    Rv.Ifs.I.(to_list @@ map f t) @ 
+    Rv_o.(to_list @@ map f t) @
+    (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), Waveterm_waves.H)) )
+
+let init_waves sim = 
+    if waves then 
+      let sim, waves = Waveterm_sim.wrap ?cfg:wave_cfg sim in
+      sim, Some(waves)
+    else sim, None
+
+let show_waves = function
+  | None -> ()
+  | Some(waves) ->
+    Lwt_main.run (Waveterm_ui.run Waveterm_waves.({ cfg=default; waves }))
+
+(* test single stage core *)
+let testbench_single () = 
+
+  let pipeline = 
+    Rv.build_comb
+      ~f_stages:[| 
+        (module Rv.Fetch : Rv.Stage); 
+        (module Rv.Decoder : Rv.Stage); 
+        (module Rv.Alu : Rv.Stage); 
+        (module Rv.Mem : Rv.Stage); 
+        (module Rv.Commit : Rv.Stage);
+      |]
+      ~f_output:Rv_output.f
+  in
 
   let open HardCaml.Api in
   let module G = HardCaml.Interface.Gen(B)(Rv.Ifs.I)(Rv_o) in
   let circ,sim,i,o,o' = G.make "rv32i" pipeline in
 
   (* waveform viewer *)
-  let wave_cfg = 
-    let nop = Riscv.RV32I.Asm.addi ~rd:0 ~rs1:0 ~imm:0 in 
-    let decode_insn b = 
-      if B.(to_int (b ==:. 0) = 1) then "---"
-      else
-        let idx = B.(to_int (onehot_to_binary b)) in
-        Insn.T.(Show_t.show (Enum_t.to_enum idx))
-    in
-    let f = function (n,b) -> 
-      match n with
-      | "dec_insn" | "fet_insn" | "alu_insn" | "mem_insn" | "com_insn" ->
-        n, Waveterm_waves.F(decode_insn)
-      | _ -> 
-        if b=1 then n, Waveterm_waves.B
-        else n, Waveterm_waves.H
-    in
-    Some( 
-      [f ( "clk",1); f ("clr",1)] @
-      Rv.Ifs.I.(to_list @@ map f t) @ 
-      Rv_o.(to_list @@ map f t) @
-      (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), Waveterm_waves.H)) )
-  in
-  let sim, waves = 
-    if waves then 
-      let sim, waves = Waveterm_sim.wrap ?cfg:wave_cfg sim in
-      sim, Some(waves)
-    else sim, None
-  in
+  let sim, waves = init_waves sim in
 
   let open Rv.Ifs in
   let open I in
   let open O in
   let open Rv_o in
 
-  let module D = Utils.D32(B) in
-  let module Mem = Utils.Mem(D) in
   let memory = Mem.init (8*1024) in (* 32 Kib *)
 
   let () = begin
@@ -141,13 +151,43 @@ let testbench () =
   for i=0 to 20 do
     cycle();
   done;
-
-  begin
-    match waves with
-    | None -> ()
-    | Some(waves) ->
-      Lwt_main.run (Waveterm_ui.run Waveterm_waves.({ cfg=default; waves }))
-  end;
+  
+  show_waves waves;
   printf "Done.\n"
 
-let () = testbench()
+(* test data path of 5 stage pipeline *)
+let testbench_dp () = 
+  
+  let pipeline = 
+    Rv.build_pipeline
+      ~f_stages:[| 
+        (module Rv.Fetch : Rv.Stage); 
+        (module Rv.Decoder : Rv.Stage); 
+        (module Rv.Alu : Rv.Stage); 
+        (module Rv.Mem : Rv.Stage); 
+        (module Rv.Commit : Rv.Stage);
+      |]
+      ~f_output:Rv_output.f
+  in
+
+  let open HardCaml.Api in
+  let module G = HardCaml.Interface.Gen(B)(Rv.Ifs.I)(Rv_o) in
+  let circ,sim,i,o,o' = G.make "rv32i" pipeline in
+
+  (* waveform viewer *)
+  let sim, waves = init_waves sim in
+
+  let open Rv.Ifs in
+  let open I in
+  let open O in
+  let open Rv_o in
+
+  (* memory *)
+  let memory = Mem.init (8*1024) in (* 32 Kib *)
+
+  show_waves waves;
+  printf "Done.\n"
+
+let () = testbench_dp ()
+
+

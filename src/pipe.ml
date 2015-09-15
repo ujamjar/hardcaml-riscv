@@ -13,7 +13,7 @@ module Make(C : Config.S) = struct
   let empty_stage _ = Stage.(map (fun (n,b) -> empty) t)
 
   type stage = Comb.t Stage.t
-  type stages = stage array
+  type stages = Comb.t Stages.t
   type f_stage = n:int -> inp:Comb.t I.t -> comb:stages -> pipe:stages -> stage
   type 'a f_output = stages -> 'a
   
@@ -251,11 +251,13 @@ module Make(C : Config.S) = struct
     let f pipe = 
       O_debug.({
         o = Output.f pipe;
-        fet = pipe.(0);
-        dec = pipe.(1);
-        alu = pipe.(2);
-        mem = pipe.(3);
-        com = pipe.(4);
+        dbg = Stages.({
+          fet = pipe.(0);
+          dec = pipe.(1);
+          alu = pipe.(2);
+          mem = pipe.(3);
+          com = pipe.(4);
+        });
       })
   end
 

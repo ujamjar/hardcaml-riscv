@@ -120,9 +120,9 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       `xori, opi &: f3.(4); 
       `ori, opi &: f3.(6); 
       `andi, opi &: f3.(7); 
-      `slli32, opi &: f3.(1) &: f7_0; 
-      `srli32, opi &: f3.(5) &: f7_0; 
-      `srai32, opi &: f3.(5) &: f7_s; 
+      `slli, opi &: f3.(1) &: f7_0; 
+      `srli, opi &: f3.(5) &: f7_0; 
+      `srai, opi &: f3.(5) &: f7_s; 
       `add, opr &: f3.(0) &: f7_0; 
       `sub, opr &: f3.(0) &: f7_s; 
       `sll, opr &: f3.(1) &: f7_0; 
