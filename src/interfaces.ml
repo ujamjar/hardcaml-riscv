@@ -144,7 +144,7 @@ module Make(C : Config.S) = struct
     (* instruction from memory *)
     instr[32]
     (* decoded instruction *)
-    insn[Insn.V.n]
+    insn[Insn.V.n+1]
     (* instruction class *)
     (iclass : Class)
     (* take a branch *)

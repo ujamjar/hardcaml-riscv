@@ -15,7 +15,7 @@ Library HardCamlRiscV
   Path:          src
   Findlibname:   hardcaml-riscv
   Pack:          true
-  Modules:       Utils,Config,Insn,Interfaces,Cache,Decoder,Alu,Pipe,Picorv32
+  Modules:       Utils,Config,Insn,Interfaces,Cache,Decoder,Alu,Pipe,Pipe2,Picorv32
   BuildDepends:  hardcaml,hardcaml.syntax,hardcaml-waveterm.lterm,riscv,deriving
   XMETARequires: hardcaml,riscv,deriving
 
@@ -48,6 +48,15 @@ Executable testbench_rv32
   CompiledObject:     best
   Install:            false
   BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
+
+Executable testbench_cache
+  Build$:             flag(testbenches)
+  Path:               test
+  MainIs:             testbench_cache.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml-riscv,hardcaml-waveterm.lterm
 
 Executable gen_picorv32
   Build$:             flag(generators)

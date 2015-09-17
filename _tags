@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: aec19a17634840a58979fa1a7a224cd4)
+# DO NOT EDIT (digest: 66fa32b470b548ecbe33682d9dbdcaef)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -24,6 +24,7 @@ true: annot, bin_annot
 "src/decoder.cmx": for-pack(HardCamlRiscV)
 "src/alu.cmx": for-pack(HardCamlRiscV)
 "src/pipe.cmx": for-pack(HardCamlRiscV)
+"src/pipe2.cmx": for-pack(HardCamlRiscV)
 "src/picorv32.cmx": for-pack(HardCamlRiscV)
 <src/*.ml{,i,y}>: pkg_deriving
 <src/*.ml{,i,y}>: pkg_hardcaml
@@ -49,6 +50,14 @@ true: annot, bin_annot
 <test/testbench_rv32.{native,byte}>: use_HardCamlRiscV
 <test/*.ml{,i,y}>: pkg_hardcaml-llvmsim
 <test/testbench_rv32.{native,byte}>: custom
+# Executable testbench_cache
+<test/testbench_cache.{native,byte}>: pkg_deriving
+<test/testbench_cache.{native,byte}>: pkg_hardcaml
+<test/testbench_cache.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<test/testbench_cache.{native,byte}>: pkg_hardcaml.syntax
+<test/testbench_cache.{native,byte}>: pkg_riscv
+<test/testbench_cache.{native,byte}>: use_HardCamlRiscV
+<test/testbench_cache.{native,byte}>: custom
 # Executable gen_picorv32
 <test/gen_picorv32.{native,byte}>: pkg_deriving
 <test/gen_picorv32.{native,byte}>: pkg_hardcaml

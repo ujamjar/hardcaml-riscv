@@ -6,7 +6,7 @@ module Cfg = struct
   let xlen = 32
   let start_addr = 0x10
 end
-module Rv = Pipe.Make(Cfg)
+module Rv = Pipe2.Make(Cfg)
 module B = HardCaml.Api.B
 module Rv_o = Rv.Ifs.O_debug
 module Rv_output = Rv.Output_debug
@@ -19,7 +19,7 @@ module Rv_output = Rv.Output
 module Waveterm_waves = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B))
 module Waveterm_sim = HardCamlWaveTerm.Sim.Make(B)(Waveterm_waves)
 module Waveterm_ui = HardCamlWaveLTerm.Ui.Make(B)(Waveterm_waves)
-let waves = false
+let waves = true
 
 (* memory model *)
 module D = Utils.D32(B) 
@@ -29,6 +29,7 @@ module Mem = Utils.Mem(D)
 let wave_cfg = 
   let decode_insn b = 
     if B.(to_int (b ==:. 0) = 1) then "---"
+    else if B.(to_int (msb b)) = 1 then "TRAP"
     else
       let idx = B.(to_int (onehot_to_binary b)) in
       Insn.T.(Show_t.show (Enum_t.to_enum idx))
@@ -57,9 +58,9 @@ let show_waves = function
   | None -> ()
   | Some(waves) ->
     Lwt_main.run (Waveterm_ui.run Waveterm_waves.({ cfg=default; waves }))
-
+(*
 (* test single stage core *)
-let testbench_single () = 
+let testbench_1 () = 
 
   let pipeline = 
     Rv.build_comb
@@ -154,21 +155,11 @@ let testbench_single () =
   
   show_waves waves;
   printf "Done.\n"
-
+*)
 (* test data path of 5 stage pipeline *)
-let testbench_dp () = 
-  
-  let pipeline = 
-    Rv.build_pipeline
-      ~f_stages:[| 
-        (module Rv.Fetch : Rv.Stage); 
-        (module Rv.Decoder : Rv.Stage); 
-        (module Rv.Alu : Rv.Stage); 
-        (module Rv.Mem : Rv.Stage); 
-        (module Rv.Commit : Rv.Stage);
-      |]
-      ~f_output:Rv_output.f
-  in
+let testbench_5 () = 
+
+  let pipeline inp = Rv.Build.p5 ~inp ~f_output:Rv_output.f in
 
   let open HardCaml.Api in
   let module G = HardCaml.Interface.Gen(B)(Rv.Ifs.I)(Rv_o) in
@@ -185,9 +176,56 @@ let testbench_dp () =
   (* memory *)
   let memory = Mem.init (8*1024) in (* 32 Kib *)
 
+  (* test program *)
+  let () = 
+    let open Riscv.RV32I.Asm in
+    memory.(4) <- addi ~rd:1 ~rs1:0 ~imm:10;
+    memory.(5) <- addi ~rd:2 ~rs1:0 ~imm:20;
+    memory.(6) <- add ~rd:3 ~rs1:1 ~rs2:2;
+  in
+
+  (* todo; fix me *)
+  let mio_data () = 
+    let open Mi_data in
+    let open Mo_data in
+    let o = o.o.md in
+    (*let o = o.md in*)
+    i.md.vld := B.gnd;
+    if B.to_int !(o.req) = 1 then begin
+      i.md.vld := B.vdd;
+      if B.to_int !(o.rw) = 1 then begin
+        i.md.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
+      end else begin
+        Mem.write ~memory ~addr:!(o.addr) ~data:!(o.wdata) ~strb:!(o.wmask)
+      end
+    end
+  in
+
+  let mio_instr () = 
+    let open Mi_instr in
+    let open Mo_instr in
+    let o = o.o.mi in
+    i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
+  in
+
+  let cycle () = 
+    mio_instr();
+    mio_data();
+    Cs.cycle sim 
+  in
+
+
+  Cs.reset sim;
+  i.clr := B.vdd;
+  cycle();
+  i.clr := B.gnd;
+  for i=0 to 20 do
+    cycle();
+  done;
+
   show_waves waves;
   printf "Done.\n"
 
-let () = testbench_dp ()
+let () = testbench_5 ()
 
 

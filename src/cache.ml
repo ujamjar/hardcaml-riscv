@@ -91,21 +91,31 @@ module Make(B : Config) = struct
 
   open HardCaml.Signal.Comb
 
-  let ldbits = HardCaml.Utils.clog2 B.data 
+  let ldbits = HardCaml.Utils.clog2 B.data - 3
   let tagbits = B.addr - B.size - B.line - ldbits
 
-  let () = assert (B.line >= ldbits)
   let () = assert (tagbits > 0)
 
   module I = interface
     clk[1] clr[1]
-    en[1] rw[1]
-    addr[B.addr]
+    en[1] addr[B.addr] data[B.data] rw[1]
+    men[1] maddr[B.addr] mdata[B.data] mrw[1]
   end
+  
+  (* 4 cases, all instigated by the pipeline
+
+    1) read, hit - read directly from cache
+    2) read, miss - request data from memory interface, evict cache line (if dirty)
+    3) write, hit - write directly into cache
+    4) write, miss - evict cache line, write data
+
+    For an instruction cache we only read, so things are a bit simpler.
+
+  *)
   
   module O = interface
     hit[1]
-    addr_o[B.size+B.line]
+    data[B.data]
   end
 
   (* XXX TODO: allow line = 0 for caches which dont require spatial correlation *)
@@ -113,47 +123,55 @@ module Make(B : Config) = struct
   let direct_mapped i =
     let open I in
     let module Seq = Utils.Regs(struct let clk=i.clk let clr=i.clr end) in
+
     assert (width i.addr = B.addr);
+    assert (width i.maddr = B.addr);
+
     (* address in cache line *)
-    let line = try i.addr.[B.line-1:ldbits] with _ -> empty in
-    let slot = i.addr.[B.size+B.line-1:B.line] in
-    let tag = i.addr.[B.addr-1:B.addr-tagbits] in
-
-    let tag' = Seq.memory (1 lsl B.size) 
-      ~we:i.en ~wa:slot ~d:tag ~ra:slot
+    let extract_addr addr = 
+      let line = try addr.[B.line+ldbits-1:ldbits] -- "cache_line" with _ -> empty in
+      let slot = addr.[B.size+B.line+ldbits-1:B.line+ldbits] -- "cache_slot" in
+      let tag = addr.[B.addr-1:B.addr-tagbits] -- "cache_tag" in
+      line, slot, tag
     in
-    let valid = Seq.memory (1 lsl B.size)
+
+    let line, slot, tag = extract_addr i.addr in
+    let mline, mslot, mtag = extract_addr i.maddr in
+
+    let () = 
+      let open Printf in
+      printf "direct_mapped:\n";
+      printf " data = %i(%i) addr = %i\n" B.data ldbits B.addr;
+      printf " bytes/word = %i\n" (1 lsl ldbits);
+      printf " words/cache line = %i\n" (1 lsl B.line);
+      printf " cache lines = %i\n" (1 lsl B.size);
+      printf " tag bits = %i (%i)\n" tagbits (width tag);
+      printf " slot bits = %i\n" (width slot);
+      printf " cache bytes = %i\n" (1 lsl (B.data/8 + B.size + B.line));
+      printf "%!"
+    in
+
+    (* tags *)
+    let tag' = Seq.ram_wbr (1 lsl B.size) 
+      ~we:i.men ~wa:slot ~d:tag ~ra:slot ~re:i.en
+    in
+
+    (* valid bits *)
+    let valid = Seq.reg ~e:i.en @@ Seq.memory (1 lsl B.size)
       ~c:i.clr ~cv:gnd (* global clear / cache flush *)
-      ~we:i.en ~wa:slot ~d:vdd ~ra:slot
+      ~we:i.men ~wa:slot ~d:vdd ~ra:slot 
     in
 
-    O.({
-      hit = valid &: (tag ==: tag');
-      addr_o = concat_e [slot; line];
-    })
-
-  let set_associative n i = 
-    let open I in
-    let module Seq = Utils.Regs(struct let clk=i.clk let clr=i.clr end) in
-    
-    let ln = HardCaml.Utils.clog2 n in
-    let line = i.addr.[B.line-1:ldbits] in
-    let slot = i.addr.[B.size+B.line-1:B.line] in
-    let tag = i.addr.[B.addr-1:B.addr-tagbits] in
-
-    let tags =
-      Array.init n (fun _ -> Seq.memory (1 lsl B.size) ~we:i.en ~wa:slot ~d:tag ~ra:slot)
+    (* cache data *)
+    let addr_c = concat_e [ slot; line ] in
+    let addr_m = concat_e [ mslot; mline ] in
+    let data = Seq.ram_wbr (1 lsl (B.size + B.line))
+      ~we:gnd ~wa:addr_c ~d:(zero B.data) ~ra:addr_c ~re:i.en
     in
 
-    let matches = Array.map ((==:) tag) tags in
-    let hit = reduce (|:) (Array.to_list matches) in
+    let hit = valid &: (tag ==: tag') in
 
-    (* XXX TODO *)
-
-    O.({
-      hit;
-      addr_o = gnd;
-    })
+    O.({ hit; data })
 
 end
 

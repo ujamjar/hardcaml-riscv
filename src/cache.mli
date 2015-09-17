@@ -20,10 +20,10 @@ module type Config = sig
   (** total (byte) address bits *)
   val addr : int
 
-  (** cache line block address bits (ie 0 = 1, 4 = 2^4 (16) words) *)
+  (** log2 number of data words / cache line *)
   val line : int
 
-  (** cache size bits *)
+  (** log2 number of cache lines *)
   val size : int
 end
 
@@ -50,20 +50,18 @@ module Make(B : Config) : sig
 
   module I : interface
     clk clr
-    en rw
-    addr
+    en addr data rw
+    men maddr mdata mrw
   end
   
   module O : interface
     hit
-    addr_o
+    data
   end
 
   open HardCaml.Signal
 
   val direct_mapped : Comb.t I.t -> Comb.t O.t
-
-  val set_associative : int -> Comb.t I.t -> Comb.t O.t
 
 end
 

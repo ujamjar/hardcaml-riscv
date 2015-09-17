@@ -13,7 +13,7 @@ module Make(C : Config.S) = struct
   let empty_stage _ = Stage.(map (fun (n,b) -> empty) t)
 
   type stage = Comb.t Stage.t
-  type stages = Comb.t Stages.t
+  type stages = stage array
   type f_stage = n:int -> inp:Comb.t I.t -> comb:stages -> pipe:stages -> stage
   type 'a f_output = stages -> 'a
   
@@ -21,6 +21,19 @@ module Make(C : Config.S) = struct
     val name : string
     val f : f_stage
   end
+
+  let def_clear = 
+    let zero (n,b) = zero b in
+    Stage.({ (* set up for xori instruction - psuedo bubble *)
+      (map zero t) with
+        ra1_zero = vdd; ra2_zero = vdd; rad_zero = vdd;
+        insn = sll (one 48) (Enum.from_enum<Insn.T.t> `xori);
+        iclass = Class.({ 
+          (map zero t) with 
+            opi = vdd;
+            f3 = consti 3 6;
+        });
+    })
 
   let build_pipeline ~f_stages ~f_output inp = 
     let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
@@ -164,12 +177,6 @@ module Make(C : Config.S) = struct
     let f ~n ~inp ~comb ~pipe = 
       let module Alu = Alu.Make(Ifs) in
       Alu.alu pipe.(n-1)
-  end
-
-  module Alu_bypass = struct
-    let name = "alu_bypass"
-    let f ~n ~inp ~comb ~pipe = 
-      pipe.(n-1)
   end
 
   module Mem = struct
