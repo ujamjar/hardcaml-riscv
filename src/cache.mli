@@ -50,7 +50,7 @@ module Make(B : Config) : sig
 
   module I : interface
     clk clr
-    en addr data rw
+    pen paddr pdata prw
     men maddr mdata mrw
   end
   

@@ -98,18 +98,22 @@ module Make(B : Config) = struct
 
   module I = interface
     clk[1] clr[1]
-    en[1] addr[B.addr] data[B.data] rw[1]
+    (* pipeline interface *)
+    pen[1] paddr[B.addr] pdata[B.data] prw[1]
+    (* memory interface *)
     men[1] maddr[B.addr] mdata[B.data] mrw[1]
   end
   
   (* 4 cases, all instigated by the pipeline
 
     1) read, hit - read directly from cache
-    2) read, miss - request data from memory interface, evict cache line (if dirty)
+    2) read, miss - evict cache line (if dirty), request data from memory interface, 
     3) write, hit - write directly into cache
     4) write, miss - evict cache line, write data
 
-    For an instruction cache we only read, so things are a bit simpler.
+    Note; For an instruction cache we only read, so things are a bit simpler.
+
+    General control will include flushing of the cache, as required.
 
   *)
   
@@ -124,7 +128,7 @@ module Make(B : Config) = struct
     let open I in
     let module Seq = Utils.Regs(struct let clk=i.clk let clr=i.clr end) in
 
-    assert (width i.addr = B.addr);
+    assert (width i.paddr = B.addr);
     assert (width i.maddr = B.addr);
 
     (* address in cache line *)
@@ -135,8 +139,19 @@ module Make(B : Config) = struct
       line, slot, tag
     in
 
-    let line, slot, tag = extract_addr i.addr in
+    let pline, pslot, ptag = extract_addr i.paddr in
     let mline, mslot, mtag = extract_addr i.maddr in
+
+    (* select between memory interface and pipeline *)
+    let addr = mux2 i.men (concat_e [mslot; mline]) (concat_e [pslot; pline]) -- "the_addr" in
+    let data = mux2 i.men i.mdata i.pdata -- "the_data" in
+    let en = (i.men |: i.pen) -- "the_en" in
+    let rw = mux2 i.men i.mrw i.prw -- "the_w" in
+    let tag = mux2 i.men mtag ptag -- "the_tag" in
+    let slot = mux2 i.men mslot pslot -- "the_slot" in
+
+    let we = (en &: (~: rw)) -- "the_we" in
+    let re = (en &: rw) -- "the_re" in
 
     let () = 
       let open Printf in
@@ -145,28 +160,28 @@ module Make(B : Config) = struct
       printf " bytes/word = %i\n" (1 lsl ldbits);
       printf " words/cache line = %i\n" (1 lsl B.line);
       printf " cache lines = %i\n" (1 lsl B.size);
-      printf " tag bits = %i (%i)\n" tagbits (width tag);
-      printf " slot bits = %i\n" (width slot);
+      printf " tag bits = %i (%i)\n" tagbits (width ptag);
+      printf " slot bits = %i\n" (width pslot);
       printf " cache bytes = %i\n" (1 lsl (B.data/8 + B.size + B.line));
       printf "%!"
     in
 
     (* tags *)
     let tag' = Seq.ram_wbr (1 lsl B.size) 
-      ~we:i.men ~wa:slot ~d:tag ~ra:slot ~re:i.en
+      ~we:we ~wa:slot ~d:tag ~ra:slot ~re:re
     in
 
     (* valid bits *)
-    let valid = Seq.reg ~e:i.en @@ Seq.memory (1 lsl B.size)
+    let valid = Seq.reg ~e:re @@ Seq.memory (1 lsl B.size)
       ~c:i.clr ~cv:gnd (* global clear / cache flush *)
-      ~we:i.men ~wa:slot ~d:vdd ~ra:slot 
+      ~we ~wa:slot ~d:vdd ~ra:slot 
     in
 
+    (* dirty bits....XXX ??? *)
+
     (* cache data *)
-    let addr_c = concat_e [ slot; line ] in
-    let addr_m = concat_e [ mslot; mline ] in
     let data = Seq.ram_wbr (1 lsl (B.size + B.line))
-      ~we:gnd ~wa:addr_c ~d:(zero B.data) ~ra:addr_c ~re:i.en
+      ~we:we ~wa:addr ~d:data ~ra:addr ~re:re
     in
 
     let hit = valid &: (tag ==: tag') in
