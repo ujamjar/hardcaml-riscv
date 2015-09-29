@@ -46,24 +46,44 @@ module Lru(B : HardCaml.Comb.S)(C : sig val numways : int end) : sig
 
 end
 
-module Make(B : Config) : sig
+module Direct_mapped(B : Config) : sig
 
   module I : interface
     clk clr
-    pen paddr pdata prw
-    men maddr mdata mrw
+    paddr pdata pre pwe
+    msel
+    maddr mdata mre mwe
   end
   
   module O : interface
-    hit
-    data
+    hit miss dirty
+    data waddr
   end
 
   open HardCaml.Signal
-
-  val direct_mapped : Comb.t I.t -> Comb.t O.t
+  val f : Comb.t I.t -> Comb.t O.t
 
 end
 
+module Controller(B : Config) : sig
+
+  module I : interface
+    clk clr
+    miss rw dirty
+    addr paddr
+    mvld mdata_i
+    cdata_i
+  end
+  module O : interface
+    stall msel 
+    state
+    mreq maddr mdata_o mrw
+    cwe cre caddr cdata_o
+  end
+
+  open HardCaml.Signal
+  val f : Comb.t I.t -> Comb.t O.t
+
+end
 
 

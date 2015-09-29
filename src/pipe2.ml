@@ -58,7 +58,7 @@ module Make(C : Config.S) = struct
 
   module Icache = struct
     let name = "dcache"
-    module C = Cache.Make(struct
+    module C = Cache.Direct_mapped(struct
       let data = 32
       let addr = 32
       let line = 2
