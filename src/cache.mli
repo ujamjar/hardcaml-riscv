@@ -27,6 +27,13 @@ module type Config = sig
   val size : int
 end
 
+module Cfg(C : Config) : sig
+  val ldbits : int
+  val tagbits : int
+  open HardCaml.Signal.Comb
+  val extract_addr : ?(--):(t -> string -> t) -> t -> t * t * t
+end
+
 module Lru(B : HardCaml.Comb.S)(C : sig val numways : int end) : sig
 
   val vwidth : int

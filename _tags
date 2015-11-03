@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 66fa32b470b548ecbe33682d9dbdcaef)
+# DO NOT EDIT (digest: d1260efa5dd407afeabcb675cdfbe03b)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -21,6 +21,7 @@ true: annot, bin_annot
 "src/insn.cmx": for-pack(HardCamlRiscV)
 "src/interfaces.cmx": for-pack(HardCamlRiscV)
 "src/cache.cmx": for-pack(HardCamlRiscV)
+"src/scache.cmx": for-pack(HardCamlRiscV)
 "src/decoder.cmx": for-pack(HardCamlRiscV)
 "src/alu.cmx": for-pack(HardCamlRiscV)
 "src/pipe.cmx": for-pack(HardCamlRiscV)

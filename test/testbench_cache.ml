@@ -327,59 +327,83 @@ end*)
 let testbench_3 () = 
 
   let module C = struct
+    module Dm = Scache.Direct_mapped(Cfg) 
+    module Ctrl = Scache.Controller(Cfg) 
+
     module I = interface
       clk[1] clr[1]
       (* pipeline interface *)
       paddr[Cfg.addr] pdata[Cfg.data] pre[1] pwe[1]
       (* memory interface *)
       mvld[1] mdata_i[Cfg.data]
+      txfer_i[32]
     end
     module O = interface
       stall[1] data_o[Cfg.data]
       mreq[1] maddr[Cfg.addr] mdata_o[Cfg.data] mrw[1]
+      state[4] (* XXX *)
+      txfer_o[32] (* XXX *)
     end
+
     open Comb
+
     let f i = 
-      let module Dm = Cache.Direct_mapped(Cfg) in
-      let module Ctrl = Cache.Controller(Cfg) in
       let open I in
+
+      let dm_msel = wire 1 in
+      let dm_maddr = wire Cfg.addr in
+      let dm_mdata = wire Cfg.data in
+      let dm_mre = wire 1 in
+      let dm_mwe = wire 1 in
 
       let dm_i = {
         Dm.I.clk = i.clk;
         clr = i.clr;
+        msel = dm_msel;
         paddr = i.paddr;
         pdata = i.pdata;
         pre = i.pre;
         pwe = i.pwe;
-        msel = gnd;
-        maddr = zero Cfg.addr;
-        mdata = zero Cfg.data;
-        mre = gnd;
-        mwe = gnd;
+        maddr = dm_maddr;
+        mdata = dm_mdata;
+        mre = dm_mre;
+        mwe = dm_mwe;
       } in
       let dm_o = Dm.f dm_i in
 
       let ctrl_i = {
         Ctrl.I.clk = i.clk;
         clr = i.clr;
-        miss = dm_o.Dm.O.miss;
-        rw = gnd;
+        miss = dm_o.Dm.O.miss -- "MISS";
+        rw = i.pre;
         dirty = dm_o.Dm.O.dirty;
-        addr = zero Cfg.addr;
-        paddr = zero Cfg.addr;
-        mvld = gnd;
-        mdata_i = zero Cfg.data;
+        addr = i.paddr;
+        evict_addr = dm_o.Dm.O.evict_addr;
+        mvld = i.mvld;
+        mdata_i = i.mdata_i;
         cdata_i = zero Cfg.data;
       } in
       let ctrl_o = Ctrl.f ctrl_i in
 
+      let () = 
+        let open Ctrl.O in
+        dm_msel <== ctrl_o.msel;
+        dm_maddr <== ctrl_o.caddr;
+        dm_mdata <== ctrl_o.cdata_o;
+        dm_mre <== ctrl_o.cre;
+        dm_mwe <== ctrl_o.cwe;
+      in
+
+      let open Ctrl.O in
       O.{
-        stall = gnd;
-        data_o = zero Cfg.data;
-        mreq = gnd;
-        maddr = zero Cfg.addr;
-        mdata_o = zero Cfg.data;
-        mrw = gnd;
+        stall = ctrl_o.stall;
+        data_o = dm_o.Dm.O.data_o;
+        mreq = ctrl_o.mreq;
+        maddr = ctrl_o.maddr;
+        mdata_o = ctrl_o.mdata_o;
+        mrw = ctrl_o.mrw;
+        state = ctrl_o.state;
+        txfer_o = i.txfer_i;
       }
   end in
   let module G = Gen(C) in
@@ -389,17 +413,118 @@ let testbench_3 () =
 
   (* initialised with the byte address *)
   let mem = Array.init (16*1024) (fun j -> B.consti Cfg.data (j*4)) in
+  let dump_mem () = 
+    let ofs = ref 0 in
+    for i=0 to 2 do
+      for s=0 to (1 lsl Cfg.size) - 1 do
+        for l=0 to (1 lsl Cfg.line) - 1 do
+          printf "%.8x " (B.to_int mem.(!ofs));
+          incr ofs
+        done;
+        printf "\n"
+      done;
+      printf "\n"
+    done
+  in
+
+  let cycle () = 
+    if !(o.mreq) = B.vdd && !(i.mvld) = B.gnd then begin
+      let addr = B.to_int !(o.maddr) in
+      assert (addr land 3 = 0);
+      let addr = addr lsr 2 in
+      i.mvld := B.vdd;
+      if !(o.mrw) = B.vdd then begin
+        printf "mem_rd: %i %i\n" addr (B.to_int mem.(addr));
+        i.mdata_i := mem.(addr)
+      end else begin
+        printf "mem_wr: %i %i\n" addr (B.to_int !(o.mdata_o));
+        mem.(addr) <- !(o.mdata_o)
+      end
+    end else begin
+      i.mvld := B.gnd;
+    end;
+    Cs.cycle sim;
+  in
 
   Cs.reset sim;
   i.clr := B.vdd;
   Cs.cycle sim;
   i.clr := B.gnd;
 
-  let cycle () = Cs.cycle sim in
+  let words_per_cline = 1 lsl (Cfg.line+Cfg.size) in
+  let bytes_per_cline = words_per_cline * Cfg.data/8 in
+  let transfer_no = ref 0 in
+  let transfers = [|
+    (* reads from 1st cache line *)
+    Some(`rd 12); (* load line into cache *)
+    Some(`rd 0);
+    Some(`rd 8);
+    (* 2nd cache line *)
+    Some(`rd 16); (* load line into cache *)
+    Some(`rd 20);
+    Some(`rd 24);
+    (* reload 1st cache line from 2nd set of aliased pages *)
+    Some(`rd bytes_per_cline);
+    Some(`wr (bytes_per_cline+4, 23)); (* write, set dirty *)
+    Some(`rd (bytes_per_cline+4)); (* read back just written data *)
+    (* evict (dirty) 1st cache line with a read *)
+    Some(`rd (2*bytes_per_cline));
+(*    Some(`rd (bytes_per_cline+4)); (* read back just written data *)*)
+  |] in
+
+  i.pre := B.gnd;
+  i.pwe := B.gnd;
+
+  let set_rd addr = 
+    i.pre := B.vdd;
+    i.paddr := B.consti Cfg.addr addr;
+  in
+  let set_wr addr data = 
+    i.pwe := B.vdd;
+    i.paddr := B.consti Cfg.addr addr;
+    i.pdata := B.consti Cfg.data data;
+  in
+  let do_txfer () = 
+    Cs.cycle_comb0 sim;
+    if B.to_int !(o.stall) = 1 then begin
+      while B.to_int !(o.stall) = 1 do
+        cycle ();
+      done;
+    end else begin
+      cycle ();
+    end;
+    i.pre := B.gnd;
+    i.pwe := B.gnd;
+  in
+
+  for j=0 to Array.length transfers-1 do
+    i.txfer_i := B.consti 32 !transfer_no;
+    begin match transfers.(!transfer_no) with
+    | None -> begin
+      cycle ();
+    end
+    | Some(`rd addr) -> begin
+      set_rd addr;
+      do_txfer ();
+      Printf.printf "rd: %i %i\n" addr (B.to_int !(o.data_o))
+    end
+    | Some(`wr(addr,data)) -> begin
+      set_wr addr data;
+      do_txfer ();
+      Printf.printf "wr: %i %i\n" addr data;
+    end
+    | _ -> failwith "unexpected transfer" 
+    end;
+    transfer_no := !transfer_no + 1;
+  done;
+
+  (*set_rd (bytes_per_cline+4);*)
 
   for i=0 to 25 do
     cycle ()
   done;
+
+  dump_mem ();
 
   printf "%!";
   show_waves ();
