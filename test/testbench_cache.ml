@@ -406,21 +406,66 @@ let testbench_3 () =
         txfer_o = i.txfer_i;
       }
   end in
-  let module G = Gen(C) in
-  let open G in
+  (*let module G = Gen(C) in*)
+  let module G = Interface.Gen(C.I)(C.O)  in
+
+  let get_state x = 
+    try
+      let i = B.to_int x in
+      match i with
+      | 0 -> "RESET"
+      | _ -> 
+        let s = (HardCaml.Utils.nbits i) - 1 in
+        C.Ctrl.Sm.(Show_t.show (Enum_t.to_enum s)) ^ string_of_int i
+    with _ -> "XXX"
+  in
+
+  let wave_cfg =
+    let f (n,b) = 
+      match n with
+      | "state" -> n, Waveterm_waves.(F get_state)
+      | _ -> n, Waveterm_waves.(if b=1 then B else H) 
+    in
+    Some(C.I.(to_list @@ map f t) @ C.O.(to_list @@ map f t))
+  in
+
+  let circ,sim,i,o,_ = G.make "cache" C.f in
+  let sim, waves = Waveterm_sim.wrap ?cfg:wave_cfg sim in
+
+  let show_waves () = 
+    if !show_waves then begin 
+      Lwt_main.run (Waveterm_ui.run Waveterm_waves.({ cfg=default; waves })) 
+    end
+  in
+
   let open C.I in
   let open C.O in
 
   (* initialised with the byte address *)
   let mem = Array.init (16*1024) (fun j -> B.consti Cfg.data (j*4)) in
+  let mem_ref = Array.init (16*1024) (fun j -> B.consti Cfg.data (j*4)) in
   let dump_mem () = 
     let ofs = ref 0 in
     for i=0 to 2 do
       for s=0 to (1 lsl Cfg.size) - 1 do
+        let ofs' = ref !ofs in
         for l=0 to (1 lsl Cfg.line) - 1 do
-          printf "%.8x " (B.to_int mem.(!ofs));
-          incr ofs
+          printf "%.8x " (B.to_int mem.(!ofs'));
+          incr ofs'
         done;
+        printf "| ";
+        let ofs' = ref !ofs in
+        for l=0 to (1 lsl Cfg.line) - 1 do
+          printf "%.8x " (B.to_int mem_ref.(!ofs'));
+          incr ofs'
+        done;
+        printf "| ";
+        let ofs' = ref !ofs in
+        for l=0 to (1 lsl Cfg.line) - 1 do
+          printf "%.8x " B.(to_int (mem.(!ofs') ^: mem_ref.(!ofs')));
+          incr ofs'
+        done;
+        ofs := !ofs';
         printf "\n"
       done;
       printf "\n"
@@ -434,10 +479,10 @@ let testbench_3 () =
       let addr = addr lsr 2 in
       i.mvld := B.vdd;
       if !(o.mrw) = B.vdd then begin
-        printf "mem_rd: %i %i\n" addr (B.to_int mem.(addr));
+        printf "mem_rd: %x %x\n" addr (B.to_int mem.(addr));
         i.mdata_i := mem.(addr)
       end else begin
-        printf "mem_wr: %i %i\n" addr (B.to_int !(o.mdata_o));
+        printf "mem_wr: %x %x\n" addr (B.to_int !(o.mdata_o));
         mem.(addr) <- !(o.mdata_o)
       end
     end else begin
@@ -453,6 +498,7 @@ let testbench_3 () =
 
   let words_per_cline = 1 lsl (Cfg.line+Cfg.size) in
   let bytes_per_cline = words_per_cline * Cfg.data/8 in
+  let num_clines = 1 lsl Cfg.line in
   let transfer_no = ref 0 in
   let transfers = [|
     (* reads from 1st cache line *)
@@ -497,33 +543,44 @@ let testbench_3 () =
     i.pwe := B.gnd;
   in
 
-  for j=0 to Array.length transfers-1 do
-    i.txfer_i := B.consti 32 !transfer_no;
-    begin match transfers.(!transfer_no) with
+  let run_transfer transfer = 
+    match transfer with
     | None -> begin
       cycle ();
     end
     | Some(`rd addr) -> begin
       set_rd addr;
       do_txfer ();
-      Printf.printf "rd: %i %i\n" addr (B.to_int !(o.data_o))
+      Printf.printf "rd: %x %x %x\n" addr (B.to_int !(o.data_o)) (B.to_int mem_ref.(addr/4))
     end
     | Some(`wr(addr,data)) -> begin
       set_wr addr data;
       do_txfer ();
-      Printf.printf "wr: %i %i\n" addr data;
+      Printf.printf "wr: %x %x\n" addr data;
+      mem_ref.(addr/4) <- B.consti 32 data;
     end
     | _ -> failwith "unexpected transfer" 
-    end;
+  in
+
+  for j=0 to Array.length transfers-1 do
+    i.txfer_i := B.consti 32 !transfer_no;
+    run_transfer transfers.(!transfer_no);
     transfer_no := !transfer_no + 1;
   done;
 
-  (*set_rd (bytes_per_cline+4);*)
+  let flush () = 
+    (* perform reads to each cacheline at 2 different addresses to
+     * ensure whatever was in there got flushed.  XXX need proper HW support! *)
+    i.txfer_i := B.consti32 32 0xdeadbeefl;
+    for j=0 to (2*num_clines)-1 do
+      printf "FLUSHING %i\n%!" j;
+      run_transfer (Some(`rd(j*bytes_per_cline)))
+    done
+  in
 
-  for i=0 to 25 do
-    cycle ()
-  done;
-
+  for i=0 to 25 do cycle () done;
+  flush ();
+  for i=0 to 25 do cycle () done;
   dump_mem ();
 
   printf "%!";

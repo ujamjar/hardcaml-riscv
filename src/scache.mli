@@ -58,6 +58,17 @@ module Controller(B : Cache.Config) : sig
     cwe cre caddr cdata_o
   end
 
+  module Sm : sig
+    type t = [
+      | `wait
+      | `load
+      | `store_re
+      | `store_nxt
+    ] deriving(Enum,Bounded,Show)
+    val name : string
+  end
+  module Sm_v : Utils.BVec_S
+
   open HardCaml.Signal
   val f : Comb.t I.t -> Comb.t O.t
 
