@@ -324,6 +324,7 @@ let testbench_2 () =
   let mux2 s x y = mux s [y; x]
 end*)
 
+exception Timeout
 let testbench_3 () = 
 
   let module C = struct
@@ -349,10 +350,11 @@ let testbench_3 () =
 
     let f i = 
       let open I in
+      let module Seq = Utils.Regs(struct let clk=i.clk let clr=i.clr end) in
 
       let dm_msel = wire 1 in
-      let dm_maddr = wire Cfg.addr in
-      let dm_mdata = wire Cfg.data in
+      let dm_maddr = wire Cfg.addr -- "dm_maddr" in
+      let dm_mdata = wire Cfg.data -- "dm_mdata" in
       let dm_mre = wire 1 in
       let dm_mwe = wire 1 in
 
@@ -381,7 +383,7 @@ let testbench_3 () =
         evict_addr = dm_o.Dm.O.evict_addr;
         mvld = i.mvld;
         mdata_i = i.mdata_i;
-        cdata_i = zero Cfg.data;
+        cdata_i = Seq.reg ~e:vdd dm_o.Dm.O.data_o; (* XXX *)
       } in
       let ctrl_o = Ctrl.f ctrl_i in
 
@@ -421,12 +423,14 @@ let testbench_3 () =
   in
 
   let wave_cfg =
+    let open Waveterm_waves in
     let f (n,b) = 
       match n with
-      | "state" -> n, Waveterm_waves.(F get_state)
-      | _ -> n, Waveterm_waves.(if b=1 then B else H) 
+      | "state" -> n, (F get_state)
+      | _ -> n, (if b=1 then B else H) 
     in
-    Some(C.I.(to_list @@ map f t) @ C.O.(to_list @@ map f t))
+    let x = [ "dm_mdata", H; "dm_maddr", H ] in
+    Some(C.I.(to_list @@ map f t) @ C.O.(to_list @@ map f t) @ x)
   in
 
   let circ,sim,i,o,_ = G.make "cache" C.f in
@@ -446,7 +450,7 @@ let testbench_3 () =
   let mem_ref = Array.init (16*1024) (fun j -> B.consti Cfg.data (j*4)) in
   let dump_mem () = 
     let ofs = ref 0 in
-    for i=0 to 2 do
+    for i=0 to 2 do (* XXX whole cache *)
       for s=0 to (1 lsl Cfg.size) - 1 do
         let ofs' = ref !ofs in
         for l=0 to (1 lsl Cfg.line) - 1 do
@@ -476,14 +480,13 @@ let testbench_3 () =
     if !(o.mreq) = B.vdd && !(i.mvld) = B.gnd then begin
       let addr = B.to_int !(o.maddr) in
       assert (addr land 3 = 0);
-      let addr = addr lsr 2 in
       i.mvld := B.vdd;
       if !(o.mrw) = B.vdd then begin
-        printf "mem_rd: %x %x\n" addr (B.to_int mem.(addr));
-        i.mdata_i := mem.(addr)
+        printf "  RD %.8x %.8x\n" addr (B.to_int mem.(addr/4));
+        i.mdata_i := mem.(addr/4)
       end else begin
-        printf "mem_wr: %x %x\n" addr (B.to_int !(o.mdata_o));
-        mem.(addr) <- !(o.mdata_o)
+        printf "  WR %.8x %.8x\n" addr (B.to_int !(o.mdata_o));
+        mem.(addr/4) <- !(o.mdata_o)
       end
     end else begin
       i.mvld := B.gnd;
@@ -511,7 +514,7 @@ let testbench_3 () =
     Some(`rd 24);
     (* reload 1st cache line from 2nd set of aliased pages *)
     Some(`rd bytes_per_cline);
-    Some(`wr (bytes_per_cline+4, 23)); (* write, set dirty *)
+    Some(`wr (bytes_per_cline+4, 0x23)); (* write, set dirty *)
     Some(`rd (bytes_per_cline+4)); (* read back just written data *)
     (* evict (dirty) 1st cache line with a read *)
     Some(`rd (2*bytes_per_cline));
@@ -531,10 +534,13 @@ let testbench_3 () =
     i.pdata := B.consti Cfg.data data;
   in
   let do_txfer () = 
+    let timeout = ref 0 in
     Cs.cycle_comb0 sim;
     if B.to_int !(o.stall) = 1 then begin
       while B.to_int !(o.stall) = 1 do
         cycle ();
+        incr timeout;
+        if !timeout > 100 then raise Timeout
       done;
     end else begin
       cycle ();
@@ -551,22 +557,25 @@ let testbench_3 () =
     | Some(`rd addr) -> begin
       set_rd addr;
       do_txfer ();
-      Printf.printf "rd: %x %x %x\n" addr (B.to_int !(o.data_o)) (B.to_int mem_ref.(addr/4))
+      printf "* RD %.8x %.8x [%.8x]\n" addr (B.to_int !(o.data_o)) (B.to_int mem_ref.(addr/4))
     end
     | Some(`wr(addr,data)) -> begin
       set_wr addr data;
       do_txfer ();
-      Printf.printf "wr: %x %x\n" addr data;
+      printf "* WR %.8x %.8x\n" addr data;
       mem_ref.(addr/4) <- B.consti 32 data;
     end
     | _ -> failwith "unexpected transfer" 
   in
 
-  for j=0 to Array.length transfers-1 do
-    i.txfer_i := B.consti 32 !transfer_no;
-    run_transfer transfers.(!transfer_no);
-    transfer_no := !transfer_no + 1;
-  done;
+  let tests () = 
+    for j=0 to Array.length transfers-1 do
+      printf "TRANSFER[%i]\n%!" !transfer_no;
+      i.txfer_i := B.consti 32 !transfer_no;
+      run_transfer transfers.(!transfer_no);
+      transfer_no := !transfer_no + 1;
+    done
+  in
 
   let flush () = 
     (* perform reads to each cacheline at 2 different addresses to
@@ -578,10 +587,13 @@ let testbench_3 () =
     done
   in
 
-  for i=0 to 25 do cycle () done;
-  flush ();
-  for i=0 to 25 do cycle () done;
-  dump_mem ();
+  begin try 
+    tests ();
+    for i=0 to 25 do cycle () done;
+    flush ();
+    for i=0 to 25 do cycle () done;
+    dump_mem ();
+  with Timeout -> printf "XXX TIMEOUT XXX\n" end;
 
   printf "%!";
   show_waves ();

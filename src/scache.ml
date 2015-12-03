@@ -116,32 +116,37 @@ module Controller(B : Cache.Config) = struct
     let cnt = Seq.g_reg ~e B.line in
     let cnt_n = (cnt#q -- "cnt") -:. 1 in
     let mreq = Seq.g_reg ~e 1 in
+    let mrw = Seq.g_reg ~e 1 in
 
     let aligned_addr a = a.[width a - 1:B.line+ldbits] @: zero (B.line+ldbits) in
+
+    (* processor read or write miss:
+          
+        if dirty then flush cacheline;
+        load cacheline
+
+       This means we are allocating and filling a cache line on
+       a write miss.  *)
 
     let () = compile [
       sm [
         `wait, [
           cnt $==. (-1);
           msel $==. 0;
+          mrw $==. 1;
           g_when i.miss [
             msel $==. 1;
             maddr $== aligned_addr i.addr;
             caddr $== aligned_addr i.addr;
-            g_if i.rw [
-              (* read - load new cache line *)
+            g_if i.dirty [
+              (* current cache line needs to be flushed *)
+              mrw $==. 0;
+              maddr $== aligned_addr i.evict_addr;
+              next `store_re;
+            ] [
+              (* load new cache line *)
               mreq $==. 1;
               next `load;
-            ] [
-              (* write *)
-              g_if i.dirty [
-                (* current cache line needs to be flushed *)
-                maddr $== aligned_addr i.evict_addr;
-                next `store_re;
-              ] [
-                (* load new cache line *)
-                next `load;
-              ]
             ]
           ]
         ];
@@ -159,6 +164,7 @@ module Controller(B : Cache.Config) = struct
           ];
         ];
 
+        (* flush the cache line *)
         `store_re, [
           caddr $== caddr_n;
           mreq $==. 1;
@@ -175,6 +181,7 @@ module Controller(B : Cache.Config) = struct
               cnt $==. (-1);
               maddr $== aligned_addr i.addr;
               caddr $== aligned_addr i.addr;
+              mrw $==. 1;
               next `load;
             ];
           ]
@@ -190,7 +197,7 @@ module Controller(B : Cache.Config) = struct
       mreq = mreq#q;
       maddr = maddr#q;
       mdata_o = i.cdata_i;
-      mrw = vdd; (* XXX *)
+      mrw = mrw#q;
       cwe = mreq#q &: i.mvld &: (is `load);
       cre = mreq#q &: (~: (i.rw)) &: ((is `store_re) |: (is `store_nxt));
       cdata_o = i.mdata_i;
@@ -198,3 +205,4 @@ module Controller(B : Cache.Config) = struct
     });
 
 end
+
