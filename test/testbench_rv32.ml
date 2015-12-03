@@ -8,8 +8,10 @@ module Cfg = struct
 end
 module Rv = Pipe2.Make(Cfg)
 module B = HardCaml.Api.B
+
 module Rv_o = Rv.Ifs.O_debug
 module Rv_output = Rv.Output_debug
+
 (*
 module Rv_o = Rv.Ifs.O
 module Rv_output = Rv.Output
@@ -188,8 +190,8 @@ let testbench_5 () =
   let mio_data () = 
     let open Mi_data in
     let open Mo_data in
-    let o = o.o.md in
-    (*let o = o.md in*)
+    let o = o.o in
+    let o = o.md in
     i.md.vld := B.gnd;
     if B.to_int !(o.req) = 1 then begin
       i.md.vld := B.vdd;
@@ -204,7 +206,8 @@ let testbench_5 () =
   let mio_instr () = 
     let open Mi_instr in
     let open Mo_instr in
-    let o = o.o.mi in
+    let o = o.o in
+    let o = o.mi in
     i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
   in
 

@@ -39,7 +39,6 @@ module Make(C : Config.S) = struct
     let f ~inp ~comb ~pipe = 
       let open Stage in
       let open Stages in
-      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
       let pc = mux2 pipe.com.branch pipe.com.pc (pipe.fet.pc +:. 4) in
       let junk = I.to_list inp |> concat |> bits |> reduce (|:) in (* XXX TO BE REMOVED *)
       { zero_stage () with 
@@ -57,7 +56,7 @@ module Make(C : Config.S) = struct
   end
 
   module Icache = struct
-    let name = "dcache"
+    let name = "icache"
     module C = Cache.Direct_mapped(struct
       let data = 32
       let addr = 32
