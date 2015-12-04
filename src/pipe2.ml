@@ -175,9 +175,10 @@ module Make(C : Config.S) = struct
       let pzip a b = Stages.map2 (fun a b -> a,b) a b in
       let pclr = let c = def_clear in Stages.{fet=c; dec=c; alu=c; mem=c; com=c} in
       let pwire (n,b) = wire b in
+      let pwiren (n,b) = wire b -- n in
       let pen = wire 1 in
 
-      let comb, pipe = Stages.(map pwire t), Stages.(map pwire t) in
+      let comb, pipe = Stages.(map pwiren t), Stages.(map pwire t) in
 
       let func = Stages.{
         fet = Fetch.f ~inp ~comb ~pipe;
@@ -190,7 +191,7 @@ module Make(C : Config.S) = struct
       let _ = Stages.(map2 (<==) comb func) in
       let _ = 
         let preg ((n,b),(cv,(pipe,func))) = pipe <== (Seq.reg ~cv ~e:pen func) in
-        let pdat = Stages.(pzip t (pzip pclr (pzip pipe func))) in
+        let pdat = Stages.(pzip t (pzip pclr (pzip pipe comb))) in
         Stages.(map preg pdat)
       in
 

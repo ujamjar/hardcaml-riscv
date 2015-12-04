@@ -9,13 +9,13 @@ end
 module Rv = Pipe2.Make(Cfg)
 module B = HardCaml.Api.B
 
+(*
 module Rv_o = Rv.Ifs.O_debug
 module Rv_output = Rv.Output_debug
+*)
 
-(*
 module Rv_o = Rv.Ifs.O
 module Rv_output = Rv.Output
-*)
 
 (* waveform viewer *)
 module Waveterm_waves = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B))
@@ -44,10 +44,12 @@ let wave_cfg =
       if b=1 then n, Waveterm_waves.B
       else n, Waveterm_waves.H
   in
+  let f' pre (n,b) = f (pre^n,b) in
   Some( 
-    [f ( "clk",1); f ("clr",1)] @
+    [f ("clk",1); f ("clr",1)] @
     Rv.Ifs.I.(to_list @@ map f t) @ 
     Rv_o.(to_list @@ map f t) @
+    Rv.Ifs.Stages.(to_list @@ map f t) @
     (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), Waveterm_waves.H)) )
 
 let init_waves sim = 
@@ -170,6 +172,12 @@ let testbench_5 () =
   (* waveform viewer *)
   let sim, waves = init_waves sim in
 
+  let sim = 
+    let module Vcd = HardCaml.Vcd.Make(B) in
+    let f = open_out "dump.vcd" in
+    Vcd.wrap (output_string f) sim
+  in
+
   let open Rv.Ifs in
   let open I in
   let open O in
@@ -190,7 +198,7 @@ let testbench_5 () =
   let mio_data () = 
     let open Mi_data in
     let open Mo_data in
-    let o = o.o in
+    (*let o = o.o in*)
     let o = o.md in
     i.md.vld := B.gnd;
     if B.to_int !(o.req) = 1 then begin
@@ -206,7 +214,7 @@ let testbench_5 () =
   let mio_instr () = 
     let open Mi_instr in
     let open Mo_instr in
-    let o = o.o in
+    (*let o = o.o in*)
     let o = o.mi in
     i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
   in
