@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 65d0928fd15e4bef87aadbdfe73b4d24)
+# DO NOT EDIT (digest: bfd108507d8ac05c308e5b1367cc582e)
 Utils
 Config
 Insn
@@ -10,6 +10,7 @@ Fetch
 Decoder
 Alu
 Mem
+Commit
 Pipe
 Picorv32
 # OASIS_STOP

@@ -15,7 +15,9 @@ Library HardCamlRiscV
   Path:          src
   Findlibname:   hardcaml-riscv
   Pack:          true
-  Modules:       Utils,Config,Insn,Interfaces,Cache,Scache,Fetch,Decoder,Alu,Mem,Pipe,Picorv32
+  Modules:       Utils,Config,Insn,Interfaces,Cache,Scache,Fetch,
+                 Decoder,Alu,Mem,Commit,
+                 Pipe,Picorv32
   BuildDepends:  hardcaml,hardcaml.syntax,hardcaml-waveterm.lterm,riscv,deriving
   XMETARequires: hardcaml,riscv,deriving
 

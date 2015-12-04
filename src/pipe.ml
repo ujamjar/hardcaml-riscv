@@ -36,9 +36,9 @@ module Make(C : Config.S) = struct
 
   module Fetch = struct
     let name = "fet"
-    let f ~inp ~comb ~pipe = 
+    let f =
       let module F = Fetch.Make(Ifs) in
-      F.f ~inp ~comb ~pipe
+      F.f 
   end
 
   module Icache = struct
@@ -92,17 +92,9 @@ module Make(C : Config.S) = struct
 
   module Commit = struct
     let name = "com"
-    let f ~inp ~comb ~pipe = 
-      let open Stage in
-      let open Stages in
-      let open Class in
-      let p = pipe.mem in
-      let i = p.iclass in
-      let branch = i.jal |: i.jalr |: (i.bra &: p.branch) in
-      let rdd = mux2 (i.jal |: i.jalr) (p.pc +:. 4) p.rdd in
-      let rwe = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc) in
-      let pc = p.rdd in (* jal + jalr *)
-      { pipe.mem with rwe; branch; rdd; pc; }
+    let f =
+      let module C = Commit.Make(Ifs) in
+      C.f
   end
 
   module Build = struct
