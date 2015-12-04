@@ -6,7 +6,7 @@ module Cfg = struct
   let xlen = 32
   let start_addr = 0x10
 end
-module Rv = Pipe2.Make(Cfg)
+module Rv = Pipe.Make(Cfg)
 module B = HardCaml.Api.B
 
 (*

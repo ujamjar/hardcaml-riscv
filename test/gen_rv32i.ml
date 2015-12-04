@@ -14,7 +14,7 @@ module Rv_output = Rv.Output_debug
 *)
 module Rv_o = Rv.Ifs.O
 module Rv_output = Rv.Output
-
+(*
 let f_stages = [| 
   (module Rv.Fetch : Rv.Stage); 
   (module Rv.Decoder : Rv.Stage); 
@@ -62,4 +62,4 @@ let () = write_pipe_stage "alu" 2 (module Rv.Alu : Rv.Stage)
 let () = write_pipe_stage "memory" 3 (module Rv.Mem : Rv.Stage)
 let () = write_pipe_stage "commit" 4 (module Rv.Commit : Rv.Stage)
 let () = write_core()
-
+*)

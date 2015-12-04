@@ -8,13 +8,11 @@ module Make(C : Config.S) = struct
   module Ifs = Interfaces.Make(C)
   open Ifs
 
-  let wired_stage _ = Stage.(map (fun (n,b) -> wire b) t)
   let zero_stage _ = Stage.(map (fun (n,b) -> zero b) t)
-  let empty_stage _ = Stage.(map (fun (n,b) -> empty) t)
 
   type stage = Comb.t Stage.t
-  type stages = stage array
-  type f_stage = n:int -> inp:Comb.t I.t -> comb:stages -> pipe:stages -> stage
+  type stages = Comb.t Stages.t
+  type f_stage = inp:Comb.t I.t -> comb:stages -> pipe:stages -> stage
   type 'a f_output = stages -> 'a
   
   module type Stage = sig
@@ -26,6 +24,7 @@ module Make(C : Config.S) = struct
     let zero (n,b) = zero b in
     Stage.({ (* set up for xori instruction - psuedo bubble *)
       (map zero t) with
+        pc = consti C.xlen C.start_addr;
         ra1_zero = vdd; ra2_zero = vdd; rad_zero = vdd;
         insn = sll (one 48) (Enum.from_enum<Insn.T.t> `xori);
         iclass = Class.({ 
@@ -35,117 +34,12 @@ module Make(C : Config.S) = struct
         });
     })
 
-  let build_pipeline ~f_stages ~f_output inp = 
-    let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
-    (* number of stages *)
-    let n_stages = Array.length f_stages in
-    (* pipeline stage after registering *)
-    let p_stages = Array.init n_stages wired_stage in
-    (* pipeline stage before registering *)
-    let w_stages = Array.init n_stages wired_stage in
-
-    (* generate the stages *)
-    let o_stages = 
-      Array.mapi 
-        (fun n f -> 
-          let module F = (val f : Stage) in
-          F.f ~n ~inp ~comb:w_stages ~pipe:p_stages) 
-        f_stages 
-    in
-
-    (* wiring *)
-    let () = 
-      let open Stage in
-      let internal_names = false in
-      for i=0 to n_stages-1 do
-        let module F = (val f_stages.(i) : Stage) in
-        (* get pipeline enable and clear *)
-        let e = o_stages.(i).pen in
-        let map f st = 
-          let st = Stage.map2 (fun a b -> a,b) st o_stages.(i) in
-          let st = Stage.map2 (fun (a,b) (n,_) -> a,b,n) st t in
-          ignore @@ Stage.map f st
-        in
-        let map name f st = map (* optional internal naming *)
-          (fun (w,o,n) -> 
-            w <== if internal_names then (f o) -- (F.name ^ name ^ n)
-                  else f o) st 
-        in
-        (* wire up combinatorial output of stages *)
-        map "_c_" (fun o -> o) w_stages.(i);
-        (* wire up pipelined output of stages *)
-        map "_p_" (Seq.reg ~e) p_stages.(i)
-      done
-    in
-    
-    f_output p_stages
-
-  let build_comb ~f_stages ~f_output inp = 
-    let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
-    (* number of stages *)
-    let n_stages = Array.length f_stages in
-    (* pipeline stage after registering *)
-    let p_stages = Array.init n_stages wired_stage in
-    (* pipeline stage before registering *)
-    let w_stages = Array.init n_stages wired_stage in
-
-    (* generate the stages *)
-    let o_stages = 
-      Array.mapi 
-        (fun n f -> 
-          let module F = (val f : Stage) in
-          F.f ~n ~inp ~comb:w_stages ~pipe:p_stages) 
-        f_stages 
-    in
-
-    (* wiring *)
-    let () = 
-      let open Stage in
-      let internal_names = false in
-      for i=0 to n_stages-1 do
-        let module F = (val f_stages.(i) : Stage) in
-        (* get pipeline enable and clear *)
-        let e = o_stages.(i).pen in
-        let map f st = 
-          let st = Stage.map2 (fun a b -> a,b) st o_stages.(i) in
-          let st = Stage.map2 (fun (a,b) (n,_) -> a,b,n) st t in
-          ignore @@ Stage.map f st
-        in
-        let map name f st = map (* optional internal naming *)
-          (fun (w,o,n) -> 
-            w <== if internal_names then (f o) -- (F.name ^ name ^ n)
-                  else f o) st 
-        in
-        (* wire up combinatorial output of stages *)
-        map "_c_" (fun o -> o) w_stages.(i);
-        (* wire up pipelined output of stages *)
-        map "_p_" (fun o -> o) p_stages.(i)
-      done
-    in
-    
-    f_output p_stages
-
-  (* ideally we would parameterise each of the pipeline stages somehow
-   * so they can refer to other pipeline stages without needing to actually
-   * know the pipeline number.  The goal would then to be able to generate
-   * different pipeline lengths and have the core adapt itself (ie for bypassing,
-   * interlocking etc).  As yet I'm not sure how this will work, so we'll stick
-   * to static numbers for the first iteration of the core *)
-  let fet = 0 (* fetch *)
-  let dec = 1 (* decode *)
-  let exe = 2 (* execute *)
-  let mem = 3 (* memory *)
-  let com = 4 (* commit *)
-
   module Fetch = struct
     let name = "fet"
-    let f ~n ~inp ~comb ~pipe = 
+    let f ~inp ~comb ~pipe = 
       let open Stage in
-      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
-      let pcom = pipe.(com) in
-      let pc = Seq.reg_fb ~cv:(consti C.xlen C.start_addr) ~e:vdd ~w:C.xlen 
-        (fun d -> mux2 pcom.branch pcom.pc (d +:. 4)) 
-      in
+      let open Stages in
+      let pc = mux2 pipe.com.branch pipe.com.pc (pipe.fet.pc +:. 4) in
       let junk = I.to_list inp |> concat |> bits |> reduce (|:) in (* XXX TO BE REMOVED *)
       { zero_stage () with 
         pc; junk; pen=vdd;
@@ -153,7 +47,7 @@ module Make(C : Config.S) = struct
           Mo_instr.addr = pc;
           wdata = zero xlen;
           (*req = vdd;*)
-          req = Seq.reg ~cv:vdd ~e:vdd vdd;
+          req = vdd;
           rw = vdd;
           wmask = zero (xlen / 8); 
         } 
@@ -161,32 +55,57 @@ module Make(C : Config.S) = struct
 
   end
 
+  module Icache = struct
+    let name = "icache"
+    module C = Cache.Direct_mapped(struct
+      let data = 32
+      let addr = 32
+      let line = 2
+      let size = 8
+    end)
+    let f ~inp ~comb ~pipe = 
+      let open Stage in
+      let open Stages in
+      (*let { C.O.hit; data } = 
+        C.direct_mapped 
+          C.I.{ clk=inp.clk;
+                clr=inp.clr;
+                en=vdd;
+                rw=vdd;
+                addr=pipe.fet.pc; }
+      in*)
+      pipe.fet
+
+  end
+
   module Decoder = struct
     let name = "dec"
-    let f ~n ~inp ~comb ~pipe = 
+    let f ~inp ~comb ~pipe = 
       let module D = Decoder.Make(Ifs) in
       let open Stage in
+      let open Stages in
       D.decoder ~inp 
-        ~pipe:{ pipe.(n-1) with rwe = pipe.(com).rwe;
-                                rad = pipe.(com).rad;
-                                rdd = pipe.(com).rdd }
+        ~pipe:{ pipe.fet with rwe = pipe.com.rwe;
+                              rad = pipe.com.rad;
+                              rdd = pipe.com.rdd }
   end
 
   module Alu = struct
     let name = "alu"
-    let f ~n ~inp ~comb ~pipe = 
+    let f ~inp ~comb ~pipe = 
       let module Alu = Alu.Make(Ifs) in
-      Alu.alu pipe.(n-1)
+      Alu.alu pipe.Stages.dec
   end
 
   module Mem = struct
     let name = "mem"
-    let f ~n ~inp ~comb ~pipe = 
+    let f ~inp ~comb ~pipe = 
       let open Stage in
+      let open Stages in
       let open Class in
       (* note; XXX don't (currently) allow unaligned accesses and
        *           they should cause a trap *)
-      let p = pipe.(n-1) in
+      let p = pipe.alu in
       let i = p.iclass in
       let ofs = p.rdd.[1:0] in 
       let addr = p.rdd in
@@ -234,23 +153,59 @@ module Make(C : Config.S) = struct
 
   module Commit = struct
     let name = "com"
-    let f ~n ~inp ~comb ~pipe = 
+    let f ~inp ~comb ~pipe = 
       let open Stage in
+      let open Stages in
       let open Class in
-      let p = pipe.(n-1) in
+      let p = pipe.mem in
       let i = p.iclass in
       let branch = i.jal |: i.jalr |: (i.bra &: p.branch) in
       let rdd = mux2 (i.jal |: i.jalr) (p.pc +:. 4) p.rdd in
       let rwe = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc) in
       let pc = p.rdd in (* jal + jalr *)
-      { pipe.(n-1) with rwe; branch; rdd; pc; }
+      { pipe.mem with rwe; branch; rdd; pc; }
+  end
+
+  module Build = struct
+
+
+    let p5 ~inp ~f_output = 
+      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
+      
+      let pzip a b = Stages.map2 (fun a b -> a,b) a b in
+      let pclr = let c = def_clear in Stages.{fet=c; dec=c; alu=c; mem=c; com=c} in
+      let pwire (n,b) = wire b in
+      let pwiren (n,b) = wire b -- n in
+      let pen = wire 1 in
+
+      let comb, pipe = Stages.(map pwiren t), Stages.(map pwire t) in
+
+      let func = Stages.{
+        fet = Fetch.f ~inp ~comb ~pipe;
+        dec = Decoder.f ~inp ~comb ~pipe;
+        alu = Alu.f ~inp ~comb ~pipe;
+        mem = Mem.f ~inp ~comb ~pipe;
+        com = Commit.f ~inp ~comb ~pipe;
+      } in
+    
+      let _ = Stages.(map2 (<==) comb func) in
+      let _ = 
+        let preg ((n,b),(cv,(pipe,func))) = pipe <== (Seq.reg ~cv ~e:pen func) in
+        let pdat = Stages.(pzip t (pzip pclr (pzip pipe comb))) in
+        Stages.(map preg pdat)
+      in
+
+      pen <== vdd;
+ 
+      f_output pipe
+
   end
 
   module Output = struct
     let f pipe = 
       O.({
-        mi = pipe.(fet).Stage.mi;
-        md = pipe.(mem).Stage.md;
+        mi = pipe.Stages.fet.Stage.mi;
+        md = pipe.Stages.mem.Stage.md;
       })
   end
 
@@ -258,15 +213,10 @@ module Make(C : Config.S) = struct
     let f pipe = 
       O_debug.({
         o = Output.f pipe;
-        dbg = Stages.({
-          fet = pipe.(0);
-          dec = pipe.(1);
-          alu = pipe.(2);
-          mem = pipe.(3);
-          com = pipe.(4);
-        });
+        dbg = pipe;
       })
   end
 
 end
+
 
