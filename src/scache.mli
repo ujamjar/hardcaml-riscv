@@ -74,4 +74,32 @@ module Controller(B : Cache.Config) : sig
 
 end
 
+module Make_direct_mapped(Cfg : Cache.Config) : sig
+
+  module Dm : module type of Direct_mapped(Cfg)
+  module Ctrl : module type of Controller(Cfg)
+
+  module I : interface
+    clk clr
+    (* pipeline interface *)
+    paddr pdata pre pwe
+    (* memory interface *)
+    mvld mdata_i
+    
+    (* debug*)
+    txfer_i (* XXX *)
+  end
+
+  module O : interface
+    stall data_o
+    mreq maddr mdata_o mrw
+
+    (* debug *)
+    state (* XXX *)
+    txfer_o (* XXX *)
+  end
+
+  val f : HardCaml.Signal.Comb.t I.t -> HardCaml.Signal.Comb.t O.t
+
+end
 

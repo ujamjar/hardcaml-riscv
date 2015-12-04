@@ -206,3 +206,88 @@ module Controller(B : Cache.Config) = struct
 
 end
 
+module Make_direct_mapped(Cfg : Cache.Config) = struct
+
+  module Dm = Direct_mapped(Cfg) 
+  module Ctrl = Controller(Cfg) 
+
+  module I = interface
+    clk[1] clr[1]
+    (* pipeline interface *)
+    paddr[Cfg.addr] pdata[Cfg.data] pre[1] pwe[1]
+    (* memory interface *)
+    mvld[1] mdata_i[Cfg.data]
+    txfer_i[32]
+  end
+  module O = interface
+    stall[1] data_o[Cfg.data]
+    mreq[1] maddr[Cfg.addr] mdata_o[Cfg.data] mrw[1]
+    state[4] (* XXX *)
+    txfer_o[32] (* XXX *)
+  end
+
+  open HardCaml.Signal.Comb
+
+  let f i = 
+    let open I in
+    let module Seq = Utils.Regs(struct let clk=i.clk let clr=i.clr end) in
+
+    let dm_msel = wire 1 in
+    let dm_maddr = wire Cfg.addr -- "dm_maddr" in
+    let dm_mdata = wire Cfg.data -- "dm_mdata" in
+    let dm_mre = wire 1 in
+    let dm_mwe = wire 1 in
+
+    let dm_i = {
+      Dm.I.clk = i.clk;
+      clr = i.clr;
+      msel = dm_msel;
+      paddr = i.paddr;
+      pdata = i.pdata;
+      pre = i.pre;
+      pwe = i.pwe;
+      maddr = dm_maddr;
+      mdata = dm_mdata;
+      mre = dm_mre;
+      mwe = dm_mwe;
+    } in
+    let dm_o = Dm.f dm_i in
+
+    let ctrl_i = {
+      Ctrl.I.clk = i.clk;
+      clr = i.clr;
+      miss = dm_o.Dm.O.miss -- "MISS";
+      rw = i.pre;
+      dirty = dm_o.Dm.O.dirty;
+      addr = i.paddr;
+      evict_addr = dm_o.Dm.O.evict_addr;
+      mvld = i.mvld;
+      mdata_i = i.mdata_i;
+      cdata_i = Seq.reg ~e:vdd dm_o.Dm.O.data_o; (* XXX hack for unregisters rams *)
+    } in
+    let ctrl_o = Ctrl.f ctrl_i in
+
+    let () = 
+      let open Ctrl.O in
+      dm_msel <== ctrl_o.msel;
+      dm_maddr <== ctrl_o.caddr;
+      dm_mdata <== ctrl_o.cdata_o;
+      dm_mre <== ctrl_o.cre;
+      dm_mwe <== ctrl_o.cwe;
+    in
+
+    let open Ctrl.O in
+    O.{
+      stall = ctrl_o.stall;
+      data_o = dm_o.Dm.O.data_o;
+      mreq = ctrl_o.mreq;
+      maddr = ctrl_o.maddr;
+      mdata_o = ctrl_o.mdata_o;
+      mrw = ctrl_o.mrw;
+      state = ctrl_o.state;
+      txfer_o = i.txfer_i;
+    }
+
+
+end
+
