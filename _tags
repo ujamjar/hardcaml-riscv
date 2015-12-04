@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: d42c8ac550230693d783eda081bac984)
+# DO NOT EDIT (digest: c6db6b0d82865314692641eb964ac128)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -76,15 +76,21 @@ true: annot, bin_annot
 <test/gen_rv32i.{native,byte}>: use_HardCamlRiscV
 <test/gen_rv32i.{native,byte}>: custom
 # Executable instr_trap_sat
-<test/instr_trap_sat.{native,byte}>: pkg_deriving
-<test/instr_trap_sat.{native,byte}>: pkg_hardcaml
-<test/instr_trap_sat.{native,byte}>: pkg_hardcaml-bloop
-<test/instr_trap_sat.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/instr_trap_sat.{native,byte}>: pkg_hardcaml.syntax
-<test/instr_trap_sat.{native,byte}>: pkg_riscv
-<test/instr_trap_sat.{native,byte}>: use_HardCamlRiscV
-<test/*.ml{,i,y}>: pkg_hardcaml-bloop
-<test/instr_trap_sat.{native,byte}>: custom
+<test/sat/instr_trap_sat.{native,byte}>: pkg_deriving
+<test/sat/instr_trap_sat.{native,byte}>: pkg_hardcaml
+<test/sat/instr_trap_sat.{native,byte}>: pkg_hardcaml-bloop
+<test/sat/instr_trap_sat.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<test/sat/instr_trap_sat.{native,byte}>: pkg_hardcaml.syntax
+<test/sat/instr_trap_sat.{native,byte}>: pkg_riscv
+<test/sat/instr_trap_sat.{native,byte}>: use_HardCamlRiscV
+<test/sat/*.ml{,i,y}>: pkg_deriving
+<test/sat/*.ml{,i,y}>: pkg_hardcaml
+<test/sat/*.ml{,i,y}>: pkg_hardcaml-bloop
+<test/sat/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
+<test/sat/*.ml{,i,y}>: pkg_hardcaml.syntax
+<test/sat/*.ml{,i,y}>: pkg_riscv
+<test/sat/*.ml{,i,y}>: use_HardCamlRiscV
+<test/sat/instr_trap_sat.{native,byte}>: custom
 # Executable imm_encoding
 <test/imm_encoding.{native,byte}>: pkg_deriving
 <test/imm_encoding.{native,byte}>: pkg_hardcaml

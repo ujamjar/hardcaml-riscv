@@ -270,12 +270,12 @@ let testbench_2 () =
   Cs.cycle sim;
   i.clr := B.gnd;
   
-  let pipe_read addr = 
+  (*let pipe_read addr = 
     i.miss := B.vdd;
     i.addr := B.consti Cfg.addr addr;
     i.rw := B.vdd;
     i.dirty := B.gnd;
-  in
+  in*)
 
   let pipe_write addr data = 
     i.miss := B.vdd;

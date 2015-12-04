@@ -78,7 +78,7 @@ Executable gen_rv32i
 
 Executable instr_trap_sat
   Build$:             flag(bloop)
-  Path:               test
+  Path:               test/sat
   MainIs:             instr_trap_sat.ml
   Custom:             true
   CompiledObject:     best

@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 8d12785f7842aaa706214b8a57273e41) *)
+(* DO NOT EDIT (digest: cabfc786f26dc056a15df8a84d5d89d0) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -610,7 +610,7 @@ let package_default =
      MyOCamlbuildBase.lib_ocaml = [("HardCamlRiscV", ["src"], [])];
      lib_c = [];
      flags = [];
-     includes = [("test", ["src"])]
+     includes = [("test/sat", ["src"]); ("test", ["src"])]
   }
   ;;
 

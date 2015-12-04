@@ -177,7 +177,7 @@ module Direct_mapped(B : Config) = struct
     let re = (en &: rw) -- "i_re" in
     *)
 
-    let pstall = wire 1 in
+    (*let pstall = wire 1 in*)
     let pen = ((~: (i.msel)) &: (i.pre |: i.pwe)) in
 
     let () = 

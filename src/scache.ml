@@ -49,7 +49,7 @@ module Direct_mapped(Cfg : Cache.Config) = struct
 
     let addr = mux2 i.msel (concat_e [mslot; mline]) (concat_e [pslot; pline]) -- "i_addr" in
     let data = mux2 i.msel i.mdata i.pdata -- "i_data" in
-    let re = mux2 i.msel i.mre i.pre -- "i_re" in
+    (*let re = mux2 i.msel i.mre i.pre -- "i_re" in*)
     let we = mux2 i.msel i.mwe i.pwe -- "i_we" in
     let tag = mux2 i.msel mtag ptag -- "i_tag" in
     let slot = mux2 i.msel mslot pslot -- "i_slot" in
