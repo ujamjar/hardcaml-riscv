@@ -34,68 +34,11 @@ module Make(C : Config.S) = struct
         });
     })
 
-  module Fetch = struct
-    let name = "fet"
-    let f =
-      let module F = Fetch.Make(Ifs) in
-      F.f 
-  end
-
-  module Icache = struct
-    let name = "icache"
-    module C = Cache.Direct_mapped(struct
-      let data = 32
-      let addr = 32
-      let line = 2
-      let size = 8
-    end)
-    let f ~inp ~comb ~pipe = 
-      let open Stage in
-      let open Stages in
-      (*let { C.O.hit; data } = 
-        C.direct_mapped 
-          C.I.{ clk=inp.clk;
-                clr=inp.clr;
-                en=vdd;
-                rw=vdd;
-                addr=pipe.fet.pc; }
-      in*)
-      pipe.fet
-
-  end
-
-  module Decoder = struct
-    let name = "dec"
-    let f ~inp ~comb ~pipe = 
-      let module D = Decoder.Make(Ifs) in
-      let open Stage in
-      let open Stages in
-      D.decoder ~inp 
-        ~pipe:{ pipe.fet with rwe = pipe.com.rwe;
-                              rad = pipe.com.rad;
-                              rdd = pipe.com.rdd }
-  end
-
-  module Alu = struct
-    let name = "alu"
-    let f ~inp ~comb ~pipe = 
-      let module Alu = Alu.Make(Ifs) in
-      Alu.alu pipe.Stages.dec
-  end
-
-  module Mem = struct
-    let name = "mem"
-    let f = 
-      let module M = Mem.Make(Ifs) in
-      M.f
-  end
-
-  module Commit = struct
-    let name = "com"
-    let f =
-      let module C = Commit.Make(Ifs) in
-      C.f
-  end
+  module Fetch = Fetch.Make(Ifs)
+  module Decoder = Decoder.Make(Ifs)
+  module Alu = Alu.Make(Ifs)
+  module Mem = Mem.Make(Ifs)
+  module Commit = Commit.Make(Ifs)
 
   module Build = struct
 

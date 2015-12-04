@@ -43,5 +43,9 @@ module Make(Ifs : Interfaces.S) = struct
 
     { p with rdd; branch }
 
+  let name = "alu"
+
+  let f ~inp ~comb ~pipe = alu pipe.Ifs.Stages.dec
+
 end
 

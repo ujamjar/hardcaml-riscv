@@ -249,5 +249,15 @@ module Make(Ifs : Interfaces.S) = struct
       rd1; rd2; rdm; imm;
       instr; insn=d.insn; iclass=d.iclass; }
 
+  let name = "dec"
+
+  let f ~inp ~comb ~pipe = 
+    let open Ifs.Stage in
+    let open Ifs.Stages in
+    decoder ~inp 
+      ~pipe:{ pipe.fet with rwe = pipe.com.rwe;
+                            rad = pipe.com.rad;
+                            rdd = pipe.com.rdd }
+
 end
 

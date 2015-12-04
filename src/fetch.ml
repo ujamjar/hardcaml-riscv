@@ -3,6 +3,8 @@ module Make(Ifs : Interfaces.S) = struct
   open HardCaml.Signal.Comb
   open Ifs
 
+  let name = "fet"
+
   let f ~inp ~comb ~pipe = 
     let open Stage in
     let open Stages in
