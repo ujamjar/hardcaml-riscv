@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 9499a09a9f565cb31a6ede3d028cd42b)
+# DO NOT EDIT (digest: 65d0928fd15e4bef87aadbdfe73b4d24)
 Utils
 Config
 Insn
@@ -9,6 +9,7 @@ Scache
 Fetch
 Decoder
 Alu
+Mem
 Pipe
 Picorv32
 # OASIS_STOP

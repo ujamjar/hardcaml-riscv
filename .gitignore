@@ -3,3 +3,6 @@
 *.byte
 *.native
 _build/
+quartus
+setup.log
+setup.data
