@@ -66,6 +66,8 @@ module type S = sig
     (dbg : Stages)
   end
 
+  val zero_stage : unit -> HardCaml.Signal.Comb.t Stage.t
+
 end
 
 module Make(C : Config.S) : S

@@ -44,7 +44,6 @@ let wave_cfg =
       if b=1 then n, Waveterm_waves.B
       else n, Waveterm_waves.H
   in
-  let f' pre (n,b) = f (pre^n,b) in
   Some( 
     [f ("clk",1); f ("clr",1)] @
     Rv.Ifs.I.(to_list @@ map f t) @ 

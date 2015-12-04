@@ -66,6 +66,8 @@ module type S = sig
     (dbg : Stages)
   end
 
+  val zero_stage : unit -> HardCaml.Signal.Comb.t Stage.t
+
 end
 
 module Make(C : Config.S) = struct
@@ -176,6 +178,8 @@ module Make(C : Config.S) = struct
     (o : O)
     (dbg : Stages)
   end
+
+  let zero_stage () = Stage.(map (fun (n,b) -> HardCaml.Signal.Comb.zero b) t)
 
 end
 

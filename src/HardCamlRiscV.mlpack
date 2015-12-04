@@ -1,11 +1,12 @@
 # OASIS_START
-# DO NOT EDIT (digest: 4929929b4854462f494319b70e2d6b7c)
+# DO NOT EDIT (digest: 9499a09a9f565cb31a6ede3d028cd42b)
 Utils
 Config
 Insn
 Interfaces
 Cache
 Scache
+Fetch
 Decoder
 Alu
 Pipe
