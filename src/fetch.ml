@@ -12,7 +12,7 @@ module Make(Ifs : Interfaces.S) = struct
     let junk = I.to_list inp |> concat |> bits |> reduce (|:) in (* XXX TO BE REMOVED *)
     let z = zero_stage () in
     { z with 
-      pc; junk; pen=vdd;
+      pc; junk; 
       mi = {
         Mo_instr.addr = pc;
         wdata = zero xlen;

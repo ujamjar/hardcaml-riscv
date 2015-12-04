@@ -40,7 +40,6 @@ module type S = sig
   end
 
   module Stage : interface
-    pen 
     ra1 ra2 rad
     ra1_zero ra2_zero rad_zero
     rd1 rd2 rdd rdm imm

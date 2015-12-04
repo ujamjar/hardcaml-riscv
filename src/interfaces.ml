@@ -40,7 +40,6 @@ module type S = sig
   end
 
   module Stage : interface
-    pen 
     ra1 ra2 rad
     ra1_zero ra2_zero rad_zero
     rd1 rd2 rdd rdm imm
@@ -131,8 +130,6 @@ module Make(C : Config.S) = struct
    * On the other hand it will make it more difficult to 
    * produce a hierarchy of modules. *)
   module Stage = interface
-    (* pipeline stage enable and clear *)
-    pen[1] 
     (* register addresses *)
     ra1[log_regs] ra2[log_regs] rad[log_regs]
     (* register address zero detection *)

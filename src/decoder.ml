@@ -240,10 +240,7 @@ module Make(Ifs : Interfaces.S) = struct
       imm rdm 
     in 
 
-    let pen = Seq.reg ~e:vdd pipe.pen in
-
     { pipe with 
-      pen; 
       ra1; ra2; rad;
       ra1_zero; ra2_zero; rad_zero;
       rd1; rd2; rdm; imm;
