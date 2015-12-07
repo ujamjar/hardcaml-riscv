@@ -10,8 +10,7 @@ module Make(Ifs : Interfaces.S) = struct
     let open Stages in
     let pc = mux2 pipe.com.branch pipe.com.pc (pipe.fet.pc +:. 4) in
     let junk = I.to_list inp |> concat |> bits |> reduce (|:) in (* XXX TO BE REMOVED *)
-    let z = zero_stage () in
-    { z with 
+    { Stage_ex.zero with 
       pc; junk; 
       mi = {
         Mo_instr.addr = pc;

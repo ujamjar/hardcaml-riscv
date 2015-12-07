@@ -38,6 +38,7 @@ module type S = sig
     fen sys rdc rdco
     f3 f7
   end
+  module Class_ex : module type of Interface_ex.Make(Class) 
 
   module Stage : interface
     ra1 ra2 rad
@@ -51,6 +52,7 @@ module type S = sig
     (md : Mo_data)
     junk
   end
+  module Stage_ex : module type of Interface_ex.Make(Stage) 
 
   module Stages : interface
     (fet : Stage)
@@ -59,13 +61,12 @@ module type S = sig
     (mem : Stage)
     (com : Stage)
   end
+  module Stages_ex : module type of Interface_ex.Make(Stages) 
   
   module O_debug : interface
     (o : O)
     (dbg : Stages)
   end
-
-  val zero_stage : unit -> HardCaml.Signal.Comb.t Stage.t
 
 end
 
@@ -114,6 +115,7 @@ module Make(C : Config.S) = struct
     rdc[1] rdco[3]
     f3[3] f7[1]
   end
+  module Class_ex = Interface_ex.Make(Class)
 
   (* this stores the information needed at any stage of the
    * pipeline.  In some stages the information may or may not
@@ -156,6 +158,7 @@ module Make(C : Config.S) = struct
     (* junk TO BE REMOVED  *)
     junk[1]
   end
+  module Stage_ex = Interface_ex.Make(Stage)
 
   module Stage_fet = struct include Stage let t = map (prefix "fet") t end
   module Stage_dec = struct include Stage let t = map (prefix "dec") t end
@@ -170,13 +173,12 @@ module Make(C : Config.S) = struct
     (mem : Stage_mem)
     (com : Stage_com)
   end
+  module Stages_ex = Interface_ex.Make(Stages)
 
   module O_debug = interface
     (o : O)
     (dbg : Stages)
   end
-
-  let zero_stage () = Stage.(map (fun (n,b) -> HardCaml.Signal.Comb.zero b) t)
 
 end
 

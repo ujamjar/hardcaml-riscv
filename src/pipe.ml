@@ -46,13 +46,9 @@ module Make(C : Config.S) = struct
     let p5 ~inp ~f_output = 
       let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
       
-      let pzip a b = Stages.map2 (fun a b -> a,b) a b in
       let pclr = let c = def_clear in Stages.{fet=c; dec=c; alu=c; mem=c; com=c} in
-      let pwire (n,b) = wire b in
-      let pwiren (n,b) = wire b -- n in
-      let pen = wire 1 in
 
-      let comb, pipe = Stages.(map pwiren t), Stages.(map pwire t) in
+      let comb, pipe = Stages_ex.(wiren(), wire()) in
 
       let func = Stages.{
         fet = Fetch.f ~inp ~comb ~pipe;
@@ -61,15 +57,24 @@ module Make(C : Config.S) = struct
         mem = Mem.f ~inp ~comb ~pipe;
         com = Commit.f ~inp ~comb ~pipe;
       } in
-    
+
+      let pen = wire 5 in
+      let pen' n = let en = bit pen n in (fun _ -> en) in
+      let pen'' = Stages.{
+        fet = Stage.(map (pen' 0) t);
+        dec = Stage.(map (pen' 1) t);
+        alu = Stage.(map (pen' 2) t);
+        mem = Stage.(map (pen' 3) t);
+        com = Stage.(map (pen' 4) t);
+      } in
+
       let _ = Stages.(map2 (<==) comb func) in
       let _ = 
-        let preg ((n,b),(cv,(pipe,func))) = pipe <== (Seq.reg ~cv ~e:pen func) in
-        let pdat = Stages.(pzip t (pzip pclr (pzip pipe comb))) in
-        Stages.(map preg pdat)
+        let preg cv e pipe comb = pipe <== Seq.reg ~cv ~e comb in
+        Stages_ex.(map4 preg pclr pen'' pipe comb)
       in
 
-      pen <== vdd;
+      pen <== ones 5;
  
       f_output pipe
 

@@ -38,6 +38,7 @@ module type S = sig
     fen sys rdc rdco
     f3 f7
   end
+  module Class_ex : module type of Interface_ex.Make(Class) 
 
   module Stage : interface
     ra1 ra2 rad
@@ -51,6 +52,7 @@ module type S = sig
     (md : Mo_data)
     junk
   end
+  module Stage_ex : module type of Interface_ex.Make(Stage) 
 
   module Stages : interface
     (fet : Stage)
@@ -59,13 +61,12 @@ module type S = sig
     (mem : Stage)
     (com : Stage)
   end
+  module Stages_ex : module type of Interface_ex.Make(Stages) 
   
   module O_debug : interface
     (o : O)
     (dbg : Stages)
   end
-
-  val zero_stage : unit -> HardCaml.Signal.Comb.t Stage.t
 
 end
 
