@@ -162,40 +162,6 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
 end
 
-module Rf(Ifs : Interfaces.S) = struct
-
-  open Ifs
-  open HardCaml.Signal.Comb
-
-  module I = interface
-    clk[1] clr[1]
-    wr[1] wa[log_regs] d[xlen]
-    ra1[log_regs] ra2[log_regs]
-  end
-
-  module O = interface
-    q1[xlen] q2[xlen]
-  end
-
-  let f i = 
-    let open I in
-    let module Seq = Utils.Regs(struct let clk=i.clk let clr=i.clr end) in
-
-    let wen = binary_to_onehot i.wa in
-    let regs = 
-      Array.to_list @@
-      Array.init num_regs 
-        (fun j -> 
-          if j=0 then zero xlen 
-          else Seq.reg ~e:(i.wr &: wen.[j:j]) i.d -- (Printf.sprintf "reg_%.2i" j)) 
-    in
-    O.({
-      q1 = mux i.ra1 regs;
-      q2 = mux i.ra2 regs;
-    })
-
-end
-
 module Make(Ifs : Interfaces.S) = struct
 
   open HardCaml.Signal.Comb 
@@ -222,7 +188,7 @@ module Make(Ifs : Interfaces.S) = struct
     let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
     (* (async) regiser file - XXX not really convinced this should be here *)
-    let module Rf = Rf(Ifs) in
+    let module Rf = Rf.Make(Ifs) in
     let rfo = 
       Rf.f 
         Rf.I.({ 
@@ -234,16 +200,18 @@ module Make(Ifs : Interfaces.S) = struct
         })
     in
     let rd1, rdm = rfo.Rf.O.q1, rfo.Rf.O.q2 in
-    let rd1 = rd1 in
     let rd2 = mux2 
       (c.opi |: c.lui |: c.auipc |: c.ld |: c.st |: c.jal |: c.jalr) 
       imm rdm 
     in 
 
+    (* rd2 uses immediate encoding *)
+    let is_imm = (c.opi |: c.lui |: c.auipc |: c.ld |: c.st |: c.jal |: c.jalr) in
+
     { pipe with 
       ra1; ra2; rad;
       ra1_zero; ra2_zero; rad_zero;
-      rd1; rd2; rdm; imm;
+      rd1; rd2; is_imm; imm;
       instr; insn=d.insn; iclass=d.iclass; 
     }
 
@@ -252,10 +220,7 @@ module Make(Ifs : Interfaces.S) = struct
   let f ~inp ~comb ~pipe = 
     let open Ifs.Stage in
     let open Ifs.Stages in
-    decoder ~inp 
-      ~pipe:{ pipe.fet with rwe = pipe.com.rwe;
-                            rad = pipe.com.rad;
-                            rdd = pipe.com.rdd }
+    decoder ~inp ~pipe:pipe.fet
 
 end
 

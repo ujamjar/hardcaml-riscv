@@ -44,7 +44,7 @@ module type S = sig
   module Stage : interface
     ra1 ra2 rad
     ra1_zero ra2_zero rad_zero
-    rd1 rd2 rdd rdm imm
+    rd1 rd2 rdd is_imm imm
     pc 
     instr insn (iclass : Class)
     branch
@@ -139,9 +139,9 @@ module Make(C : Config.S) = struct
     (* register address zero detection *)
     ra1_zero[1] ra2_zero[1] rad_zero[1]
     (* data to/from register file *)
-    rd1[C.xlen] rd2[C.xlen] rdd[C.xlen] rdm[C.xlen]
+    rd1[C.xlen] rd2[C.xlen] rdd[C.xlen] 
     (* immediate *)
-    imm[C.xlen]
+    is_imm[1] imm[C.xlen]
     (* program counter *)
     pc[C.xlen] 
     (* instruction from memory *)

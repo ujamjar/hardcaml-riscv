@@ -5,30 +5,32 @@ module Make(Ifs : Interfaces.S) = struct
     let open Ifs.Class in
     let open HardCaml.Signal.Comb in
     
+    let rd1,rd2 = p.rd1, mux2 p.is_imm p.imm p.rd2 in
+
     let addsub ctl a b = mux2 ctl (a -: b) (a +: b) in
 
-    let eq = p.rd1 ==: p.rd2 in
+    let eq = rd1 ==: rd2 in
     let neq = ~: eq in
-    let slt = p.rd1 <+ p.rd2 in (* may be able to simplify this with a subtractor *)
-    let sltu = p.rd1 <: p.rd2 in
-    let sge = p.rd1 >=+ p.rd2 in
-    let sgeu = p.rd1 >=: p.rd2 in
-    let shamt = p.rd2.[4:0] in
+    let slt = rd1 <+ rd2 in (* may be able to simplify this with a subtractor *)
+    let sltu = rd1 <: rd2 in
+    let sge = rd1 >=+ rd2 in
+    let sgeu = rd1 >=: rd2 in
+    let shamt = rd2.[4:0] in
 
     let c = p.iclass in
 
     let addctl = c.jal |: c.jalr |: c.ld |: c.st in
-    let addsub = addsub (mux2 addctl gnd c.f7) p.rd1 p.rd2 in
+    let addsub = addsub (mux2 addctl gnd c.f7) rd1 rd2 in
 
     let alu_op = mux (mux2 addctl (zero 3) c.f3) [
       addsub;
-      log_shift sll p.rd1 shamt;
+      log_shift sll rd1 shamt;
       uresize slt Ifs.xlen;
       uresize sltu Ifs.xlen;
-      p.rd1 ^: p.rd2;
-      mux2 c.f7 (log_shift sra p.rd1 shamt) (log_shift srl p.rd2 shamt);
-      p.rd1 |: p.rd2;
-      p.rd1 &: p.rd2;
+      rd1 ^: rd2;
+      mux2 c.f7 (log_shift sra rd1 shamt) (log_shift srl rd2 shamt);
+      rd1 |: rd2;
+      rd1 &: rd2;
     ] in
 
     (* outcome of conditional branch *)
@@ -36,7 +38,7 @@ module Make(Ifs : Interfaces.S) = struct
 
     let rdd = 
       pmux [
-        c.lui, p.rd2;
+        c.lui, rd2;
         c.bra |: c.jal |: c.auipc, p.pc +: p.imm;
       ] alu_op
     in

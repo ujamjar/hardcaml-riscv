@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 9daea114a0a1c0b40de588619ae0cbd0)
+# DO NOT EDIT (digest: b70a69e6ef17b4458590952eca4efa3e)
 Utils
 Config
 Insn
@@ -7,6 +7,7 @@ Interface_ex
 Interfaces
 Cache
 Scache
+Rf
 Fetch
 Decoder
 Alu

@@ -44,7 +44,7 @@ module type S = sig
   module Stage : interface
     ra1 ra2 rad
     ra1_zero ra2_zero rad_zero
-    rd1 rd2 rdd rdm imm
+    rd1 rd2 rdd is_imm imm
     pc 
     instr insn (iclass : Class)
     branch

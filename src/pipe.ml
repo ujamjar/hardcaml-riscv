@@ -8,8 +8,6 @@ module Make(C : Config.S) = struct
   module Ifs = Interfaces.Make(C)
   open Ifs
 
-  let zero_stage _ = Stage.(map (fun (n,b) -> zero b) t)
-
   type stage = Comb.t Stage.t
   type stages = Comb.t Stages.t
   type f_stage = inp:Comb.t I.t -> comb:stages -> pipe:stages -> stage
@@ -69,7 +67,31 @@ module Make(C : Config.S) = struct
       let stall,en = stall -- "pipe_stall", en -- "pipe_en" in
       Ctrl.{ en; stall }
 
+    let async_rf ~inp ~func ~comb = 
+      let open Stage in
+      let open Stages in
+      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
+      let module Rf = Rf.Make(Ifs) in
+      let rfo = Rf.f Rf.I.{
+        clk = inp.I.clk; clr=inp.I.clr;
+        wr = comb.com.rwe; wa = comb.com.rad; d = comb.com.rdd;
+        ra1 = comb.dec.ra1; ra2 = comb.dec.ra2;
+      } in
+      Rf.O.{ func with dec = { func.dec with rd1 = rfo.q1; rd2 = rfo.q2; } } 
+
+    (* add in some internal debug signals 
+       XXX remove along with the various junk signals *)
+    let debug_junk ~func ~pipe = 
+      let open Stage in
+      let open Stages in
+      { func with com = { func.com with junk=
+        pipe.com.instr.[0:0] |:
+        pipe.com.insn.[0:0]
+      } } 
+
     let p5 ~inp ~f_output = 
+      let open Stage in
+      let open Stages in
       let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
       
       let pclr = let c = def_clear in Stages.{fet=c; dec=c; alu=c; mem=c; com=c} in
@@ -79,7 +101,7 @@ module Make(C : Config.S) = struct
       let ctrl = p5_ctrl ~inp ~pipe ~comb in
 
       (* pipeline stages *)
-      let func = Stages.{
+      let func = {
         fet = Fetch.f ~inp ~comb ~pipe;
         dec = Decoder.f ~inp ~comb ~pipe;
         alu = Alu.f ~inp ~comb ~pipe;
@@ -87,23 +109,20 @@ module Make(C : Config.S) = struct
         com = Commit.f ~inp ~comb ~pipe;
       } in
 
-      (* add in some internal debug signals 
-         XXX remove along with the various junk signals *)
-      let func = 
-        Stages.{ func with com = { func.com with Stage.junk=
-          pipe.com.Stage.instr.[0:0] |:
-          pipe.com.Stage.insn.[0:0]
-        } } 
-      in
+      (* insert the (async) register file *)
+      let func = async_rf ~inp ~func ~comb in
+
+      (* waveform debug *)
+      let func = debug_junk ~func ~pipe in
 
       (* pipeline enable *)
       let pen = 
         let pen n = let en = bit ctrl.Ctrl.en n in Stage.(map (fun _ -> en) t) in
-        Stages.{ fet = pen 0; dec = pen 1; alu = pen 2; mem = pen 3; com = pen 4 } 
+        { fet = pen 0; dec = pen 1; alu = pen 2; mem = pen 3; com = pen 4 } 
       in
 
       (* wire it all together *)
-      let _ = Stages.(map2 (<==) comb func) in
+      let _ = Stages.map2 (<==) comb func in
       let _ = 
         let preg cv e pipe comb = pipe <== Seq.reg ~cv ~e comb in
         Stages_ex.(map4 preg pclr pen pipe comb)

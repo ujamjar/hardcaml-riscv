@@ -13,7 +13,8 @@ module Make(Ifs : Interfaces.S) = struct
       *           they should cause a trap *)
     let p = pipe.alu in
     let i = p.iclass in
-    let ofs = p.rdd.[1:0] in 
+    let ofs = p.rdd.[1:0] in
+    let rdm = p.rd2 in
     let addr = p.rdd in
     (* byte, half or word transfer *)
     let size = p.iclass.f3.[1:0] in
@@ -29,11 +30,11 @@ module Make(Ifs : Interfaces.S) = struct
     in
     (* write data *)
     let wdata = 
-      let sft n s = sll (uresize p.rdm.[n-1:0] 32) s in
+      let sft n s = sll (uresize rdm.[n-1:0] 32) s in
       mux size [
         mux ofs.[1:0] (List.map (sft 8) [0;8;16;24]);
         mux ofs.[1:1] (List.map (sft 16) [0;16]);
-        p.rdm;
+        rdm;
       ]
     in
     (* read data *)
