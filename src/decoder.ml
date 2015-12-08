@@ -244,7 +244,8 @@ module Make(Ifs : Interfaces.S) = struct
       ra1; ra2; rad;
       ra1_zero; ra2_zero; rad_zero;
       rd1; rd2; rdm; imm;
-      instr; insn=d.insn; iclass=d.iclass; }
+      instr; insn=d.insn; iclass=d.iclass; 
+    }
 
   let name = "dec"
 

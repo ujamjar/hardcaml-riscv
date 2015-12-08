@@ -13,7 +13,7 @@ module Make(Ifs : Interfaces.S) = struct
     { Stage_ex.zero with 
       pc; junk; 
       mi = {
-        Mo_instr.addr = pc;
+        Mo_instr.addr = pc; (* XXX fet.mi.addr and fet.pc are the same thing *)
         wdata = zero xlen;
         (*req = vdd;*)
         req = vdd;

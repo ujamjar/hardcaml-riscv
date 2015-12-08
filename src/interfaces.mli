@@ -26,6 +26,7 @@ module type S = sig
   module O : interface
     (mi : Mo_instr)
     (md : Mo_data)
+    junk
   end
 
   module Class : interface

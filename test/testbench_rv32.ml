@@ -29,6 +29,7 @@ module Mem = Utils.Mem(D)
 
 (* configure waveform display *)
 let wave_cfg = 
+  let open Waveterm_waves in
   let decode_insn b = 
     if B.(to_int (b ==:. 0) = 1) then "---"
     else if B.(to_int (msb b)) = 1 then "TRAP"
@@ -39,17 +40,18 @@ let wave_cfg =
   let f = function (n,b) -> 
     match n with
     | "dec_insn" | "fet_insn" | "alu_insn" | "mem_insn" | "com_insn" ->
-      n, Waveterm_waves.F(decode_insn)
+      n, F(decode_insn)
     | _ -> 
-      if b=1 then n, Waveterm_waves.B
-      else n, Waveterm_waves.H
+      if b=1 then n, B
+      else n, H
   in
   Some( 
     [f ("clk",1); f ("clr",1)] @
     Rv.Ifs.I.(to_list @@ map f t) @ 
     Rv_o.(to_list @@ map f t) @
+    [ ("pipe_en",B); ("pipe_stall",B) ] @
     Rv.Ifs.Stages.(to_list @@ map f t) @
-    (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), Waveterm_waves.H)) )
+    (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), H)) )
 
 let init_waves sim = 
     if waves then 
