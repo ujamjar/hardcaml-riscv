@@ -42,13 +42,13 @@ module type S = sig
   module Class_ex : module type of Interface_ex.Make(Class) 
 
   module Stage : interface
+    insn pc instr 
     ra1 ra2 rad
+    rd1 rd2 rdd 
+    imm is_imm 
+    branch rwe
     ra1_zero ra2_zero rad_zero
-    rd1 rd2 rdd is_imm imm
-    pc 
-    instr insn (iclass : Class)
-    branch
-    rwe
+    (iclass : Class)
     (mi : Mo_instr)
     (md : Mo_data)
     junk

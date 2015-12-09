@@ -90,6 +90,7 @@ module Make(X : HardCaml.Interface.S) = struct
   end
 
   let mux s l = X.map (mux s) (L.of_list l)
+  let mux2 s h l = mux s [l;h]
   let concat l = X.map concat (L.of_list l)
   let select h l d = X.map (fun d -> select d h l) d
   let msb = X.map msb 

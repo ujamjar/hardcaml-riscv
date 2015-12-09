@@ -187,31 +187,19 @@ module Make(Ifs : Interfaces.S) = struct
     let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
     let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
-    (* (async) regiser file - XXX not really convinced this should be here *)
-    let module Rf = Rf.Make(Ifs) in
-    let rfo = 
-      Rf.f 
-        Rf.I.({ 
-          clk=inp.Ifs.I.clk; clr=inp.Ifs.I.clr;
-          (* write from commit stage *)
-          wr=pipe.rwe; wa=pipe.rad; d=pipe.rdd (* XXX *); 
-          (* read *)
-          ra1; ra2; 
-        })
-    in
-    let rd1, rdm = rfo.Rf.O.q1, rfo.Rf.O.q2 in
-    let rd2 = mux2 
-      (c.opi |: c.lui |: c.auipc |: c.ld |: c.st |: c.jal |: c.jalr) 
-      imm rdm 
-    in 
+    (* XXX double check this for read/write in mem stage *)
 
-    (* rd2 uses immediate encoding *)
-    let is_imm = (c.opi |: c.lui |: c.auipc |: c.ld |: c.st |: c.jal |: c.jalr) in
+    (* is rd2 used in pipeline *)
+    let is_pipe_imm = c.opi |: c.lui |: c.auipc |: c.jal |: c.jalr in
+    (* rd2 uses immediate encoding in alu (but may be used in mem stage) *)
+    let is_imm = is_pipe_imm |: c.ld |: c.st in
+    (* ra2 is unused so mark as zero *)
+    let ra2_zero = ra2_zero &: (~: is_pipe_imm) in
 
     { pipe with 
       ra1; ra2; rad;
       ra1_zero; ra2_zero; rad_zero;
-      rd1; rd2; is_imm; imm;
+      is_imm; imm;
       instr; insn=d.insn; iclass=d.iclass; 
     }
 

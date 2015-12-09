@@ -70,6 +70,7 @@ module Make(X : HardCaml.Interface.S) : sig
   end
 
   val mux : Comb.t -> ifs list -> ifs
+  val mux2 : Comb.t -> ifs -> ifs -> ifs
   val concat : ifs list -> ifs
   val select : int -> int -> ifs -> ifs
   val msb : ifs -> ifs
