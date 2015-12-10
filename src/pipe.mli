@@ -6,9 +6,11 @@ module Make(C : Config.S) : sig
 
   type stage = Comb.t Ifs.Stage.t
   type stages = Comb.t Ifs.Stages.t
-  type f_stage = inp:Comb.t Ifs.I.t -> comb:stages -> pipe:stages -> stage
-  type 'a f_output = stages -> 'a
 
+  type 'a f = inp:Comb.t Ifs.I.t -> comb:stages -> pipe:stages -> 'a
+  type f_stage = stage f
+  type 'a f_output = ctrl:Comb.t Ifs.Ctrl.t -> 'a f
+    
   module type Stage = sig
     val name : string
     val f : f_stage
@@ -25,11 +27,11 @@ module Make(C : Config.S) : sig
   end
 
   module Output : sig
-    val f : stages -> Comb.t Ifs.O.t
+    val o : Comb.t Ifs.O.t f_output
   end
 
   module Output_debug : sig
-    val f : stages -> Comb.t Ifs.O_debug.t
+    val o : Comb.t Ifs.O_debug.t f_output
   end
 
 end

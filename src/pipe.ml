@@ -10,8 +10,10 @@ module Make(C : Config.S) = struct
 
   type stage = Comb.t Stage.t
   type stages = Comb.t Stages.t
-  type f_stage = inp:Comb.t I.t -> comb:stages -> pipe:stages -> stage
-  type 'a f_output = stages -> 'a
+
+  type 'a f = inp:Comb.t Ifs.I.t -> comb:stages -> pipe:stages -> 'a
+  type f_stage = stage f
+  type 'a f_output = ctrl:Comb.t Ifs.Ctrl.t -> 'a f
   
   module type Stage = sig
     val name : string
@@ -30,7 +32,9 @@ module Make(C : Config.S) = struct
         ra1_zero = vdd; ra2_zero = vdd; rad_zero = vdd;
         insn = def_insn; instr = def_instr;
         iclass = def_iclass;
-        mi = Mo_instr.({ (map zero' t) with addr = consti C.xlen C.start_addr; });
+        mi = Mo_instr.({ (map zero' t) with 
+          addr = consti C.xlen C.start_addr; 
+          req = vdd; rw = vdd });
     })
 
   let bubble sel stage = 
@@ -56,25 +60,25 @@ module Make(C : Config.S) = struct
   module Build = struct
 
     (* 5 stage pipeline controller *)
-    module Ctrl = interface
-      en[5] bubble[5]
-    end
-
     let p5_ctrl ~inp ~pipe ~comb_dec = 
       let open Stage in
       let open Stages in
       let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
       (* compute pipeline bubble for register file read hazard *)
+      let ra1_nz = (~: (comb_dec.ra1_zero)) -- "ra1_nz" in
+      let ra1_alu_rad = (comb_dec.ra1 ==: pipe.dec.rad) -- "ra1_alu_rad" in
+      let ra1_mem_rad = (comb_dec.ra1 ==: pipe.alu.rad) -- "ra1_mem_rad" in
+      let ra1_com_rad = (comb_dec.ra1 ==: pipe.mem.rad) -- "ra1_com_rad" in
+      let ra2_nz = (~: (comb_dec.ra2_zero)) -- "ra2_nz" in
+      let ra2_alu_rad = (comb_dec.ra2 ==: pipe.dec.rad) -- "ra1_alu_rad" in
+      let ra2_mem_rad = (comb_dec.ra2 ==: pipe.alu.rad) -- "ra1_mem_rad" in
+      let ra2_com_rad = (comb_dec.ra2 ==: pipe.mem.rad) -- "ra1_com_rad" in
+
       let bubble = 
-        ((~: (comb_dec.ra1_zero)) &: 
-            ((comb_dec.ra1 ==: pipe.dec.rad) |: 
-             (comb_dec.ra1 ==: pipe.alu.rad) |: 
-             (comb_dec.ra1 ==: pipe.mem.rad))) |:
-        ((~: (comb_dec.ra2_zero)) &: 
-            ((comb_dec.ra2 ==: pipe.dec.rad) |: 
-             (comb_dec.ra2 ==: pipe.alu.rad) |: 
-             (comb_dec.ra2 ==: pipe.mem.rad)))
+        (ra1_nz &: (ra1_alu_rad |: ra1_mem_rad |: ra1_com_rad)) |:
+        (ra2_nz &: (ra2_alu_rad |: ra2_mem_rad |: ra2_com_rad)) 
       in
+
       let startup_hack = Seq.reg ~e:vdd ~cv:vdd gnd in (* high 1 cycle after clear *)
       let en = 
         mux2 startup_hack (constb "00001")
@@ -103,7 +107,8 @@ module Make(C : Config.S) = struct
       let open Stages in
       { func with com = { func.com with junk=
         pipe.com.instr.[0:0] |:
-        pipe.com.insn.[0:0]
+        pipe.com.insn.[0:0] |:
+        pipe.com.ra1_zero |: pipe.com.ra2_zero
       } } 
 
     (*let pipeline_bubble ~ctrl ~func = 
@@ -162,23 +167,23 @@ module Make(C : Config.S) = struct
       (* wire it all together *)
       let () = pipeline_wiring ~inp ~pen ~comb ~pipe ~func in
 
-      f_output pipe
+      f_output ~ctrl ~inp ~comb ~pipe
 
   end
 
   module Output = struct
-    let f pipe = 
+    let o ~ctrl ~inp ~comb ~pipe = 
       O.({
         junk=pipe.Stages.com.Stage.junk;
-        mi = pipe.Stages.fet.Stage.mi;
-        md = pipe.Stages.mem.Stage.md;
+        mi = Fetch.m ~ctrl ~inp ~comb ~pipe;
+        md = Mem.m ~ctrl ~inp ~comb ~pipe;
       })
   end
 
   module Output_debug = struct
-    let f pipe = 
+    let o ~ctrl ~inp ~comb ~pipe = 
       O_debug.({
-        o = Output.f pipe;
+        o = Output.o ~ctrl ~inp ~comb ~pipe;
         dbg = pipe;
       })
   end

@@ -56,4 +56,10 @@ module Make(Ifs : Interfaces.S) = struct
       })
     }
 
+  let m ~ctrl ~inp ~comb ~pipe = 
+    let open Stage in
+    let open Stages in
+    pipe.mem.md (* XXX for now ... *)
+
 end
+

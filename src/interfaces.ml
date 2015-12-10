@@ -64,6 +64,10 @@ module type S = sig
   end
   module Stages_ex : module type of Interface_ex.Make(Stages) 
   
+  module Ctrl : interface
+    en bubble
+  end
+
   module O_debug : interface
     (o : O)
     (dbg : Stages)
@@ -176,6 +180,10 @@ module Make(C : Config.S) = struct
     (com : Stage_com)
   end
   module Stages_ex = Interface_ex.Make(Stages)
+
+  module Ctrl = interface
+    en[5] bubble[5]
+  end
 
   module O_debug = interface
     (o : O)

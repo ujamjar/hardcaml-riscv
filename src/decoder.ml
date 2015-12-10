@@ -187,6 +187,8 @@ module Make(Ifs : Interfaces.S) = struct
     let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
     let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
+    let rwe = ~: (c.trap |: c.bra |: c.st |: c.fen |: c.rdc) in
+
     (* XXX double check this for read/write in mem stage *)
 
     (* is rd2 used in pipeline *)
@@ -194,12 +196,13 @@ module Make(Ifs : Interfaces.S) = struct
     (* rd2 uses immediate encoding in alu (but may be used in mem stage) *)
     let is_imm = is_pipe_imm |: c.ld |: c.st in
     (* ra2 is unused so mark as zero *)
-    let ra2_zero = ra2_zero &: (~: is_pipe_imm) in
+    let ra2_zero = ra2_zero |: is_pipe_imm in
 
     { pipe with 
       ra1; ra2; rad;
       ra1_zero; ra2_zero; rad_zero;
-      is_imm; imm;
+      rwe;
+      is_imm; imm; 
       instr; insn=d.insn; iclass=d.iclass; 
     }
 

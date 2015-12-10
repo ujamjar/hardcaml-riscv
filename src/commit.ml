@@ -13,9 +13,8 @@ module Make(Ifs : Interfaces.S) = struct
     let i = p.iclass in
     let branch = i.jal |: i.jalr |: (i.bra &: p.branch) in
     let rdd = mux2 (i.jal |: i.jalr) (p.pc +:. 4) p.rdd in
-    let rwe = ~: (i.trap |: i.bra |: i.st |: i.fen |: i.rdc) in
     let pc = p.rdd in (* jal + jalr *)
 
-    { pipe.mem with rwe; branch; rdd; pc; }
+    { pipe.mem with branch; rdd; pc; }
 
 end

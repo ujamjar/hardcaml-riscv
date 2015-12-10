@@ -82,7 +82,7 @@ let show_waves = function
 (* test data path of 5 stage pipeline *)
 let testbench_5 () = 
 
-  let pipeline inp = Rv.Build.p5 ~inp ~f_output:Rv_output.f in
+  let pipeline inp = Rv.Build.p5 ~inp ~f_output:Rv_output.o in
 
   let open HardCaml.Api in
   let module G = HardCaml.Interface.Gen(B)(Rv.Ifs.I)(Rv_o) in
@@ -111,6 +111,7 @@ let testbench_5 () =
     memory.(4) <- addi ~rd:1 ~rs1:0 ~imm:10;
     memory.(5) <- addi ~rd:2 ~rs1:0 ~imm:20;
     memory.(6) <- add ~rd:3 ~rs1:1 ~rs2:2;
+    memory.(7) <- sub ~rd:4 ~rs1:2 ~rs2:1;
   in
 
   (* todo; fix me *)
@@ -135,8 +136,10 @@ let testbench_5 () =
     let open Mo_instr in
     (*let o = o.o in*)
     let o = o.mi in
-    (* note; ignoring req signal, which is not properly generated here *)
-    i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
+    (* XXX memif must hold data *)
+    if B.to_int !(o.req) = 1 then begin
+      i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
+    end
   in
 
   let cycle () = 

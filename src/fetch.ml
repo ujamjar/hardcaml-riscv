@@ -13,7 +13,7 @@ module Make(Ifs : Interfaces.S) = struct
     { Stage_ex.zero with 
       pc; junk; 
       mi = {
-        Mo_instr.addr = pc; (* XXX fet.mi.addr and fet.pc are the same thing *)
+        Mo_instr.addr = pc; 
         wdata = zero xlen;
         (*req = vdd;*)
         req = vdd;
@@ -21,6 +21,13 @@ module Make(Ifs : Interfaces.S) = struct
         wmask = zero (xlen / 8); 
       } 
     } 
+
+  let m ~ctrl ~inp ~comb ~pipe = 
+    let open Stage in
+    let open Stages in
+    { pipe.fet.mi with
+      Mo_instr.req = ctrl.Ctrl.en.[0:0];
+    }
 
 end
 

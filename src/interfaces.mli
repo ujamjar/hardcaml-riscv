@@ -64,6 +64,10 @@ module type S = sig
   end
   module Stages_ex : module type of Interface_ex.Make(Stages) 
   
+  module Ctrl : interface
+    en bubble
+  end
+
   module O_debug : interface
     (o : O)
     (dbg : Stages)
