@@ -63,6 +63,7 @@ module Make(C : Config.S) = struct
     let p5_ctrl ~inp ~pipe ~comb_dec = 
       let open Stage in
       let open Stages in
+      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
       (* compute pipeline bubble for register file read hazard *)
       let bubble = 
         ((~: (comb_dec.ra1_zero)) &: 
@@ -74,8 +75,13 @@ module Make(C : Config.S) = struct
              (comb_dec.ra2 ==: pipe.alu.rad) |: 
              (comb_dec.ra2 ==: pipe.mem.rad)))
       in
-      let en = mux2 bubble (constb "11110") (constb "11111") -- "pipe_en" in
-      let bubble = mux2 bubble (constb "00010") (constb "00000") -- "pipe_bubble" in
+      let startup_hack = Seq.reg ~e:vdd ~cv:vdd gnd in (* high 1 cycle after clear *)
+      let en = 
+        mux2 startup_hack (constb "00001")
+          (mux2 bubble (constb "11110") (constb "11111")) 
+      in
+      let bubble = mux2 bubble (constb "00010") (constb "00000") in
+      let en, bubble = en -- "pipe_en", bubble --"pipe_bubble" in
       Ctrl.{ en; bubble }
 
     let async_rf ~inp ~func ~comb = 
@@ -131,7 +137,7 @@ module Make(C : Config.S) = struct
       let open Stages in
       
       (* pipeline stages wires *)
-      let comb, pipe = Stages_ex.(wire(), wiren()) in
+      let comb, pipe = Stages_ex.(wiren(), wire()) in
 
       (* pipeline stages *)
       let func = {

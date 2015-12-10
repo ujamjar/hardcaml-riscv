@@ -49,7 +49,7 @@ module type S = sig
     branch rwe
     ra1_zero ra2_zero rad_zero
     (iclass : Class)
-    (mi : Mo_instr)
+    (mi : Mo_instr)  (* XXX extract these and drive from 'fet' / 'mem' stages *)
     (md : Mo_data)
     junk
   end

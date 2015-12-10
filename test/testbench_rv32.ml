@@ -135,6 +135,7 @@ let testbench_5 () =
     let open Mo_instr in
     (*let o = o.o in*)
     let o = o.mi in
+    (* note; ignoring req signal, which is not properly generated here *)
     i.mi.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
   in
 
