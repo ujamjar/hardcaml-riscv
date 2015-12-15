@@ -1,4 +1,4 @@
-# Altera board framework
+# Altera DE0-Nano test design
 
 ## Overview
 
@@ -37,9 +37,18 @@ is used via its TCL console to generate avalon transfers.
 
 `signaltap` is like an onchip oscilloscope.  It also uses
 JTAG for communications and the example project uses it
-to ensure we can have both the vjtag_mm component and
-signaltap in the same design.  It currently monitors
-the vjtag_mm avalon bus signals.
+to ensure we can have both the `vjtag_mm` component and
+`signaltap` in the same design.  It currently monitors
+the `vjtag_mm` avalon bus signals.
+
+## de0nano_test.{ml,v}
+
+Instantiates the toplevel components and wires them up to
+a simple 4 element, 32 bit register file.  The reg file
+can be read/written by the vjtag avalon bus.
+
+The bottom 8 bits of register 3 (at address 12) are wired
+up to the 8 on board LEDs which can thus be turned on/off.
 
 # Usage
 
@@ -57,8 +66,8 @@ $ system-console --cli
 Perform transactions
 
 ```
-% master_write_32 $jtag 0 0x1234
-% master_read_32 $jtag 0 1      
+% master_write_32 $jtag 12 0x1234
+% master_read_32 $jtag 12 1      
 0x00001234
 ```
 
@@ -70,11 +79,12 @@ Close JTAG connection
 
 ## Using signaltap
 
-To work with signaltap you must also program the FPGA device using
-signaltap.  Once programmed you can run `system-console` 
-and wait on triggers in signaltap as normal.
+To work with `signaltap` you must also program the FPGA device using
+`signaltap`.  Once programmed you can run `system-console` 
+and wait on triggers in `signaltap` as normal.
 
 ## Without signaltap
 
-You can use the general Altera FPGA prgramming tool.
+You can use the general Altera FPGA prgramming tool (or program
+the design into flash).
 
