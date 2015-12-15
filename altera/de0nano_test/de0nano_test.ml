@@ -8,7 +8,7 @@ let clock_50 = input "CLOCK_50" 1
 
 (* instantiate the pll *)
 let pllo = Pll.(pll50_inst I.{ inclk0=clock_50 })
-let reg = reg { r_none with Signal.Types.reg_clock=pllo.c0 }
+let reg = reg { r_none with Signal.Types.reg_clock=pllo.Pll.O.c0 }
 
 (* instantiate the vjtag_mm bridge *)
 let vji = Vjtag_mm.I.(map (fun (n,b) -> wire b) t)
@@ -16,12 +16,12 @@ let vjo = Vjtag_mm.vjtag_mm_inst vji
 
 (* create register bank *)
 let regs = 
-  Array.init 4 (fun i ->
-    let open Vjtag_mm.O in
-    let en = vjo.vjtag_mm_address ==:. (i*4) in
-    concat @@ List.rev @@ Array.to_list @@ 
-    Array.init 4 (fun j ->
-      reg (en &: vjo.vjtag_mm_byteenable.[j:j]) vjo.vjtag_mm_writedata.[j*8+7:j*8]))
+  let open Vjtag_mm.O in
+  let addr = Array.init 4 (fun i -> vjo.vjtag_mm_address ==:. (i*4)) in
+  let en i j = vjo.vjtag_mm_write &: addr.(i) &: vjo.vjtag_mm_byteenable.[j:j] in
+  let regb i j = reg (en i j) vjo.vjtag_mm_writedata.[j*8+7:j*8] in
+  let cat r = concat @@ List.rev @@ Array.to_list r in
+  Array.init 4 (fun i -> cat @@ Array.init 4 (fun j -> regb i j)) 
 
 (* wiring *)
 let () = begin

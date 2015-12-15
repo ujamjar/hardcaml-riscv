@@ -1,0 +1,10 @@
+db/
+output_files/
+incremental_db/
+*.bak
+*.qws
+*.v.*
+*.qdf
+*.ipinfo
+*.log
+*.sopcinfo

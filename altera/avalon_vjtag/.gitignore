@@ -1,0 +1,7 @@
+.qsys_edit/
+vjtag_mm/
+*.bsf
+*.cmp
+*.html
+*.sopcinfo
+*.rpt
