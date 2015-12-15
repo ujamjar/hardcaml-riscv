@@ -1,0 +1,6 @@
+#camlp4o;;
+#directory "_build/src";;
+#require "hardcaml,hardcaml.syntax,riscv";;
+#load "HardCamlRiscV.cma";;
+
+
