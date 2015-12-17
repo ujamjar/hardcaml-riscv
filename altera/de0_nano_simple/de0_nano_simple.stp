@@ -1,4 +1,4 @@
-<session jtag_chain="USB-Blaster [3-1]" jtag_device="@1: EP3C25/EP4CE22 (0x020F30DD)" sof_file="output_files/de0nano_test.sof">
+<session jtag_chain="USB-Blaster [3-1]" jtag_device="@1: EP3C25/EP4CE22 (0x020F30DD)" sof_file="output_files/de0_nano_simple.sof">
   <display_tree gui_logging_enabled="0">
     <display_branch instance="auto_signaltap_0" log="USE_GLOBAL_TEMP" signal_set="USE_GLOBAL_TEMP" trigger="USE_GLOBAL_TEMP"/>
   </display_tree>
@@ -626,7 +626,7 @@
   <mnemonics/>
   <static_plugin_mnemonics/>
   <embedded_sof_files>
-    <embedded_sof_file id_crc_pairs="|30006E00,FDCE0C66" name="de0nano_test.sof" size="709826">eJzsXQlgDccbn923edlEyCaC0GISKaFKQh1tlUkEcb8odZR6IRR11VVVxyRS
+    <embedded_sof_file id_crc_pairs="|30006E00,FDCE0C66" name="de0_nano_simple.sof" size="709826">eJzsXQlgDccbn923edlEyCaC0GISKaFKQh1tlUkEcb8odZR6IRR11VVVxyRS
 4qrQKxSNo6heWnrQ0udoq3opparVpqiq1p9W3dR/Zva9l5fk5e3uy+Yd+n6t
 zb6d2W+OneM333wz80D39oAilPzjQDdyTZuYPm7CxPGwY0fYtMldg4ZPgG3H
 jBo7fOSQcfDBIePGDx8zGiY2bZTYKAEmTxw+MgMmNm8CExMaN2nauElCYlP4

@@ -41,14 +41,16 @@ to ensure we can have both the `vjtag_mm` component and
 `signaltap` in the same design.  It currently monitors
 the `vjtag_mm` avalon bus signals.
 
-## de0nano_test.{ml,v}
+## de0_nano_simple.{ml,v}
 
-Instantiates the toplevel components and wires them up to
-a simple 4 element, 32 bit register file.  The reg file
+Creates a simple 4 element, 32 bit register file.  The reg file
 can be read/written by the vjtag avalon bus.
 
 The bottom 8 bits of register 3 (at address 12) are wired
 up to the 8 on board LEDs which can thus be turned on/off.
+
+Uses the De0_nano framework code in HardCamlAltera to
+create the toplevel components.
 
 # Usage
 

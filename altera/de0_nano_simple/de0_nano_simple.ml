@@ -32,8 +32,8 @@ let f i =
   }
 
 let () = 
-  let file = open_out "de0nano_test.v" in
-  De0_nano.generate_simple_vjtag_mm (output_string file) "de0nano_test" "reg_bank" f;
+  let file = open_out "de0_nano_simple.v" in
+  De0_nano.generate_simple_vjtag_mm (output_string file) "de0_nano_simple" "reg_bank" f;
   close_out file
 
 

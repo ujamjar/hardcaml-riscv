@@ -366,7 +366,7 @@ module reg_bank (
     assign readdatavalid = vdd;
 
 endmodule
-module de0nano_test
+module de0_nano_simple
 (
   input [1:0] GPIO_1_IN,
   input [1:0] GPIO_0_IN,
