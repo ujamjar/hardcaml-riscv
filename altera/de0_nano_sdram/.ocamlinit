@@ -1,0 +1,4 @@
+#camlp4o;;
+#require "hardcaml,hardcaml.syntax";;
+#directory "../../_build/altera/src";;
+#load "HardCamlAltera.cma";;

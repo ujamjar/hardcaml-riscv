@@ -1,8 +1,18 @@
 module O : interface
-    DRAM_ADDR DRAM_BA DRAM_CAS_N 
-    DRAM_CKE DRAM_CLK DRAM_CS_N
-    DRAM_DQM DRAM_RAS_N DRAM_WE_N
+    addr ba cas_n 
+    cke cs_n
+    dqm ras_n we_n
 end
 
-module T : interface DRAM_DQ end
+module T : interface dq end
+
+module Core : sig
+  module I : interface 
+    clk_clk clk_reset_reset_n sdram_reset_reset_n 
+    mm_chipselect
+    (mm : Avalon.Master) 
+  end
+  module O : interface (mm : Avalon.Slave) (sdram : O) end
+  module T : HardCaml.Interface.S with type 'a t = 'a T.t
+end
 

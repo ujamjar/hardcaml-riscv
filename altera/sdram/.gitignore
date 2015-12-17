@@ -1,0 +1,7 @@
+.qsys_edit/
+sdram/
+*.bsf
+*.cmp
+*.html
+*.sopcinfo
+*.rpt
