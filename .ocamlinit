@@ -1,6 +1,7 @@
 #camlp4o;;
 #directory "_build/src";;
+#directory "_build/altera/src";;
 #require "hardcaml,hardcaml.syntax,riscv";;
 #load "HardCamlRiscV.cma";;
-
+#load "HardCamlAltera.cma";;
 

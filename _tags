@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: b8f317cdae7c7ccf28616aa5dc23960a)
+# DO NOT EDIT (digest: 9aed822881c9dc9a03e31011abb4db41)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -38,8 +38,11 @@ true: annot, bin_annot
 <src/*.ml{,i,y}>: pkg_riscv
 # Library HardCamlAltera
 "altera/src/HardCamlAltera.cmxs": use_HardCamlAltera
+"altera/src/avalon.cmx": for-pack(HardCamlAltera)
 "altera/src/pll.cmx": for-pack(HardCamlAltera)
 "altera/src/vjtag_mm.cmx": for-pack(HardCamlAltera)
+"altera/src/sdram.cmx": for-pack(HardCamlAltera)
+"altera/src/de0_nano.cmx": for-pack(HardCamlAltera)
 <altera/src/*.ml{,i,y}>: pkg_hardcaml
 <altera/src/*.ml{,i,y}>: pkg_hardcaml.syntax
 # Executable tesbench_picorv32

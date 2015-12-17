@@ -25,7 +25,7 @@ Library HardCamlAltera
   Path:          altera/src
   Findlibname:   hardcaml-altera
   Pack:          true
-  Modules:       Pll,Vjtag_mm
+  Modules:       Avalon,Pll,Vjtag_mm,Sdram,De0_nano
   BuildDepends:  hardcaml,hardcaml.syntax
   XMETARequires: hardcaml
 

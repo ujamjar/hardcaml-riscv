@@ -4,46 +4,36 @@ open Signal.Seq
 
 open HardCamlAltera
 
-let clock_50 = input "CLOCK_50" 1
+let f i = 
+  let open De0_nano.Simple.I in
+  let reg = reg { r_none with 
+    Signal.Types.reg_clock = i.clk;
+    reg_clear = ~: (i.rst);
+  } in
 
-(* instantiate the pll *)
-let pllo = Pll.(pll50_inst I.{ inclk0=clock_50 })
-let reg = reg { r_none with Signal.Types.reg_clock=pllo.Pll.O.c0 }
-
-(* instantiate the vjtag_mm bridge *)
-let vji = Vjtag_mm.I.(map (fun (n,b) -> wire b) t)
-let vjo = Vjtag_mm.vjtag_mm_inst vji
-
-(* create register bank *)
-let regs = 
-  let open Vjtag_mm.O in
-  let addr = Array.init 4 (fun i -> vjo.vjtag_mm_address ==:. (i*4)) in
-  let en i j = vjo.vjtag_mm_write &: addr.(i) &: vjo.vjtag_mm_byteenable.[j:j] in
-  let regb i j = reg (en i j) vjo.vjtag_mm_writedata.[j*8+7:j*8] in
+  (* register bank *)
+  let s = i.master in
+  let open Avalon.Master in
+  let addr = Array.init 4 (fun i -> s.address ==:. (i*4)) in
+  let en i j = s.write &: addr.(i) &: s.byteenable.[j:j] in
+  let regb i j = reg (en i j) s.writedata.[j*8+7:j*8] in
   let cat r = concat @@ List.rev @@ Array.to_list r in
-  Array.init 4 (fun i -> cat @@ Array.init 4 (fun j -> regb i j)) 
+  let regs = Array.init 4 (fun i -> cat @@ Array.init 4 (fun j -> regb i j)) in
 
-(* wiring *)
-let () = begin
-  let open Vjtag_mm.I in
-  let open Vjtag_mm.O in
-  let open Pll.O in
-  vji.clk_clk <== pllo.c0;
-  vji.reset_reset_n <== pllo.locked;
-  vji.vjtag_mm_waitrequest <== gnd;
-  vji.vjtag_mm_readdatavalid <== vdd;
-  vji.vjtag_mm_readdata <== mux vjo.vjtag_mm_address.[31:2] 
-    (Array.to_list regs @ [consthu 32 "deadbeef"]);
-end
+  let xxx = consthu 32 "deadbeef" in
 
-(* LED *)
-let led = output "LED" regs.(3).[7:0]
+  De0_nano.Simple.O.{
+    leds = regs.(3).[7:0];
+    slave = {
+      Avalon.Slave.waitrequest = gnd;
+      readdatavalid = vdd;
+      readdata = mux2 s.read (mux s.address.[31:2] (Array.to_list regs @ [xxx])) xxx;
+    };
+  }
 
-(* write circuit *)
-let circ = Circuit.make "de0nano_test" [ led ]
 let () = 
-  let f = open_out "de0nano_test.v" in
-  Rtl.Verilog.write (output_string f) circ;
-  close_out f
+  let file = open_out "de0nano_test.v" in
+  De0_nano.generate_simple_vjtag_mm (output_string file) "de0nano_test" "reg_bank" f;
+  close_out file
 
 
