@@ -9,10 +9,7 @@ module T = interface dq[16] end
 module Core = struct
 
   module P = struct 
-    let suffix = function
-      | "byteenable" | "read" | "write" -> "_n"
-      | _ -> ""
-    let f s = "mm_" ^ s ^ suffix s
+    let f s = "mm_" ^ s 
   end
   module IAM = Util.Name_map(P)(Avalon.Master)
   module OAS = Util.Name_map(P)(Avalon.Slave)
@@ -22,8 +19,8 @@ module Core = struct
   module TD = Util.Name_map(Q)(T)
 
   module I = interface
-    clk_clk[1] clk_reset_reset_n[1] sdram_reset_reset_n[1]
-    mm_chipselect[1]
+    clk_clk[1] reset_reset_n[1] 
+    mm_burstcount[1] mm_debugaccess[1]
     (mm : IAM)
   end
   module O = interface

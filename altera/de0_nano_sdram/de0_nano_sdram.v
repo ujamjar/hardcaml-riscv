@@ -162,12 +162,9 @@ module de0_nano_sdram
   wire _81;
   wire [31:0] _82;
   wire [7:0] _83;
-  wire [3:0] _85;
+  wire [33:0] _85;
+  wire [12:0] _86;
   wire _87;
-  wire _89;
-  wire [33:0] _91;
-  wire [12:0] _92;
-  wire _93;
   assign _1 = 1'b1;
   assign _2 = 1'b0;
   assign _43 = _80;
@@ -175,17 +172,18 @@ module de0_nano_sdram
   assign _45 = _82;
   assign _46 = _39;
   assign _47 = _41;
-  assign _54 = _85;
+  assign _54 = _75;
   assign _55 = _76;
-  assign _56 = _87;
-  assign _57 = _89;
+  assign _56 = _77;
+  assign _57 = _78;
   assign _58 = _79;
-  assign _60 = _39;
+  assign _59 = _2;
+  assign _60 = _1;
   assign _61 = _39;
   assign _62 = _41;
-  assign _91 = 34'bzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz;
-  assign _92 = 13'bzzzzzzzzzzzzz;
-  assign _93 = 1'bz;
+  assign _85 = 34'bzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz;
+  assign _86 = 13'bzzzzzzzzzzzzz;
+  assign _87 = 1'bz;
   assign ADC_SCLK = _2;
   assign ADC_SADDR = _2;
   assign ADC_CS_N = _1;
@@ -204,10 +202,10 @@ module de0_nano_sdram
   assign DRAM_ADDR = _70;
   assign DRAM_CLK = _40;
   assign LED = _83;
-  assign GPIO_1 = _91;
-  assign GPIO_0 = _91;
-  assign GPIO_2 = _92;
-  assign I2C_SDAT = _93;
+  assign GPIO_1 = _85;
+  assign GPIO_0 = _85;
+  assign GPIO_2 = _86;
+  assign I2C_SDAT = _87;
   pll50 _42
   (
     .inclk0(CLOCK_50),
@@ -231,14 +229,14 @@ module de0_nano_sdram
   sdram _74
   (
     .clk_clk(_62),
-    .clk_reset_reset_n(_61),
-    .sdram_reset_reset_n(_60),
-    .mm_chipselect(_59),
+    .reset_reset_n(_61),
+    .mm_burstcount(_60),
+    .mm_debugaccess(_59),
     .mm_address(_58),
-    .mm_read_n(_57),
-    .mm_write_n(_56),
+    .mm_read(_57),
+    .mm_write(_56),
     .mm_writedata(_55),
-    .mm_byteenable_n(_54),
+    .mm_byteenable(_54),
     .mm_readdata(_73),
     .mm_waitrequest(_72),
     .mm_readdatavalid(_71),
@@ -273,29 +271,5 @@ module de0_nano_sdram
     .sdram_write(_77),
     .sdram_writedata(_76),
     .sdram_byteenable(_75)
-  );
-  hardcaml_lib_not
-  #(
-    .b(4)
-  ) _86
-  (
-    .i(_75),
-    .o(_85)
-  );
-  hardcaml_lib_not
-  #(
-    .b(1)
-  ) _88
-  (
-    .i(_77),
-    .o(_87)
-  );
-  hardcaml_lib_not
-  #(
-    .b(1)
-  ) _90
-  (
-    .i(_78),
-    .o(_89)
   );
 endmodule

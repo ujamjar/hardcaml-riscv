@@ -262,15 +262,11 @@ let make_sdram_vjtag_mm top_name core_name =
   (* connect to sdram controller *)
   let () = 
     sdi.Sdram.Core.I.clk_clk <== clk;
-    sdi.Sdram.Core.I.clk_reset_reset_n <== rst_n;
-    sdi.Sdram.Core.I.sdram_reset_reset_n <== rst_n;
+    sdi.Sdram.Core.I.reset_reset_n <== rst_n;
+    sdi.Sdram.Core.I.mm_burstcount <== vdd;
+    sdi.Sdram.Core.I.mm_debugaccess <== gnd;
     o.Top.O.dram_clk <== sdram_clk;
-    ignore @@ Avalon.Master.(map2 (<==) sdi.Sdram.Core.I.mm 
-      { fo.Sdram_mm.O.sdram_master with
-        byteenable = ~: (fo.Sdram_mm.O.sdram_master.byteenable);
-        read = ~: (fo.Sdram_mm.O.sdram_master.read);
-        write = ~: (fo.Sdram_mm.O.sdram_master.write);
-      });
+    ignore @@ Avalon.Master.(map2 (<==) sdi.Sdram.Core.I.mm fo.Sdram_mm.O.sdram_master);
     ignore @@ Sdram.O.(map2 (<==) o.Top.O.sdram sdo.Sdram.Core.O.sdram);
   in
 

@@ -8,8 +8,8 @@ module T : interface dq end
 
 module Core : sig
   module I : interface 
-    clk_clk clk_reset_reset_n sdram_reset_reset_n 
-    mm_chipselect
+    clk_clk reset_reset_n 
+    mm_burstcount mm_debugaccess
     (mm : Avalon.Master) 
   end
   module O : interface (mm : Avalon.Slave) (sdram : O) end
