@@ -2,7 +2,7 @@ module Make(Ifs : Interfaces.S) : sig
   
   open HardCaml.Signal.Comb
 
-  val alu : t Ifs.Stage.t -> t Ifs.Stage.t
+  val alu : dec:t Ifs.Stage.t -> t Ifs.Stage.t
 
   val name : string
 
@@ -12,3 +12,4 @@ module Make(Ifs : Interfaces.S) : sig
     t Ifs.Stage.t
 
 end
+

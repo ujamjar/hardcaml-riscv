@@ -23,6 +23,7 @@ module Make(C : Config.S) : sig
   module Commit : Stage
 
   module Build : sig
+    val p1 : inp:Comb.t Ifs.I.t -> f_output:'a f_output -> 'a
     val p5 : inp:Comb.t Ifs.I.t -> f_output:'a f_output -> 'a
   end
 

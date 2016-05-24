@@ -5,13 +5,13 @@ module Make(Ifs : Interfaces.S) = struct
 
   let name = "mem"
 
-  let f ~inp ~comb ~pipe = 
+  let mem ~inp ~alu = 
     let open Stage in
     let open Stages in
     let open Class in
     (* note; XXX don't (currently) allow unaligned accesses and
       *           they should cause a trap *)
-    let p = pipe.alu in
+    let p = alu in
     let i = p.iclass in
     let ofs = p.rdd.[1:0] in
     let rdm = p.rd2 in
@@ -55,6 +55,10 @@ module Make(Ifs : Interfaces.S) = struct
         req; rw; wmask; 
       })
     }
+
+  let f ~inp ~comb ~pipe = 
+    let open Stages in
+    mem ~inp ~alu:pipe.alu
 
   let m ~ctrl ~inp ~comb ~pipe = 
     let open Stage in

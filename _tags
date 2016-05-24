@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 7d51b42bf1ecff7d35c1f8b4266d5157)
+# DO NOT EDIT (digest: 21f067f562a528ee3563d9e1369a5e39)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -46,78 +46,33 @@ true: annot, bin_annot
 "altera/src/de0_nano.cmx": for-pack(HardCamlAltera)
 <altera/src/*.ml{,i,y}>: pkg_hardcaml
 <altera/src/*.ml{,i,y}>: pkg_hardcaml.syntax
-# Executable tesbench_picorv32
-<test/testbench_picorv32.{native,byte}>: pkg_deriving
-<test/testbench_picorv32.{native,byte}>: pkg_hardcaml
-<test/testbench_picorv32.{native,byte}>: pkg_hardcaml-llvmsim
-<test/testbench_picorv32.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/testbench_picorv32.{native,byte}>: pkg_hardcaml.syntax
-<test/testbench_picorv32.{native,byte}>: pkg_riscv
-<test/testbench_picorv32.{native,byte}>: use_HardCamlRiscV
-<test/testbench_picorv32.{native,byte}>: custom
-# Executable testbench_rv32
-<test/testbench_rv32.{native,byte}>: pkg_deriving
-<test/testbench_rv32.{native,byte}>: pkg_hardcaml
-<test/testbench_rv32.{native,byte}>: pkg_hardcaml-llvmsim
-<test/testbench_rv32.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/testbench_rv32.{native,byte}>: pkg_hardcaml.syntax
-<test/testbench_rv32.{native,byte}>: pkg_riscv
-<test/testbench_rv32.{native,byte}>: use_HardCamlRiscV
-<test/*.ml{,i,y}>: pkg_hardcaml-llvmsim
-<test/testbench_rv32.{native,byte}>: custom
-# Executable testbench_cache
-<test/testbench_cache.{native,byte}>: pkg_deriving
-<test/testbench_cache.{native,byte}>: pkg_hardcaml
-<test/testbench_cache.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/testbench_cache.{native,byte}>: pkg_hardcaml.syntax
-<test/testbench_cache.{native,byte}>: pkg_riscv
-<test/testbench_cache.{native,byte}>: use_HardCamlRiscV
-<test/testbench_cache.{native,byte}>: custom
-# Executable gen_picorv32
-<test/gen_picorv32.{native,byte}>: pkg_deriving
-<test/gen_picorv32.{native,byte}>: pkg_hardcaml
-<test/gen_picorv32.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/gen_picorv32.{native,byte}>: pkg_hardcaml.syntax
-<test/gen_picorv32.{native,byte}>: pkg_riscv
-<test/gen_picorv32.{native,byte}>: use_HardCamlRiscV
-<test/gen_picorv32.{native,byte}>: custom
-# Executable gen_rv32i
-<test/gen_rv32i.{native,byte}>: pkg_deriving
-<test/gen_rv32i.{native,byte}>: pkg_hardcaml
-<test/gen_rv32i.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/gen_rv32i.{native,byte}>: pkg_hardcaml.syntax
-<test/gen_rv32i.{native,byte}>: pkg_riscv
-<test/gen_rv32i.{native,byte}>: use_HardCamlRiscV
-<test/gen_rv32i.{native,byte}>: custom
-# Executable instr_trap_sat
-<test/sat/instr_trap_sat.{native,byte}>: pkg_deriving
-<test/sat/instr_trap_sat.{native,byte}>: pkg_hardcaml
-<test/sat/instr_trap_sat.{native,byte}>: pkg_hardcaml-bloop
-<test/sat/instr_trap_sat.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/sat/instr_trap_sat.{native,byte}>: pkg_hardcaml.syntax
-<test/sat/instr_trap_sat.{native,byte}>: pkg_riscv
-<test/sat/instr_trap_sat.{native,byte}>: use_HardCamlRiscV
-<test/sat/*.ml{,i,y}>: pkg_deriving
-<test/sat/*.ml{,i,y}>: pkg_hardcaml
-<test/sat/*.ml{,i,y}>: pkg_hardcaml-bloop
-<test/sat/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
-<test/sat/*.ml{,i,y}>: pkg_hardcaml.syntax
-<test/sat/*.ml{,i,y}>: pkg_riscv
-<test/sat/*.ml{,i,y}>: use_HardCamlRiscV
-<test/sat/instr_trap_sat.{native,byte}>: custom
-# Executable imm_encoding
-<test/imm_encoding.{native,byte}>: pkg_deriving
-<test/imm_encoding.{native,byte}>: pkg_hardcaml
-<test/imm_encoding.{native,byte}>: pkg_hardcaml-waveterm.lterm
-<test/imm_encoding.{native,byte}>: pkg_hardcaml.syntax
-<test/imm_encoding.{native,byte}>: pkg_riscv
-<test/imm_encoding.{native,byte}>: use_HardCamlRiscV
-<test/*.ml{,i,y}>: pkg_deriving
-<test/*.ml{,i,y}>: pkg_hardcaml
-<test/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
-<test/*.ml{,i,y}>: pkg_hardcaml.syntax
-<test/*.ml{,i,y}>: pkg_riscv
-<test/*.ml{,i,y}>: use_HardCamlRiscV
-<test/imm_encoding.{native,byte}>: custom
+# Executable rv32p5
+<simulators/rv32p5.{native,byte}>: pkg_deriving
+<simulators/rv32p5.{native,byte}>: pkg_hardcaml
+<simulators/rv32p5.{native,byte}>: pkg_hardcaml-llvmsim
+<simulators/rv32p5.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<simulators/rv32p5.{native,byte}>: pkg_hardcaml.syntax
+<simulators/rv32p5.{native,byte}>: pkg_lwt.syntax
+<simulators/rv32p5.{native,byte}>: pkg_riscv
+<simulators/rv32p5.{native,byte}>: use_HardCamlRiscV
+<simulators/rv32p5.{native,byte}>: custom
+# Executable rv32p1
+<simulators/rv32p1.{native,byte}>: pkg_deriving
+<simulators/rv32p1.{native,byte}>: pkg_hardcaml
+<simulators/rv32p1.{native,byte}>: pkg_hardcaml-llvmsim
+<simulators/rv32p1.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<simulators/rv32p1.{native,byte}>: pkg_hardcaml.syntax
+<simulators/rv32p1.{native,byte}>: pkg_lwt.syntax
+<simulators/rv32p1.{native,byte}>: pkg_riscv
+<simulators/rv32p1.{native,byte}>: use_HardCamlRiscV
+<simulators/*.ml{,i,y}>: pkg_deriving
+<simulators/*.ml{,i,y}>: pkg_hardcaml
+<simulators/*.ml{,i,y}>: pkg_hardcaml-llvmsim
+<simulators/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
+<simulators/*.ml{,i,y}>: pkg_hardcaml.syntax
+<simulators/*.ml{,i,y}>: pkg_lwt.syntax
+<simulators/*.ml{,i,y}>: pkg_riscv
+<simulators/*.ml{,i,y}>: use_HardCamlRiscV
+<simulators/rv32p1.{native,byte}>: custom
 # OASIS_STOP
 true: debug

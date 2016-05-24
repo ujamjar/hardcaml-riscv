@@ -41,68 +41,86 @@ Flag bloop
   Description: Build apps requiring hardcaml-bloop
   Default: false
 
-Executable tesbench_picorv32
+#Executable tesbench_picorv32
+#  Build$:             flag(testbenches)
+#  Path:               test
+#  MainIs:             testbench_picorv32.ml
+#  Custom:             true
+#  CompiledObject:     best
+#  Install:            false
+#  BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
+#
+#Executable testbench_rv32
+#  Build$:             flag(testbenches)
+#  Path:               test
+#  MainIs:             testbench_rv32.ml
+#  Custom:             true
+#  CompiledObject:     best
+#  Install:            false
+#  BuildDepends:       lwt.syntax,hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
+#
+#Executable testbench_cache
+#  Build$:             flag(testbenches)
+#  Path:               test
+#  MainIs:             testbench_cache.ml
+#  Custom:             true
+#  CompiledObject:     best
+#  Install:            false
+#  BuildDepends:       hardcaml-riscv,hardcaml-waveterm.lterm
+#
+#Executable gen_picorv32
+#  Build$:             flag(generators)
+#  Path:               test
+#  MainIs:             gen_picorv32.ml
+#  Custom:             true
+#  CompiledObject:     best
+#  Install:            false
+#  BuildDepends:       hardcaml-riscv
+#
+#Executable gen_rv32i
+#  Build$:             flag(generators)
+#  Path:               test
+#  MainIs:             gen_rv32i.ml
+#  Custom:             true
+#  CompiledObject:     best
+#  Install:            false
+#  BuildDepends:       hardcaml-riscv
+#
+#Executable instr_trap_sat
+#  Build$:             flag(bloop)
+#  Path:               test/sat
+#  MainIs:             instr_trap_sat.ml
+#  Custom:             true
+#  CompiledObject:     best
+#  Install:            false
+#  BuildDepends:       hardcaml-riscv,hardcaml-bloop
+#
+#Executable imm_encoding
+#  Build$:             flag(testbenches)
+#  Path:               test
+#  MainIs:             imm_encoding.ml
+#  Custom:             true
+#  CompiledObject:     best
+#  Install:            false
+#  BuildDepends:       hardcaml-riscv
+
+Executable rv32p5
   Build$:             flag(testbenches)
-  Path:               test
-  MainIs:             testbench_picorv32.ml
+  Path:               simulators
+  MainIs:             rv32p5.ml
   Custom:             true
   CompiledObject:     best
-  Install:            false
-  BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
+  Install:            true
+  BuildDepends:       lwt.syntax,hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
 
-Executable testbench_rv32
+Executable rv32p1
   Build$:             flag(testbenches)
-  Path:               test
-  MainIs:             testbench_rv32.ml
+  Path:               simulators
+  MainIs:             rv32p1.ml
   Custom:             true
   CompiledObject:     best
-  Install:            false
-  BuildDepends:       hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
-
-Executable testbench_cache
-  Build$:             flag(testbenches)
-  Path:               test
-  MainIs:             testbench_cache.ml
-  Custom:             true
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       hardcaml-riscv,hardcaml-waveterm.lterm
-
-Executable gen_picorv32
-  Build$:             flag(generators)
-  Path:               test
-  MainIs:             gen_picorv32.ml
-  Custom:             true
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       hardcaml-riscv
-
-Executable gen_rv32i
-  Build$:             flag(generators)
-  Path:               test
-  MainIs:             gen_rv32i.ml
-  Custom:             true
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       hardcaml-riscv
-
-Executable instr_trap_sat
-  Build$:             flag(bloop)
-  Path:               test/sat
-  MainIs:             instr_trap_sat.ml
-  Custom:             true
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       hardcaml-riscv,hardcaml-bloop
-
-Executable imm_encoding
-  Build$:             flag(testbenches)
-  Path:               test
-  MainIs:             imm_encoding.ml
-  Custom:             true
-  CompiledObject:     best
-  Install:            false
-  BuildDepends:       hardcaml-riscv
+  Install:            true
+  BuildDepends:       lwt.syntax,hardcaml-llvmsim,hardcaml-riscv,hardcaml-waveterm.lterm
 
 SourceRepository master
   Type:     git

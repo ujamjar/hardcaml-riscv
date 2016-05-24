@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 2024597475b66110686f92fa8bdebc24) *)
+(* DO NOT EDIT (digest: 04b2410e7966afa6843f4bf20eca224d) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -614,7 +614,7 @@ let package_default =
        ];
      lib_c = [];
      flags = [];
-     includes = [("test/sat", ["src"]); ("test", ["src"])]
+     includes = [("simulators", ["src"])]
   }
   ;;
 

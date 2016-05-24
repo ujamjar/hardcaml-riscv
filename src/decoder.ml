@@ -167,7 +167,7 @@ module Make(Ifs : Interfaces.S) = struct
   open HardCaml.Signal.Comb 
   module Insn = Make_insn_decoder(Ifs)(HardCaml.Signal.Comb) 
 
-  let decoder ~inp ~pipe = 
+  let decoder ~inp ~fet = 
 
     let open Ifs in
     let module Seq = Utils.Regs(struct let clk=inp.Ifs.I.clk let clr=inp.Ifs.I.clr end) in
@@ -198,7 +198,7 @@ module Make(Ifs : Interfaces.S) = struct
     (* ra2 is unused so mark as zero *)
     let ra2_zero = ra2_zero |: is_pipe_imm in
 
-    { pipe with 
+    { fet with 
       ra1; ra2; rad;
       ra1_zero; ra2_zero; rad_zero;
       rwe;
@@ -211,7 +211,7 @@ module Make(Ifs : Interfaces.S) = struct
   let f ~inp ~comb ~pipe = 
     let open Ifs.Stage in
     let open Ifs.Stages in
-    decoder ~inp ~pipe:pipe.fet
+    decoder ~inp ~fet:pipe.fet
 
 end
 

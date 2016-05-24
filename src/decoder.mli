@@ -20,7 +20,7 @@ module Make(Ifs : Interfaces.S) : sig
 
   val name : string
 
-  val decoder : inp:t Ifs.I.t -> pipe:t Ifs.Stage.t -> t Ifs.Stage.t
+  val decoder : inp:t Ifs.I.t -> fet:t Ifs.Stage.t -> t Ifs.Stage.t
 
   val f : 
     inp:t Ifs.I.t -> 

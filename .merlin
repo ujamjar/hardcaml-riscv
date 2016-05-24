@@ -1,6 +1,8 @@
 S src
 S test
+S simulators
 B _build/**
+PKG lambda-term
 PKG hardcaml
 PKG hardcaml-waveterm
 PKG lwt

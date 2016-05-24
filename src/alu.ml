@@ -1,11 +1,11 @@
 module Make(Ifs : Interfaces.S) = struct
 
-  let alu p = 
+  let alu ~dec = 
     let open Ifs.Stage in
     let open Ifs.Class in
     let open HardCaml.Signal.Comb in
     
-    let rd1,rd2 = p.rd1, mux2 p.is_imm p.imm p.rd2 in
+    let rd1,rd2 = dec.rd1, mux2 dec.is_imm dec.imm dec.rd2 in
 
     let addsub ctl a b = mux2 ctl (a -: b) (a +: b) in
 
@@ -17,7 +17,7 @@ module Make(Ifs : Interfaces.S) = struct
     let sgeu = rd1 >=: rd2 in
     let shamt = rd2.[4:0] in
 
-    let c = p.iclass in
+    let c = dec.iclass in
 
     let addctl = c.jal |: c.jalr |: c.ld |: c.st in
     let addsub = addsub (mux2 addctl gnd c.f7) rd1 rd2 in
@@ -39,15 +39,15 @@ module Make(Ifs : Interfaces.S) = struct
     let rdd = 
       pmux [
         c.lui, rd2;
-        c.bra |: c.jal |: c.auipc, p.pc +: p.imm;
+        c.bra |: c.jal |: c.auipc, dec.pc +: dec.imm;
       ] alu_op
     in
 
-    { p with rdd; branch }
+    { dec with rdd; branch }
 
   let name = "alu"
 
-  let f ~inp ~comb ~pipe = alu pipe.Ifs.Stages.dec
+  let f ~inp ~comb ~pipe = alu ~dec:pipe.Ifs.Stages.dec
 
 end
 
