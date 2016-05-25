@@ -182,7 +182,7 @@ module Make(B : HardCaml.Comb.S) = struct
   end
 
   class input_num cols = object(self)
-    inherit LTerm_edit.edit_integer
+    inherit LTerm_edit.edit_integer ~positive:true ()
     method! size_request = { rows=1; cols }
   end
 
@@ -201,7 +201,7 @@ module Make(B : HardCaml.Comb.S) = struct
     wave_grp#on_state_change (function
       | Some(x) -> waveform#set_waves @@ wrap_waves @@ List.assoc x waves
       | None -> ());
-    vbox
+    vbox, wave_grp
 
   (* | step [123   ] + | cursor - [123   ] + | <- trans -> |
 
@@ -252,6 +252,7 @@ module Make(B : HardCaml.Comb.S) = struct
       wave_ctrl : wave_ctrl;
       registers : registers;
       asm : asm;
+      view : [`all|`commit|`decode|`execute|`fetch|`memory|`regs] radiogroup;
       vbox : vbox;
     }
 
@@ -261,22 +262,28 @@ module Make(B : HardCaml.Comb.S) = struct
       | Some(x) -> f x
     in
 
+    let set_cycle_to n = 
+      if n > !cycle_count then begin
+        incr_cycles (Some(n - !cycle_count));
+        ui.wave_ctrl.step_num#queue_draw
+      end
+    in
+    let incr_cycles n = 
+      incr_cycles(Some(n));
+      ui.wave_ctrl.step_num#queue_draw
+    in
+
     ui.wave_ctrl.step_num#on_event 
       (function 
-        | LTerm_event.Key { LTerm_key.code=LTerm_key.Enter } -> begin
-          maybe true (fun cycle -> 
-            if cycle > !cycle_count then begin
-              incr_cycles (Some(cycle - !cycle_count));
-              ui.wave_ctrl.step_num#queue_draw; 
-            end;
-            true) ui.wave_ctrl.step_num#value
-        end
+        | LTerm_event.Key { LTerm_key.code=LTerm_key.Enter } -> 
+          maybe true (fun cycle -> set_cycle_to cycle; true) 
+            ui.wave_ctrl.step_num#value
         | _ -> false);
 
     ui.wave_ctrl.step_incr#on_click 
       (fun () -> 
         let cycles = maybe 1 (fun x -> x) ui.wave_ctrl.step_num#value in
-          incr_cycles (Some(cycles));
+          incr_cycles cycles;
           ui.wave_ctrl.step_num#queue_draw); 
 
     let set_cursor f = 
@@ -299,7 +306,95 @@ module Make(B : HardCaml.Comb.S) = struct
         | _ -> false);
         
     ui.wave_ctrl.cursor_incr#on_click (fun () -> set_cursor (+));
-    ui.wave_ctrl.cursor_decr#on_click (fun () -> set_cursor (-))
+    ui.wave_ctrl.cursor_decr#on_click (fun () -> set_cursor (-));
+(*
+
+  keys:
+
+    return     step 1 cycle
+    space      step 'n' cycles
+
+    A+<>       cursor +/- 1
+    A+S+<>     cursor +/- n
+
+    S+<>       scroll
+    C+<>       scroll
+
+    a          all
+    r          registers
+    f          fetch
+    d          decode
+    x          execute
+    m          memory
+    c          commit
+    
+    C+c        cycle edit
+    C+s        step edit
+    C+w        wave window
+
+*)
+
+    let open LTerm_key in
+    ui.vbox#on_event (function
+
+      (* stepping *)
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Enter -> 
+        incr_cycles 1; true
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char ' ') -> 
+        maybe true (fun cycles -> incr_cycles cycles; true) 
+          ui.wave_ctrl.step_num#value
+
+      (* cursor movement *)
+      | LTerm_event.Key { shift=false; meta=true; control=false; code } 
+          when code = Left -> 
+        set_cursor (fun c _ -> c-1); true
+      | LTerm_event.Key { shift=false; meta=true; control=false; code } 
+          when code = Right -> 
+        set_cursor (fun c _ -> c+1); true
+      | LTerm_event.Key { shift=true; meta=true; control=false; code } 
+          when code = Left -> 
+        set_cursor (-); true
+      | LTerm_event.Key { shift=true; meta=true; control=false; code } 
+          when code = Right -> 
+        set_cursor (+); true
+
+      (* switch view *)
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char 'a') -> 
+        ui.view#switch_to `all; true
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char 'r') -> 
+        ui.view#switch_to `regs; true
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char 'f') -> 
+        ui.view#switch_to `fetch; true
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char 'd') -> 
+        ui.view#switch_to `decode; true
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char 'x') -> 
+        ui.view#switch_to `execute; true
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char 'm') -> 
+        ui.view#switch_to `memory; true
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char 'c') -> 
+        ui.view#switch_to `commit; true
+      (* set focus *)
+      | LTerm_event.Key { shift=false; meta=false; control=true; code } 
+          when code = Char (UChar.of_char 's') -> 
+        ui.vbox#move_focus_to (ui.wave_ctrl.step_num :> LTerm_widget.t); true
+      | LTerm_event.Key { shift=false; meta=false; control=true; code } 
+          when code = Char (UChar.of_char 'c') -> 
+        ui.vbox#move_focus_to (ui.wave_ctrl.cursor_num :> LTerm_widget.t); true
+      | LTerm_event.Key { shift=false; meta=false; control=true; code } 
+          when code = Char (UChar.of_char 'w') -> 
+        ui.vbox#move_focus_to (ui.waveform#waves :> LTerm_widget.t); true
+
+      | _ -> false
+    )
 
   let make_ui waves = 
     let waveform = new waveform ~framed:false () in
@@ -319,9 +414,10 @@ module Make(B : HardCaml.Comb.S) = struct
     asm#set_waves @@ wrap_waves @@ List.assoc `all waves;
     hbox#add asm;
     hbox#add ~expand:false (new LTerm_widget.vline);
-    hbox#add (make_wave_view waveform waves);
+    let radio, view = make_wave_view waveform waves in
+    hbox#add radio;
     vbox#add ~expand:false hbox;
-    { waveform; wave_ctrl; registers; asm; vbox }
+    { waveform; wave_ctrl; registers; asm; view; vbox }
 
 end
 
