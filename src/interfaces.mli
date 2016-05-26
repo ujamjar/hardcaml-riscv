@@ -42,7 +42,7 @@ module type S = sig
   module Class_ex : module type of Interface_ex.Make(Class) 
 
   module Stage : interface
-    insn pc pc_j pc_b instr 
+    insn pc instr 
     ra1 ra2 rad
     rd1 rd2 rdd 
     imm is_imm 
