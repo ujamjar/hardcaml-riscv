@@ -197,6 +197,7 @@ module Make(B : HardCaml.Comb.S) = struct
     vbox#add ~expand:false (new radiobutton wave_grp "Execute" `execute);
     vbox#add ~expand:false (new radiobutton wave_grp "Memory" `memory);
     vbox#add ~expand:false (new radiobutton wave_grp "Commit" `commit);
+    vbox#add ~expand:false (new radiobutton wave_grp "State" `state);
     vbox#add (new spacing());
     wave_grp#on_state_change (function
       | Some(x) -> waveform#set_waves @@ wrap_waves @@ List.assoc x waves
@@ -252,7 +253,7 @@ module Make(B : HardCaml.Comb.S) = struct
       wave_ctrl : wave_ctrl;
       registers : registers;
       asm : asm;
-      view : [`all|`commit|`decode|`execute|`fetch|`memory|`regs] radiogroup;
+      view : [`all|`commit|`state|`decode|`execute|`fetch|`memory|`regs] radiogroup;
       vbox : vbox;
     }
 
@@ -327,6 +328,7 @@ module Make(B : HardCaml.Comb.S) = struct
     x          execute
     m          memory
     c          commit
+    t          state
     
     C+c        cycle edit
     C+s        step edit
@@ -382,6 +384,9 @@ module Make(B : HardCaml.Comb.S) = struct
       | LTerm_event.Key { shift=false; meta=false; control=false; code } 
           when code = Char (UChar.of_char 'c') -> 
         ui.view#switch_to `commit; true
+      | LTerm_event.Key { shift=false; meta=false; control=false; code } 
+          when code = Char (UChar.of_char 's') -> 
+        ui.view#switch_to `state; true
       (* set focus *)
       | LTerm_event.Key { shift=false; meta=false; control=true; code } 
           when code = Char (UChar.of_char 's') -> 

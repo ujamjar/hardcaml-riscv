@@ -195,7 +195,7 @@ module Make(C : Config.S) = struct
       let ctrl = p1_ctrl ~inp in
       let pipe = Stages_ex.wiren () in
 
-      let state = Stage_ex.wire () in
+      let state = Stage.(map (fun (n,b) -> wire b -- ("state_" ^ n)) t) in
       let fet = Fetch.fetch ~inp ~com:state ~fet:state in
       let dec = Decoder.decoder ~inp ~fet:pipe.fet in
       let dec = 

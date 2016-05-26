@@ -29,7 +29,7 @@ let wave_cfg =
     Rv.Ifs.Stage.(to_list @@ 
       map (fun (n,b) ->
         List.map signal_display
-          [ "fet_" ^ n, b; "dec_" ^ n, b; "alu_" ^ n, b; 
+          [ "state_" ^ n, b; "fet_" ^ n, b; "dec_" ^ n, b; "alu_" ^ n, b; 
             "mem_" ^ n, b; "com_" ^ n, b; ]) t)
   in
   let stage_sigs = if interleave then stage_sigs2 else stage_sigs1 in
@@ -66,6 +66,7 @@ let wave_classes waves =
     `execute, get_wave_class "alu_" waves;
     `memory, get_wave_class "mem_" waves;
     `commit, get_wave_class "com_" waves;
+    `state, get_wave_class "state_" waves;
   ]
 
 let init_waves sim = 

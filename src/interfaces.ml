@@ -42,7 +42,7 @@ module type S = sig
   module Class_ex : module type of Interface_ex.Make(Class) 
 
   module Stage : interface
-    insn pc instr 
+    insn pc pc_j pc_b instr 
     ra1 ra2 rad
     rd1 rd2 rdd 
     imm is_imm 
@@ -140,8 +140,8 @@ module Make(C : Config.S) = struct
   module Stage = interface
     (* decoded instruction *)
     insn[Insn.V.n+1]
-    (* program counter *)
-    pc[C.xlen] 
+    (* program counter(s) *)
+    pc[C.xlen] pc_j[C.xlen] pc_b[C.xlen]
     (* instruction from memory *)
     instr[32]
     (* register addresses *)
