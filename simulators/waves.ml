@@ -73,6 +73,7 @@ let init_waves sim =
   let sim, waves = Waveterm_sim.wrap ?cfg:wave_cfg sim in
   sim, waves
 
-let show_waves waves = 
+(*let show_waves waves = 
   let ui = Ui.make_ui (wave_classes waves) in
   Lwt_main.run (Waveterm_ui.run_widget ui.vbox)
+*)

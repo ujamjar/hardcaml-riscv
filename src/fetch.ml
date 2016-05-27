@@ -7,12 +7,14 @@ module Make(Ifs : Interfaces.S) = struct
 
   let fetch ~inp ~com ~fet = 
     let open Stage in
-    let pc = mux2 com.branch com.pc (fet.pc +:. 4) in
+    (*let pc = mux2 com.branch com.pc (fet.pc +:. 4) in*)
+    let pc = com.pc in 
     let junk = I.to_list inp |> concat |> bits |> reduce (|:) in (* XXX TO BE REMOVED *)
     { Stage_ex.zero with 
       pc; junk; 
       mi = {
-        Mo_instr.addr = pc; 
+        (*Mo_instr.addr = pc;*)
+        Mo_instr.addr = pc;
         wdata = zero xlen;
         (*req = vdd;*)
         req = vdd;

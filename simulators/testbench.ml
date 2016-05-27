@@ -27,7 +27,7 @@ let run get_core memory =
 
     let cycle () = 
       cycle_count := !cycle_count + 1;
-      mio_instr i o memory;
+      mio_instr i o' memory;
       mio_data i o memory;
       Cs.cycle sim;
       Lwt_unix.yield () 
@@ -54,8 +54,7 @@ let run get_core memory =
   in
 
   let (waiter, wakener) as exit = Lwt.wait () in
-  let ui = Ui.make_ui (Waves.wave_classes waves) in
-
+  let ui = Ui.make_ui (Waves.wave_classes waves) memory in
   Ui.make_ui_events ui cycle_count incr_cycles;
 
   (* update the waveform every 1/4 second. *)

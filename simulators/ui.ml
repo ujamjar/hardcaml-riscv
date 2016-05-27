@@ -1,5 +1,33 @@
 (* create the debug user interface *)
 
+(*
+
+  keys:
+
+    return     step 1 cycle
+    space      step 'n' cycles
+
+    A+<>       cursor +/- 1
+    A+S+<>     cursor +/- n
+
+    S+<>       scroll
+    C+<>       scroll
+
+    a          all
+    r          registers
+    f          fetch
+    d          decode
+    x          execute
+    m          memory
+    c          commit
+    t          state
+    
+    C+c        cycle edit
+    C+s        step edit
+    C+w        wave window
+
+*)
+
 open LTerm_widget
 open LTerm_geom
 
@@ -35,7 +63,10 @@ module Make(B : HardCaml.Comb.S) = struct
     method can_focus = false
 
     val mutable size = { rows=0; cols=0 }
-    method size_request = { rows = n_rows; cols = (32 + n_rows - 1) / n_rows }
+    method size_request = { 
+      rows = n_rows; 
+      cols = ((32 + n_rows - 1) / n_rows) * 12; 
+    }
     method set_allocation r = 
       size <- size_of_rect r;
       super#set_allocation r
@@ -114,7 +145,7 @@ module Make(B : HardCaml.Comb.S) = struct
     method can_focus = false
 
     val mutable size = { rows = 0; cols = 0 }
-    method size_request = { rows = n_rows; cols = 20 }
+    method size_request = { rows = n_rows; cols = 28 }
     method set_allocation r = 
       size <- size_of_rect r;
       super#set_allocation r
@@ -162,22 +193,63 @@ module Make(B : HardCaml.Comb.S) = struct
         with _ -> "???"
       in
 
-      LTerm_draw.draw_string ctx 0 0 ("fet: " ^ pc);
+      LTerm_draw.draw_string ctx 0 0 ("f: " ^ pc);
 
       let asm r l d = 
-        let open Riscv.RV32I.T in
+        (*let pretty = Riscv.RV32I.T.pretty in*)
+        let pretty = Prettyasm.pretty in
         let asm = try pretty (B.to_int32 (get d cursor)) with _ -> "???" in
         LTerm_draw.draw_string ctx r 0 (l ^ ": " ^ asm)
       in
 
-      asm 1 "dec" dec;
-      asm 2 "alu" alu;
-      asm 3 "mem" mem;
-      asm 4 "com" com
+      asm 1 "d" dec;
+      asm 2 "x" alu;
+      asm 3 "m" mem;
+      asm 4 "c" com
 
-      (*for r=0 to rows-1 do
-        LTerm_draw.draw_string ctx r 0 "jal r5 r2 r1"
-      done*)
+  end
+
+  class memory_view mem = object(self)
+    inherit t "memory_view" as super
+
+    method can_focus = false
+
+    val mutable size = { rows=0; cols=0 }
+    method size_request = { 
+      rows = 0; 
+      cols = 0;
+    }
+    method set_allocation r = 
+      size <- size_of_rect r;
+      super#set_allocation r
+
+    val mutable style = LTerm_style.none
+    method update_resources =
+      let rc = self#resource_class and resources = self#resources in
+      style <- LTerm_resources.get_style rc resources
+
+    val mutable offset = 0
+    method set_offset o = offset <- o
+
+    method draw ctx focused = 
+      let open Printf in
+      LTerm_draw.fill_style ctx style;
+      
+      let cwidth = 9 in
+      let cols = (size.cols / cwidth) - 1 in
+      let rows = size.rows in
+
+      if cols > 0 then begin
+        for row=0 to rows-1 do
+          let offset = offset + (row * cols) in
+          LTerm_draw.draw_string ctx row 0 (sprintf "%.8x:" offset);
+          for col=0 to cols-1 do
+            LTerm_draw.draw_string ctx row (10+(col*9)) 
+              (try sprintf "%.8lx" mem.(offset+col)
+               with _ -> "--------");
+          done
+        done
+      end
 
   end
 
@@ -191,13 +263,13 @@ module Make(B : HardCaml.Comb.S) = struct
     let vbox = new vbox in
     let wave_grp = new radiogroup in
     vbox#add ~expand:false (new radiobutton wave_grp "All" `all);
-    vbox#add ~expand:false (new radiobutton wave_grp "Regs" `regs);
-    vbox#add ~expand:false (new radiobutton wave_grp "Fetch" `fetch);
-    vbox#add ~expand:false (new radiobutton wave_grp "Decode" `decode);
-    vbox#add ~expand:false (new radiobutton wave_grp "Execute" `execute);
-    vbox#add ~expand:false (new radiobutton wave_grp "Memory" `memory);
-    vbox#add ~expand:false (new radiobutton wave_grp "Commit" `commit);
-    vbox#add ~expand:false (new radiobutton wave_grp "State" `state);
+    vbox#add ~expand:false (new radiobutton wave_grp "Reg" `regs);
+    vbox#add ~expand:false (new radiobutton wave_grp "Fet" `fetch);
+    vbox#add ~expand:false (new radiobutton wave_grp "Dec" `decode);
+    vbox#add ~expand:false (new radiobutton wave_grp "Exe" `execute);
+    vbox#add ~expand:false (new radiobutton wave_grp "Mem" `memory);
+    vbox#add ~expand:false (new radiobutton wave_grp "Com" `commit);
+    vbox#add ~expand:false (new radiobutton wave_grp "Sta" `state);
     vbox#add (new spacing());
     wave_grp#on_state_change (function
       | Some(x) -> waveform#set_waves @@ wrap_waves @@ List.assoc x waves
@@ -247,6 +319,27 @@ module Make(B : HardCaml.Comb.S) = struct
     hbox#add (new spacing ());
     { step_num; step_incr; cursor_num; cursor_incr; cursor_decr; hbox }
 
+  type memory_ctrl = 
+    {
+      memory : memory_view;
+      edit : input_num;
+      vbox : vbox;
+    }
+
+  let make_memory_view memory = 
+    let hbox = new hbox in
+    let label = new label "mem addr: " in
+    let edit = new input_num 12 in
+    hbox#add ~expand:false label;
+    hbox#add ~expand:false edit;
+    hbox#add (new spacing ());
+
+    let vbox = new vbox in
+    let memory = new memory_view memory in
+    vbox#add ~expand:false hbox;
+    vbox#add ~expand:true memory;
+    { vbox; edit; memory }
+
   type ui = 
     {
       waveform : waveform;
@@ -254,6 +347,7 @@ module Make(B : HardCaml.Comb.S) = struct
       registers : registers;
       asm : asm;
       view : [`all|`commit|`state|`decode|`execute|`fetch|`memory|`regs] radiogroup;
+      memory : memory_ctrl;
       vbox : vbox;
     }
 
@@ -308,33 +402,17 @@ module Make(B : HardCaml.Comb.S) = struct
         
     ui.wave_ctrl.cursor_incr#on_click (fun () -> set_cursor (+));
     ui.wave_ctrl.cursor_decr#on_click (fun () -> set_cursor (-));
-(*
 
-  keys:
-
-    return     step 1 cycle
-    space      step 'n' cycles
-
-    A+<>       cursor +/- 1
-    A+S+<>     cursor +/- n
-
-    S+<>       scroll
-    C+<>       scroll
-
-    a          all
-    r          registers
-    f          fetch
-    d          decode
-    x          execute
-    m          memory
-    c          commit
-    t          state
-    
-    C+c        cycle edit
-    C+s        step edit
-    C+w        wave window
-
-*)
+    (* memory address *)
+    ui.memory.edit#on_event
+      (function 
+        | LTerm_event.Key { LTerm_key.code=LTerm_key.Enter } -> 
+          maybe true (fun v -> 
+            ui.memory.memory#set_offset v; 
+            ui.memory.memory#queue_draw;
+            true) 
+            ui.memory.edit#value
+        | _ -> false);
 
     let open LTerm_key in
     ui.vbox#on_event (function
@@ -387,6 +465,7 @@ module Make(B : HardCaml.Comb.S) = struct
       | LTerm_event.Key { shift=false; meta=false; control=false; code } 
           when code = Char (UChar.of_char 's') -> 
         ui.view#switch_to `state; true
+
       (* set focus *)
       | LTerm_event.Key { shift=false; meta=false; control=true; code } 
           when code = Char (UChar.of_char 's') -> 
@@ -397,11 +476,14 @@ module Make(B : HardCaml.Comb.S) = struct
       | LTerm_event.Key { shift=false; meta=false; control=true; code } 
           when code = Char (UChar.of_char 'w') -> 
         ui.vbox#move_focus_to (ui.waveform#waves :> LTerm_widget.t); true
+      | LTerm_event.Key { shift=false; meta=false; control=true; code } 
+          when code = Char (UChar.of_char 'a') -> 
+        ui.vbox#move_focus_to (ui.memory.edit :> LTerm_widget.t); true
 
       | _ -> false
     )
 
-  let make_ui waves = 
+  let make_ui waves memory = 
     let waveform = new waveform ~framed:false () in
     waveform#set_waves @@ wrap_waves @@ List.assoc `all waves;
     let vbox = new LTerm_widget.vbox in
@@ -413,16 +495,20 @@ module Make(B : HardCaml.Comb.S) = struct
     let hbox = new LTerm_widget.hbox in
     let registers = new registers 8 in
     registers#set_waves @@ wrap_waves @@ List.assoc `all waves;
-    hbox#add registers;
+    hbox#add ~expand:false registers;
     hbox#add ~expand:false (new LTerm_widget.vline);
     let asm = new asm 8 in
     asm#set_waves @@ wrap_waves @@ List.assoc `all waves;
-    hbox#add asm;
+    hbox#add ~expand:false asm;
+    hbox#add ~expand:false (new LTerm_widget.vline);
+    let memory = make_memory_view memory in
+    hbox#add ~expand:true memory.vbox;
     hbox#add ~expand:false (new LTerm_widget.vline);
     let radio, view = make_wave_view waveform waves in
-    hbox#add radio;
+    hbox#add ~expand:false radio;
+
     vbox#add ~expand:false hbox;
-    { waveform; wave_ctrl; registers; asm; view; vbox }
+    { waveform; wave_ctrl; registers; asm; view; memory; vbox }
 
 end
 
