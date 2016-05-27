@@ -49,8 +49,8 @@ module type S = sig
     branch rwe
     ra1_zero ra2_zero rad_zero
     (iclass : Class)
-    (mi : Mo_instr)
-    (md : Mo_data)
+    (*(mi : Mo_instr)
+    (md : Mo_data)*)
     junk
   end
   module Stage_ex : module type of Interface_ex.Make(Stage) 
@@ -159,8 +159,8 @@ module Make(C : Config.S) = struct
     (* instruction class *)
     (iclass : Class)
     (* instruction/data memory i/o *)
-    (mi : Mo_instr)
-    (md : Mo_data)
+    (*(mi : Mo_instr)
+    (md : Mo_data)*)
     (* junk TO BE REMOVED  *)
     junk[1]
   end

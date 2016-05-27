@@ -9,18 +9,11 @@ module Make(C : Config.S) : sig
 
   type 'a f = inp:Comb.t Ifs.I.t -> comb:stages -> pipe:stages -> 'a
   type f_stage = stage f
-  type 'a f_output = ctrl:Comb.t Ifs.Ctrl.t -> 'a f
-    
-  module type Stage = sig
-    val name : string
-    val f : f_stage
-  end
-
-  module Fetch : Stage
-  module Decoder : Stage
-  module Alu : Stage
-  module Mem : Stage
-  module Commit : Stage
+  type 'a f_output = 
+    ctrl:Comb.t Ifs.Ctrl.t -> 
+    mi:Comb.t Ifs.Mo_instr.t ->
+    md:Comb.t Ifs.Mo_data.t ->
+    'a f
 
   module Build : sig
     val p1 : inp:Comb.t Ifs.I.t -> f_output:'a f_output -> 'a

@@ -13,7 +13,11 @@ module Make(C : Config.S) = struct
 
   type 'a f = inp:Comb.t Ifs.I.t -> comb:stages -> pipe:stages -> 'a
   type f_stage = stage f
-  type 'a f_output = ctrl:Comb.t Ifs.Ctrl.t -> 'a f
+  type 'a f_output = 
+    ctrl:Comb.t Ifs.Ctrl.t -> 
+    mi:Comb.t Ifs.Mo_instr.t ->
+    md:Comb.t Ifs.Mo_data.t ->
+    'a f
   
   module type Stage = sig
     val name : string
@@ -32,9 +36,12 @@ module Make(C : Config.S) = struct
         ra1_zero = vdd; ra2_zero = vdd; rad_zero = vdd;
         insn = def_insn; instr = def_instr;
         iclass = def_iclass;
-        mi = Mo_instr.({ (map zero' t) with 
-          addr = consti C.xlen C.start_addr; 
-          req = vdd; rw = vdd });
+    })
+
+  let def_clear_mi = 
+    Mo_instr.({ (map zero' t) with 
+        addr = consti C.xlen C.start_addr; 
+        req = vdd; rw = vdd 
     })
 
   let bubble sel stage = 
@@ -140,14 +147,6 @@ module Make(C : Config.S) = struct
       let _ = Stages_ex.(map4 preg pclr pen pipe comb) in
       ()
 
-    let pipe_fns ~inp ~comb ~pipe =
-      { Stages.fet = Fetch.f ~inp ~comb ~pipe;
-        dec = Decoder.f ~inp ~comb ~pipe;
-        alu = Alu.f ~inp ~comb ~pipe;
-        mem = Mem.f ~inp ~comb ~pipe;
-        com = Commit.f ~inp ~comb ~pipe;
-      } 
-
     let p5 ~inp ~f_output = 
       let open Stage in
       let open Stages in
@@ -156,7 +155,17 @@ module Make(C : Config.S) = struct
       let comb, pipe = Stages_ex.(wiren(), wire()) in
 
       (* pipeline stages *)
-      let func = pipe_fns ~inp ~comb ~pipe in
+      let func, mi, md = 
+        let fet, mi = Fetch.f ~inp ~comb ~pipe in
+        let mem, md = Mem.f ~inp ~comb ~pipe in
+        { 
+          fet;
+          dec = Decoder.f ~inp ~comb ~pipe;
+          alu = Alu.f ~inp ~comb ~pipe;
+          mem;
+          com = Commit.f ~inp ~comb ~pipe;
+        }, mi, md 
+      in
 
       (* insert the (async) register file *)
       let func = async_rf_pipe ~inp ~func ~comb in
@@ -172,7 +181,7 @@ module Make(C : Config.S) = struct
       (* wire it all together *)
       let () = p5_wiring ~inp ~pen ~comb ~pipe ~func in
 
-      f_output ~ctrl ~inp ~comb ~pipe
+      f_output ~ctrl ~mi ~md ~inp ~comb ~pipe
 
     let p1_ctrl ~inp = 
       let en = vdd in
@@ -196,14 +205,14 @@ module Make(C : Config.S) = struct
       let pipe = Stages_ex.wiren () in
 
       let state = Stage.(map (fun (n,b) -> wire b -- ("state_" ^ n)) t) in
-      let fet = Fetch.fetch ~inp ~com:state ~fet:state in
+      let fet,mi = Fetch.fetch ~inp ~com:state ~fet:state in
       let dec = Decoder.decoder ~inp ~fet:pipe.fet in
       let dec = 
         let rfo = async_rf ~inp ~dec:pipe.dec ~com:pipe.com in
         { dec with rd1 = rfo.Rf.O.q1; rd2 = rfo.Rf.O.q2 }
       in
       let alu = Alu.alu ~dec:pipe.dec in
-      let mem = Mem.mem ~inp ~alu:pipe.alu in
+      let mem,md = Mem.mem ~inp ~alu:pipe.alu in
       let com = Commit.commit ~mem:pipe.mem in
 
       let com = { com with
@@ -221,24 +230,22 @@ module Make(C : Config.S) = struct
       let _ = Stage_ex.map2 (<==) pipe.mem mem in
       let _ = Stage_ex.map2 (<==) pipe.com com in
 
-      f_output ~ctrl ~inp ~comb:pipe ~pipe:{pipe with fet = state}
-      
+      f_output ~ctrl ~mi ~md ~inp ~comb:pipe ~pipe
 
   end
 
   module Output = struct
-    let o ~ctrl ~inp ~comb ~pipe = 
+    let o ~ctrl ~mi ~md ~inp ~comb ~pipe =
       O.({
         junk=pipe.Stages.com.Stage.junk;
-        mi = Fetch.m ~ctrl ~inp ~comb ~pipe;
-        md = Mem.m ~ctrl ~inp ~comb ~pipe;
+        mi; md;
       })
   end
 
   module Output_debug = struct
-    let o ~ctrl ~inp ~comb ~pipe = 
+    let o ~ctrl ~mi ~md ~inp ~comb ~pipe =
       O_debug.({
-        o = Output.o ~ctrl ~inp ~comb ~pipe;
+        o = Output.o ~ctrl ~mi ~md ~inp ~comb ~pipe;
         dbg = pipe;
       })
   end

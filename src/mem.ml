@@ -48,22 +48,23 @@ module Make(Ifs : Interfaces.S) = struct
     let req = i.st |: i.ld in (* is a memory request *)
     let rw = i.ld in
     let rdd = mux2 rw rdm p.rdd in
-    { p with
-      rdd;
-      md = Mo_data.({
-        addr; wdata;
-        req; rw; wmask; 
-      })
-    }
+    { p with rdd; },
+    Mo_data.({
+      addr; wdata;
+      req; rw; wmask; 
+    })
 
   let f ~inp ~comb ~pipe = 
     let open Stages in
     mem ~inp ~alu:pipe.alu
 
-  let m ~ctrl ~inp ~comb ~pipe = 
+  (*let m ~ctrl ~inp ~comb ~pipe = 
     let open Stage in
     let open Stages in
     pipe.mem.md (* XXX for now ... *)
+  *)
+
+  let m ~ctrl ~inp ~comb ~pipe = failwith "Mem.m"
 
 end
 
