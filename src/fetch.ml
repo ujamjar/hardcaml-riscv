@@ -1,16 +1,18 @@
-module Make(Ifs : Interfaces.S) = struct
+module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
-  open HardCaml.Signal.Comb
+  open B
   open Ifs
 
   let name = "fet"
+
+  let z = Stage_ex.(map (fun (_,b) -> B.zero b) t)
 
   let fetch ~inp ~com ~fet = 
     let open Stage in
     (*let pc = mux2 com.branch com.pc (fet.pc +:. 4) in*)
     let pc = com.pc in 
     let junk = I.to_list inp |> concat |> bits |> reduce (|:) in (* XXX TO BE REMOVED *)
-    { Stage_ex.zero with pc; junk; }, 
+    { z with pc; junk; }, 
     {
       Mo_instr.addr = pc;
       wdata = zero xlen;

@@ -87,9 +87,12 @@ module D32(B : Comb.S) = struct
 end
 
 module Mem(D : Data) = struct
+
+  let n_bytes = D.bits / 8
+
   let masks = 
     let ff = D.of_int 0xff in
-    let n = 1 lsl (D.bits / 8) in
+    let n = 1 lsl n_bytes in
     let rec mask j i = 
       if i=0 then D.of_int 0 
       else if (i land 1) = 0 then mask (j+1) (i lsr 1)

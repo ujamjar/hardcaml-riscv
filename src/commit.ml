@@ -1,6 +1,6 @@
-module Make(Ifs : Interfaces.S) = struct
+module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
-  open HardCaml.Signal.Comb
+  open B
   open Ifs
 
   let name = "com"

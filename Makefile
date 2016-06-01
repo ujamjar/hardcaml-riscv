@@ -7,7 +7,7 @@ setup.ml: _oasis
 	oasis setup
 
 setup.data: setup.ml
-	ocaml setup.ml -configure --enable-testbenches --enable-generators
+	ocaml setup.ml -configure --enable-testbenches --enable-generators --enable-bloop
 
 install: all
 	ocaml setup.ml -install

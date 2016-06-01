@@ -162,15 +162,14 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
 end
 
-module Make(Ifs : Interfaces.S) = struct
+module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
-  open HardCaml.Signal.Comb 
-  module Insn = Make_insn_decoder(Ifs)(HardCaml.Signal.Comb) 
+  open B
+  module Insn = Make_insn_decoder(Ifs)(B) 
 
   let decoder ~inp ~fet = 
 
     let open Ifs in
-    let module Seq = Utils.Regs(struct let clk=inp.Ifs.I.clk let clr=inp.Ifs.I.clr end) in
     let open Stage in
     let open Insn in
     let open Class in

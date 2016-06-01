@@ -4,4 +4,5 @@
 #require "hardcaml,hardcaml.syntax,riscv";;
 #load "HardCamlRiscV.cma";;
 #load "HardCamlAltera.cma";;
+#require "hardcaml-bloop";;
 

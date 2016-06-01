@@ -5,6 +5,7 @@ B _build/**
 PKG lambda-term
 PKG hardcaml
 PKG hardcaml-waveterm
+PKG hardcaml-bloop
 PKG lwt
 PKG riscv
 EXT lwt

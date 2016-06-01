@@ -58,11 +58,11 @@ module Make(C : Config.S) = struct
       (* XXX anything we need to tidy up in mi/md? *)
     }
 
-  module Fetch = Fetch.Make(Ifs)
-  module Decoder = Decoder.Make(Ifs)
-  module Alu = Alu.Make(Ifs)
-  module Mem = Mem.Make(Ifs)
-  module Commit = Commit.Make(Ifs)
+  module Fetch = Fetch.Make(Ifs)(HardCaml.Signal.Comb)
+  module Decoder = Decoder.Make(Ifs)(HardCaml.Signal.Comb)
+  module Alu = Alu.Make(Ifs)(HardCaml.Signal.Comb)
+  module Mem = Mem.Make(Ifs)(HardCaml.Signal.Comb)
+  module Commit = Commit.Make(Ifs)(HardCaml.Signal.Comb)
 
   module Build = struct
 

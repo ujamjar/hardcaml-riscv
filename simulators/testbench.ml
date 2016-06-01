@@ -13,6 +13,16 @@ open I
 open O 
 open Rv_o 
 
+let load_elf filename mb = 
+  (* XXX not a nice API here - sort out in riscv project *)
+  let open Riscv in
+  let module T = Cpu.Make(Types.D32) in
+  let module E = Load_elf.Make(T) in
+  (*let module M = Mem.Make(T) in*)
+  let rv = T.riscv_init mb in
+  ignore @@ E.to_mem filename rv.T.mem;
+  rv.T.mem
+
 let run get_core memory = 
 
   let circ,sim,i,o,o' = get_core () in

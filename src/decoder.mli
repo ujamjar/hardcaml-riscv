@@ -14,9 +14,9 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) : sig
 
 end
 
-module Make(Ifs : Interfaces.S) : sig
+module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) : sig
 
-  open HardCaml.Signal.Comb
+  open B
 
   val name : string
 

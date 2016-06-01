@@ -1,11 +1,12 @@
-module Make(Ifs : Interfaces.S) = struct
+module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
   let alu ~dec = 
     let open Ifs.Stage in
     let open Ifs.Class in
-    let open HardCaml.Signal.Comb in
+    let open B in
     
-    let rd1,rd2 = dec.rd1, mux2 dec.is_imm dec.imm dec.rd2 in
+    let rd1, rd2 = dec.rd1, mux2 dec.is_imm dec.imm dec.rd2 in
+    let rd1, rd2 = rd1 -- "alu_rd1_i",  rd2 -- "alu_rd2_i" in
 
     let addsub ctl a b = mux2 ctl (a -: b) (a +: b) in
 
@@ -19,7 +20,7 @@ module Make(Ifs : Interfaces.S) = struct
 
     let c = dec.iclass in
 
-    let addctl = c.jal |: c.jalr |: c.ld |: c.st in
+    let addctl = (*c.jal |: c.jalr |: c.ld |: c.st*) dec.is_imm in
     let addsub = addsub (mux2 addctl gnd c.f7) rd1 rd2 in
 
     let alu_op = mux (mux2 addctl (zero 3) c.f3) [

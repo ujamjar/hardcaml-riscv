@@ -241,8 +241,9 @@ module Make(B : HardCaml.Comb.S) = struct
 
       if cols > 0 then begin
         for row=0 to rows-1 do
+          let offset = offset / 4 in (* offset is a byte address *)
           let offset = offset + (row * cols) in
-          LTerm_draw.draw_string ctx row 0 (sprintf "%.8x:" offset);
+          LTerm_draw.draw_string ctx row 0 (sprintf "%.8x:" (offset*4));
           for col=0 to cols-1 do
             LTerm_draw.draw_string ctx row (10+(col*9)) 
               (try sprintf "%.8lx" mem.(offset+col)

@@ -16,7 +16,7 @@ let get_core () =
   let module G = HardCaml.Interface.Gen(B)(Rv.Ifs.I)(Rv_o) in
   G.make "rv32p1" pipeline 
 
-let () = 
+let old () = 
   (* memory *)
   let memory = Mem.init (32*1024) in 
   (* test program *)
@@ -29,4 +29,11 @@ let () =
     memory.(8) <- jal ~rd:0 ~imm:8;
   in
   Testbench.run get_core memory
+
+let () = 
+  let module E = Load_elf.Make(Mem32.Mem) in
+  let memory = Mem.init (32*1024*1024) in 
+  let _ = E.to_mem "firmware/firmware.elf" memory in
+  Testbench.run get_core memory
+
 
