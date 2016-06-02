@@ -24,16 +24,17 @@ let old () =
     let open Riscv.RV32I.Asm in
     memory.(4) <- addi ~rd:1 ~rs1:0 ~imm:10;
     memory.(5) <- addi ~rd:2 ~rs1:0 ~imm:20;
-    memory.(6) <- add ~rd:3 ~rs1:1 ~rs2:2;
-    memory.(7) <- sub ~rd:4 ~rs1:2 ~rs2:1;
-    memory.(8) <- jal ~rd:0 ~imm:8;
+    memory.(6) <- andi ~rd:3 ~rs1:2 ~imm:20;
+    memory.(7) <- add ~rd:7 ~rs1:1 ~rs2:2;
+    memory.(8) <- sub ~rd:8 ~rs1:2 ~rs2:1;
+    memory.(9) <- jal ~rd:9 ~imm:8;
   in
   Testbench.run get_core memory
 
-let () = 
+let elf () = 
   let module E = Load_elf.Make(Mem32.Mem) in
   let memory = Mem.init (32*1024*1024) in 
   let _ = E.to_mem "firmware/firmware.elf" memory in
   Testbench.run get_core memory
 
-
+let () = old ()

@@ -20,8 +20,8 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
     let c = dec.iclass in
 
-    let addctl = (*c.jal |: c.jalr |: c.ld |: c.st*) dec.is_imm in
-    let addsub = addsub (mux2 addctl gnd c.f7) rd1 rd2 in
+    let addctl = c.jal |: c.jalr |: c.ld |: c.st in
+    let addsub = addsub (mux2 dec.is_imm gnd c.f7) rd1 rd2 in
 
     let alu_op = mux (mux2 addctl (zero 3) c.f3) [
       addsub;
@@ -29,7 +29,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       uresize slt Ifs.xlen;
       uresize sltu Ifs.xlen;
       rd1 ^: rd2;
-      mux2 c.f7 (log_shift sra rd1 shamt) (log_shift srl rd2 shamt);
+      mux2 c.f7 (log_shift sra rd1 shamt) (log_shift srl rd1 shamt);
       rd1 |: rd2;
       rd1 &: rd2;
     ] in

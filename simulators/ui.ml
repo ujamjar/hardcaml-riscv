@@ -183,7 +183,7 @@ module Make(B : HardCaml.Comb.S) = struct
 
     method draw ctx focused = 
       let open Printf in
-      let { rows; cols } = LTerm_draw.size ctx in
+      (*let { rows; cols } = LTerm_draw.size ctx in*)
       LTerm_draw.fill_style ctx style;
     
       let open Waveterm_waves in
