@@ -14,7 +14,7 @@ setup.data: setup.ml
 		--prefix $(PREFIX)
 
 install: all
-	ocaml setup.ml -install
+	ocaml setup.ml -install --prefix $(PREFIX)
 
 uninstall: 
 	ocamlfind remove hardcaml-riscv

@@ -1,6 +1,9 @@
-opam-version: "1.1"
+opam-version: "1.2"
 maintainer: "andy.ray@ujamjar.com"
+authors: "andy.ray@ujamjar.com"
 homepage: "https://github.com/ujamjar/hardcaml-riscv"
+dev-repo: "https://github.com/ujamjar/hardcaml-riscv"
+bug-reports: "https://github.com/ujamjar/hardcaml-riscv"
 build: [
   [make "PREFIX=%{prefix}%" "all"]
 ]
@@ -20,4 +23,4 @@ depends: [
   "hardcaml-llvmsim"
   "hardcaml-waveterm"
 ]
-ocaml-version: [ >= "4.01.0" ]
+available: [ ocaml-version >= "4.01.0" ]

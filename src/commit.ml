@@ -18,7 +18,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let rdd = mux2 (i.jal |: i.jalr) pc_next p.rdd in
     let pc = mux2 branch p.rdd pc_next in
 
-    { mem with branch; rdd; pc; }
+    { mem with branch; rdd; pc = pc.[31:1] @: gnd; }
 
   let f ~inp ~comb ~pipe = 
     let open Stages in

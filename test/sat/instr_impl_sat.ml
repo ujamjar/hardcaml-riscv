@@ -3,6 +3,25 @@
 open HardCamlRiscV
 open Printf 
 
+let solver = ref `mini
+let () = 
+  let solver_args = [
+    "mini", (fun () -> solver := `mini);
+    (*"pico", (fun () -> solver := `pico);*)
+    "crypto", (fun () -> solver := `crypto);
+    "dimacs-mini", (fun () -> solver := `dimacs `mini);
+    "dimacs-pico", (fun () -> solver := `dimacs `pico);
+    "dimacs-crypto", (fun () -> solver := `dimacs `crypto);
+  ] in
+  Arg.parse
+  [
+    "-solver", Arg.Symbol(List.map fst solver_args, 
+                         (fun s -> (List.assoc s solver_args)())),
+              "select solver"
+  ]
+  (fun _ -> ())
+  "HardCamlRiscV instruction implementation SAT tests"
+
 module B = HardCamlBloop.Gates.Make_comb(HardCamlBloop.Gates.Basic_gates)
 (*module B = HardCaml.Signal.Comb*)
 
@@ -80,9 +99,11 @@ module Make(B : HardCaml.Comb.S) = struct
       ~pipe:{ sts_zero with mem }
     in
 
-    com, rd1, rd2
+    com, rd1, rd2, md
 
   (*******************************************************************************)
+
+  (* XXX all of this should really be derivable from the instruction specs *)
 
   let funct3 m = B.select m 14 12
   let funct7 m = B.select m 31 25
@@ -143,6 +164,29 @@ module Make(B : HardCaml.Comb.S) = struct
 
   end
 
+  module U = struct
+
+    type 'a t = 
+      {
+        rd : 'a;
+        imm : 'a;
+      }
+
+    let make m = 
+      let rd = B.input "rd" 5 in
+      let imm = B.input "imm" 20 in
+      let m = B.consti32 32 m in
+      let instr = 
+        B.concat [
+          imm;
+          rd;
+          opcode m;
+        ]
+      in
+      instr, { rd; imm }
+
+  end
+
   module R = struct
 
     type 'a t = 
@@ -156,6 +200,7 @@ module Make(B : HardCaml.Comb.S) = struct
       let rd = B.input "rd" 5 in
       let rs1 = B.input "rs1" 5 in
       let rs2 = B.input "rs2" 5 in
+      let m = B.consti32 32 m in
       let instr = 
         B.concat [
           funct7 m;
@@ -170,38 +215,116 @@ module Make(B : HardCaml.Comb.S) = struct
 
   end
 
+  module UJ = struct
+
+    type 'a t = 
+      {
+        rd : 'a;
+        imm : 'a;
+      }
+
+    let make m = 
+      let rd = B.input "rd" 5 in
+      let imm = B.input "imm" 20 in
+      let imm' = B.(imm @: gnd) in
+      let m = B.consti32 32 m in
+      let instr = 
+        B.(concat [
+          imm'.[20:20];
+          imm'.[10:1];
+          imm'.[11:11];
+          imm'.[19:12];
+          rd;
+          opcode m;
+        ])
+      in
+      instr, { rd; imm }
+
+  end
+
+  module SB = struct
+    
+    type 'a t = 
+      {
+        rs1 : 'a;
+        rs2 : 'a;
+        imm : 'a;
+      }
+
+    let make m = 
+      let rs1 = B.input "rs1" 5 in
+      let rs2 = B.input "rs2" 5 in
+      let imm = B.input "imm" 12 in
+      let imm' = B.(imm @: gnd) in
+      let m = B.consti32 32 m in
+      let instr = 
+        B.(concat [
+          imm'.[12:12];
+          imm'.[10:5];
+          rs2;
+          rs1;
+          funct3 m;
+          imm'.[4:1];
+          imm'.[11:11];
+          opcode m;
+        ])
+      in
+      instr, { rs1; rs2; imm }
+
+  end
+
+  module S = struct
+
+    type 'a t = 
+      {
+        rs1 : 'a;
+        rs2 : 'a;
+        imm : 'a; 
+      }
+
+    let make m = 
+      let rs1 = B.input "rs1" 5 in
+      let rs2 = B.input "rs2" 5 in
+      let imm = B.input "imm" 12 in
+      let m = B.consti32 32 m in
+      let instr = 
+        B.(concat [
+          imm.[11:5];
+          rs2;
+          rs1;
+          funct3 m;
+          imm.[4:0];
+          opcode m;
+        ])
+      in
+      instr, { rs1; rs2; imm }
+
+  end
+
   open B
   open Ifs.Stage
 
-  let imm instr f = 
-    let _,match' = List.assoc instr Riscv.RV32I.T.mask_match in
-    let rdata = B.input "rdata" 32 in
-    let pc = B.input "pc" 32 in
-    let instr, data = I.make match' in
-    let x,rd1,rd2 = build_cpu ~pc ~instr ~rdata in
-    (x.rdd ==: (f rd1 (sresize data.I.imm 32))) &:
-    (x.rad ==: data.I.rd) &:
-    x.rwe
+  type 'a t = 
+    {
+      instr : B.t;
+      rdata : B.t;
+      pc : B.t;
+      data : 'a;
+      st : B.t Ifs.Stage.t;
+      rd1 : B.t;
+      rd2 : B.t;
+      md : B.t Ifs.Mo_data.t;
+    }
 
-  let imm_shift instr f = 
+  let make : 
+    Riscv.RV32I.T.t -> (Int32.t -> B.t * 'a) -> 'a t
+    = fun instr make ->
     let _,match' = List.assoc instr Riscv.RV32I.T.mask_match in
-    let rdata = B.input "rdata" 32 in
-    let pc = B.input "pc" 32 in
-    let instr, data = I_shift.make match' in
-    let x,rd1,rd2 = build_cpu ~pc ~instr ~rdata in
-    (x.rdd ==: (f rd1 data.I_shift.imm)) &:
-    (x.rad ==: data.I_shift.rd) &:
-    x.rwe
-
-  let reg instr f = 
-    let _,match' = List.assoc instr Riscv.RV32I.T.mask_match in
-    let rdata = B.input "rdata" 32 in
-    let pc = B.input "pc" 32 in
-    let instr, data = I.make match' in
-    let x,rd1,rd2 = build_cpu ~pc ~instr ~rdata in
-    (x.rdd ==: (f rd1 rd2)) &:
-    (x.rad ==: data.I.rd) &:
-    x.rwe
+    let rdata = input "rdata" 32 in
+    let pc = input "pc" 31 @: gnd in
+    let instr, data = make match' in
+    let st,rd1,rd2, md = build_cpu ~pc ~instr ~rdata in
+    { instr; rdata; pc; data; st; rd1; rd2; md }
 
 end
 
@@ -209,36 +332,236 @@ module Core = Make(B)
 
 (*******************************************************************************)
 
-let verbose = false
-let check x = HardCamlBloop.Sat.(report @@ of_signal ~solver:`minisat ~verbose (B.(~:) x))
+let check ~verbose x = 
+  let open HardCamlBloop.Sat in
+  let soln = of_signal ~solver:!solver (*~verbose:true*) (B.(~:) x) in
+  (if verbose then report soln else printf "%s\n" 
+    (match soln with `sat _ -> "SAT" | `unsat -> "UNSAT"));
+  soln
 
 (*******************************************************************************)
 
 open Core
 open Ifs.Stage
+open Ifs.Mo_data
 open B
 
-let test core name instr f = 
+let test mk instr f = 
   let cost c = HardCamlBloop.(Expr.cost (snd @@ counts Expr.Uset.empty c)) in
-  let core = core instr f in
-  printf "%s[%i]...%!" name (cost core);
-  check core
+  let x = make instr mk in
+  let props = f x in
+  let all_props = reduce (&:) props in
+  printf "--------------------------------------------------------\n";
+  printf "%-.8s[%7i]...%!" (Riscv.RV32I.T.Show_t.show instr) (cost all_props);
+  match check ~verbose:true all_props with
+  | `unsat -> ()
+  | `sat _ ->
+    printf "checking each property\n";
+    List.iteri (fun i p ->
+      printf "prop[% 2i] " i;
+      ignore @@ check ~verbose:false p) props
 
-(* Register-immediate instructions *)
+(* Register-immediate *)
 
-let () = test Core.imm "addi" `addi (+:)
-let () = test Core.imm "andi" `andi (&:)
-let () = test Core.imm "ori" `ori (|:)
-let () = test Core.imm "xori" `xori (^:)
-let () = test Core.imm "slti" `slti (fun a b -> uresize (a <+ b) 32)
-let () = test Core.imm "sltiu" `sltiu (fun a b -> uresize (a <: b) 32)
+let imm_props f x = 
+  [
+    x.st.rdd ==: (f x.rd1 (sresize x.data.I.imm 32));
+    x.st.rad ==: x.data.I.rd;
+    x.st.rwe;
+    x.st.pc ==: x.pc +:. 4;
+    ~: (x.md.req);
+  ]
 
-let () = test Core.imm_shift "slli" `slli (fun a b -> log_shift sll a b)
-let () = test Core.imm_shift "srli" `srli (fun a b -> log_shift srl a b)
-let () = test Core.imm_shift "srai" `srai (fun a b -> log_shift sra a b)
-(* LUI AUIPC *)
+let slt a b = uresize (a <+ b) 32
+let sltu a b = uresize (a <: b) 32
 
-(* Register-Register instructions *)
+let () = List.iter (fun (i,f) -> test I.make i (imm_props f))
+  [
+    `addi,  (+:);
+    `andi,  (&:);
+    `ori,   (|:);
+    `xori,  (^:);
+    `slti,  slt;
+    `sltiu, sltu;
+  ]
 
-let () = test Core.reg "add" `add (+:)
+let imm_shift_props f x = 
+  [
+    x.st.rdd ==: (f x.rd1 x.data.I_shift.imm);
+    x.st.rad ==: x.data.I_shift.rd;
+    x.st.rwe;
+    x.st.pc ==: x.pc +:. 4;
+    ~: (x.md.req);
+  ]
+
+let sll_ a b = log_shift sll a b.[4:0]
+let srl_ a b = log_shift srl a b.[4:0]
+let sra_ a b = log_shift sra a b.[4:0]
+
+let () = List.iter (fun (i,f) -> test I_shift.make i (imm_shift_props f))
+  [
+    `slli, sll_;
+    `srli, srl_;
+    `srai, sra_;
+  ]
+
+(* Special: lui, auipc *)
+
+let () = test U.make `auipc @@ fun x ->
+  [
+    x.st.rdd ==: (x.pc +: (x.data.U.imm @: zero 12));
+    x.st.rad ==: x.data.U.rd;
+    x.st.rwe;
+    x.st.pc ==: x.pc +:. 4;
+    ~: (x.md.req);
+  ]
+
+let () = test U.make `lui @@ fun x ->
+  [
+    x.st.rdd ==: (x.data.U.imm @: zero 12);
+    x.st.rad ==: x.data.U.rd;
+    x.st.rwe;
+    x.st.pc ==: x.pc +:. 4;
+    ~: (x.md.req);
+  ]
+
+(* Register-Register *)
+
+let reg_props f x = 
+  [
+    x.st.rdd ==: (f x.rd1 x.rd2);
+    x.st.rad ==: x.data.R.rd;
+    x.st.rwe;
+    x.st.pc ==: x.pc +:. 4;
+    ~: (x.md.req);
+  ]
+
+let () = List.iter (fun (i,f) -> test R.make i (reg_props f))
+  [
+    `add,  (+:);
+    `sub,  (-:);
+    `and_, (&:);
+    `or_,  (|:);
+    `xor_, (^:);
+    `slt,  slt;
+    `sltu, sltu;
+    `sll,  sll_;
+    `srl,  srl_;
+    `sra,  sra_;
+  ]
+
+(* Unconditional jump *)
+
+let () = test UJ.make `jal @@ fun x ->
+  [
+    x.st.pc ==: ((x.pc +: (sresize (x.data.UJ.imm @: gnd) 32)) &:. (-2)); 
+    x.st.rdd ==: (x.pc +:. 4);
+    x.st.rad ==: x.data.UJ.rd;
+    x.st.rwe;
+    ~: (x.md.req);
+  ]
+
+let () = test I.make `jalr @@ fun x ->
+  [
+    x.st.pc ==: (((x.st.rdd +: sresize x.data.I.imm 32) &:. (-2)));
+    x.st.rdd ==: (x.pc +:. 4);
+    x.st.rad ==: x.data.I.rd;
+    x.st.rwe;
+    ~: (x.md.req);
+  ]
+
+(* Conditional branch *)
+
+let branch_props f x = 
+  let taken = f x.Core.rd1 x.rd2 in
+  [
+    x.st.pc ==: mux2 taken 
+      ((x.pc +: sresize (x.data.SB.imm @: gnd) 32) &:. (-2))
+      (x.pc +:. 4);
+    ~: (x.md.req);
+    ~: (x.st.rwe);
+  ]
+
+let () = List.iter (fun (i,f) -> test SB.make i (branch_props f))
+  [
+    `beq,  (==:);
+    `bne,  (<>:);
+    `blt,  (<+);
+    `bltu, (<:);
+    `bge,  (>=+);
+    `bgeu, (>=:);
+  ]
+
+(* Load and Store *)
+
+let load_props i x =
+  let lh = mux2 x.md.addr.[1:1] x.rdata.[31:16] x.rdata.[15:0] in
+  let lb = 
+    mux x.md.addr.[1:0] 
+      [
+        x.rdata.[7:0];
+        x.rdata.[15:8];
+        x.rdata.[23:16];
+        x.rdata.[31:24];
+      ]
+  in
+  [
+    x.md.addr ==: (x.Core.rd1 +: sresize x.data.I.imm 32);
+    x.st.rdd ==: 
+        (match i with
+        | `lw -> x.rdata
+        | `lh -> sresize lh 32
+        | `lhu -> uresize lh 32
+        | `lb -> sresize lb 32
+        | `lbu -> uresize lb 32
+        | _ -> failwith "");
+    x.st.rad ==: x.data.I.rd;
+    x.st.rwe;
+    x.st.pc ==: x.pc +:. 4;
+    x.md.req;
+    x.md.rw;
+  ]
+
+let () = List.iter (fun i -> test I.make i (load_props i))
+  [
+    `lw;
+    `lh;
+    `lhu;
+    `lb;
+    `lbu;
+  ]
+
+let store_props i x = 
+  [
+    x.md.addr ==: (x.Core.rd1 +: sresize x.data.S.imm 32);
+    x.md.wmask ==: 
+      (match i with
+      | `sw -> const "1111"
+      | `sh -> mux2 x.md.addr.[1:1] (const "1100") (const "0011")
+      | `sb -> mux x.md.addr.[1:0] (List.map const [ "0001"; "0010"; "0100"; "1000" ])
+      | _ -> failwith "");
+    x.md.wdata ==: 
+      (match i with
+      | `sw -> x.Core.rd2
+      | `sh -> mux2 x.md.addr.[1:1] (x.rd2.[15:0] @: zero 16) (zero 16 @: x.rd2.[15:0])
+      | `sb -> mux x.md.addr.[1:0]
+                [
+                  zero 24 @: x.rd2.[7:0];
+                  zero 16 @: x.rd2.[7:0] @: zero 8;
+                  zero 8 @: x.rd2.[7:0] @: zero 16;
+                  x.rd2.[7:0] @: zero 24;
+                ]
+      | _ -> failwith "");
+    x.st.pc ==: x.pc +:. 4;
+    ~: (x.st.rwe);
+    x.md.req;
+    ~: (x.md.rw);
+  ]
+
+let () = List.iter (fun i -> test S.make i (store_props i))
+  [
+    `sw;
+    `sh;
+    `sb;
+  ]
 
