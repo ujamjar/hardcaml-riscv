@@ -301,6 +301,12 @@ module Make(B : HardCaml.Comb.S) = struct
 
   end
 
+  module All = struct
+    type 'a t = unit
+    let make _ = 
+      B.input "instr" 32, ()
+  end
+
   open B
   open Ifs.Stage
 
@@ -346,13 +352,13 @@ open Ifs.Stage
 open Ifs.Mo_data
 open B
 
-let test mk instr f = 
+let test ?(show=Riscv.RV32I.T.Show_t.show) mk instr f = 
   let cost c = HardCamlBloop.(Expr.cost (snd @@ counts Expr.Uset.empty c)) in
   let x = make instr mk in
   let props = f x in
   let all_props = reduce (&:) props in
   printf "--------------------------------------------------------\n";
-  printf "%-.8s[%7i]...%!" (Riscv.RV32I.T.Show_t.show instr) (cost all_props);
+  printf "%-.8s[%7i]...%!" (show instr) (cost all_props);
   match check ~verbose:true all_props with
   | `unsat -> ()
   | `sat _ ->
@@ -564,4 +570,21 @@ let () = List.iter (fun i -> test S.make i (store_props i))
     `sh;
     `sb;
   ]
+
+(* Trap *)
+
+let () = test All.make ~show:(fun _ -> "#trap") `addi (* doesnt matter *) @@ fun x ->
+  let traps = 
+    ~: (List.fold_left
+        (fun acc (_,(mask,mtch)) -> 
+          acc |: ((x.instr &: consti32 32 mask) ==: consti32 32 mtch)) 
+        gnd Riscv.RV32I.T.mask_match)
+  in
+  List.map (fun x -> (traps &: x) |: (~: traps))
+    [
+      x.st.iclass.Ifs.Class.trap;
+      ~: (x.st.rwe);
+      ~: (x.md.req);
+      (* xxx pc+epc *)
+    ]
 

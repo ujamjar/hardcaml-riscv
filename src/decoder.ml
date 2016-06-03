@@ -151,6 +151,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       |> concat
     in
     let insn = trap @: insn in
+    let ld, st = ld &: (~: trap), st &: (~: trap) in
 
     { insn; 
       iclass = { 

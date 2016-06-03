@@ -28,8 +28,10 @@ let old () =
     memory.(7) <- add ~rd:7 ~rs1:1 ~rs2:2;
     memory.(8) <- sub ~rd:8 ~rs1:2 ~rs2:1;
     memory.(9) <- jal ~rd:9 ~imm:8;*)
-    memory.(4) <- addi ~rd:1 ~rs1:0 ~imm:10;
-    memory.(5) <- jalr ~rd:2 ~rs1:1 ~imm:10;
+
+    (*memory.(4) <- addi ~rd:1 ~rs1:0 ~imm:10;
+    memory.(5) <- jalr ~rd:2 ~rs1:1 ~imm:10; *)
+    memory.(4) <- 0b00000000000010000101000000100011l;
   in
   Testbench.run get_core memory
 
