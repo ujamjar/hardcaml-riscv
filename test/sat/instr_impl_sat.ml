@@ -463,7 +463,7 @@ let () = test UJ.make `jal @@ fun x ->
 
 let () = test I.make `jalr @@ fun x ->
   [
-    x.st.pc ==: (((x.st.rdd +: sresize x.data.I.imm 32) &:. (-2)));
+    x.st.pc ==: (((x.rd1 +: sresize x.data.I.imm 32) &:. (-2)));
     x.st.rdd ==: (x.pc +:. 4);
     x.st.rad ==: x.data.I.rd;
     x.st.rwe;
@@ -547,9 +547,9 @@ let store_props i x =
       | `sb -> mux x.md.addr.[1:0]
                 [
                   zero 24 @: x.rd2.[7:0];
-                  zero 16 @: x.rd2.[7:0] @: zero 8;
-                  zero 8 @: x.rd2.[7:0] @: zero 16;
-                  x.rd2.[7:0] @: zero 24;
+                  zero 16 @: x.rd2.[7:0] @: zero  8;
+                  zero  8 @: x.rd2.[7:0] @: zero 16;
+                             x.rd2.[7:0] @: zero 24;
                 ]
       | _ -> failwith "");
     x.st.pc ==: x.pc +:. 4;
