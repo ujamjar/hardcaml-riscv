@@ -39,7 +39,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     in
     (* read data *)
     let rdm = 
-      let res x = mux2 sext (sresize x 32) (uresize x 32) in
+      let res x = mux2 sext (uresize x 32) (sresize x 32) in
       let rdm = inp.I.md.Mi_data.rdata in
       let rdm8 = res @@ mux ofs.[1:0] [ rdm.[7:0]; rdm.[15:8]; rdm.[23:16]; rdm.[31:24] ] in
       let rdm16 = res @@ mux ofs.[1:1] [ rdm.[15:0]; rdm.[31:16] ] in
