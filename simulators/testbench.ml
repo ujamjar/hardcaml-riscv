@@ -38,6 +38,7 @@ let run get_core memory =
     let cycle () = 
       cycle_count := !cycle_count + 1;
       mio_instr i o' memory;
+      Cs.cycle_comb0 sim;
       mio_data i o memory;
       Cs.cycle sim;
       Lwt_unix.yield () 

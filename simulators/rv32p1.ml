@@ -41,4 +41,4 @@ let elf () =
   let _ = E.to_mem "firmware/firmware.elf" memory in
   Testbench.run get_core memory
 
-let () = old ()
+let () = elf ()
