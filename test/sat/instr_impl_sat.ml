@@ -338,9 +338,9 @@ module Core = Make(B)
 
 (*******************************************************************************)
 
-let check ~verbose x = 
+let check ~verbose ~banned x = 
   let open HardCamlBloop.Sat in
-  let soln = of_signal ~solver:!solver (*~verbose:true*) (B.(~:) x) in
+  let soln = of_signal ~solver:!solver ~banned (*~verbose:true*) (B.(~:) x) in
   (if verbose then report soln else printf "%s\n" 
     (match soln with `sat _ -> "SAT" | `unsat -> "UNSAT"));
   soln
@@ -352,20 +352,23 @@ open Ifs.Stage
 open Ifs.Mo_data
 open B
 
-let test ?(show=Riscv.RV32I.T.Show_t.show) mk instr f = 
+let testb show mk instr f = 
   let cost c = HardCamlBloop.(Expr.cost (snd @@ counts Expr.Uset.empty c)) in
   let x = make instr mk in
-  let props = f x in
+  let props, banned = f x in
   let all_props = reduce (&:) props in
   printf "--------------------------------------------------------\n";
   printf "%-.8s[%7i]...%!" (show instr) (cost all_props);
-  match check ~verbose:true all_props with
+  match check ~verbose:true ~banned all_props with
   | `unsat -> ()
   | `sat _ ->
     printf "checking each property\n";
     List.iteri (fun i p ->
       printf "prop[% 2i] " i;
       ignore @@ check ~verbose:false p) props
+
+let test mk instr f = 
+  testb Riscv.RV32I.T.Show_t.show mk instr (fun x -> f x, [])
 
 (* Register-immediate *)
 
@@ -573,18 +576,23 @@ let () = List.iter (fun i -> test S.make i (store_props i))
 
 (* Trap *)
 
-let () = test All.make ~show:(fun _ -> "#trap") `addi (* doesnt matter *) @@ fun x ->
-  let traps = 
-    ~: (List.fold_left
-        (fun acc (_,(mask,mtch)) -> 
-          acc |: ((x.instr &: consti32 32 mask) ==: consti32 32 mtch)) 
-        gnd Riscv.RV32I.T.mask_match)
+let () = testb (fun _ -> "#trap") All.make `addi (* doesnt matter *) @@ fun x ->
+  (* disallow valid instructions, so we force a trap *)
+  let banned = 
+    List.map
+        (fun (_,(mask,mtch)) -> 
+          ~: ((x.instr &: consti32 32 mask) ^: consti32 32 mtch)) 
+        Riscv.RV32I.T.mask_match
   in
-  List.map (fun x -> (traps &: x) |: (~: traps))
+  let props = 
     [
       x.st.iclass.Ifs.Class.trap;
       ~: (x.st.rwe);
       ~: (x.md.req);
       (* xxx pc+epc *)
     ]
+  in
+  props, banned
+
+
 
