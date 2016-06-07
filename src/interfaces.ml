@@ -36,7 +36,7 @@ module type S = sig
     bra
     ld st
     opi opr
-    fen sys rdc rdco
+    fen sys csr
     f3 f7
   end
   module Class_ex : module type of Interface_ex.Make(Class) 
@@ -118,7 +118,7 @@ module Make(C : Config.S) = struct
     ld[1] st[1]
     opi[1] opr[1]
     fen[1] sys[1]
-    rdc[1] rdco[3]
+    csr[1]
     f3[3] f7[1]
   end
   module Class_ex = Interface_ex.Make(Class)

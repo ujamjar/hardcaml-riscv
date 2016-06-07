@@ -36,7 +36,7 @@ module type S = sig
     bra
     ld st
     opi opr
-    fen sys rdc rdco
+    fen sys csr
     f3 f7
   end
   module Class_ex : module type of Interface_ex.Make(Class) 

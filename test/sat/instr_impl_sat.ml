@@ -27,10 +27,7 @@ module B = HardCamlBloop.Gates.Make_comb(HardCamlBloop.Gates.Basic_gates)
 
 module Make(B : HardCaml.Comb.S) = struct
 
-  module Cfg = struct
-    let xlen = 32
-    let start_addr = 0x10
-  end
+  module Cfg = Config.RV32I_base
 
   module Ifs = Interfaces.Make(Cfg)
   module F = Fetch.Make(Ifs)(B)

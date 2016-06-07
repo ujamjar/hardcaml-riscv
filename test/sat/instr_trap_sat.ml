@@ -30,10 +30,7 @@ let instr = B.input "instr" 32
 (* circuit we want to ensure is correct *)
 module Rtl = struct
 
-  module Ifs = Interfaces.Make(struct
-    let xlen = 32
-    let start_addr = 0
-  end)
+  module Ifs = Interfaces.Make(Config.RV32I_base)
   module I = Decoder.Make_insn_decoder(Ifs)(B)
 
   let insn = I.((decoder instr).insn) 

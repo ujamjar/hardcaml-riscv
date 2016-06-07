@@ -9,7 +9,7 @@ open I
 open O 
 open Rv_o 
 
-let mio_data i o memory = 
+let mio_data putchar i o memory = 
   let open Mi_data in
   let open Mo_data in
   (*let o = o.o in*)
@@ -20,7 +20,12 @@ let mio_data i o memory =
     if B.to_int !(o.rw) = 1 then begin
       i.md.rdata := D.to_signal @@ Mem.read ~memory ~addr:!(o.addr)
     end else begin
-      Mem.write ~memory ~addr:!(o.addr) ~data:!(o.wdata) ~strb:!(o.wmask)
+      let ci x = D.to_int @@ D.of_signal x in (* convert to int *)
+      if ci !(o.addr) = 0x10000000 then begin
+        putchar (ci !(o.wdata))
+      end else begin
+        Mem.write ~memory ~addr:!(o.addr) ~data:!(o.wdata) ~strb:!(o.wmask)
+      end
     end
   end
 

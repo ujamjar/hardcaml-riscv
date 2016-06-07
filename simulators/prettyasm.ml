@@ -231,12 +231,7 @@ let pretty x =
   | `sw -> pretty_s "sw" x
   | `fence -> "fence" (* XXX pred+succ *)
   | `fence_i -> "fencei"
-  | `scall -> "scall"
-  | `sbreak -> "sbreak"
-  | `_rdcycle -> "rdcycle" (* XXX various params *)
-  | `_rdtime -> "rdtime"
-  | `_rdinstret -> "rdinstret"
-  | `_rdcycleh -> "rdcycleh"
-  | `_rdtimeh -> "rdtimeh"
-  | `_rdinstreth -> "rdinstreth"
+  | `ecall -> "ecall"
+  | `ebreak -> "ebreak"
+  | `csrrs -> "csrrs"
 

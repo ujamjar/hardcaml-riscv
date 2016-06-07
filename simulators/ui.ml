@@ -295,6 +295,7 @@ module Make(B : HardCaml.Comb.S) = struct
       cursor_incr : button;
       cursor_decr : button;
       hbox : hbox;
+      print_label : label;
       (*trans_incr : button;
       trans_decr : button;*)
     }
@@ -308,6 +309,7 @@ module Make(B : HardCaml.Comb.S) = struct
     let cursor_num = new input_num 12 in
     let cursor_incr = new button ~brackets:(" "," ") "+" in
     let cursor_decr = new button ~brackets:(" "," ") "-" in
+    let print_label = new label "" in
     hbox#add ~expand:false step_label;
     hbox#add ~expand:false step_num;
     hbox#add ~expand:false step_incr;
@@ -317,8 +319,8 @@ module Make(B : HardCaml.Comb.S) = struct
     hbox#add ~expand:false cursor_num;
     hbox#add ~expand:false cursor_incr;
     hbox#add ~expand:false (new vline);
-    hbox#add (new spacing ());
-    { step_num; step_incr; cursor_num; cursor_incr; cursor_decr; hbox }
+    hbox#add ~expand:true print_label;
+    { step_num; step_incr; cursor_num; cursor_incr; cursor_decr; hbox; print_label }
 
   type memory_ctrl = 
     {

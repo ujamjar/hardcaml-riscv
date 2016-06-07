@@ -30,16 +30,31 @@ let run get_core memory =
   (* waveform viewer *)
   let sim, waves = Waves.init_waves sim in
 
+  let cycle_count = ref 0 in
   let ctrl, incr_cycles = Lwt_stream.create () in
 
-  let cycle_count = ref 0 in
+  let (waiter, wakener) as exit = Lwt.wait () in
+  let ui = Ui.make_ui (Waves.wave_classes waves) memory in
+  Ui.make_ui_events ui cycle_count incr_cycles;
+
+  let putchar =
+    let line = ref "" in
+    fun c ->
+      let c = Char.chr c in
+      if c = '\n' then line := ""
+       else begin
+         line := !line ^ (String.init 1 (fun _ -> c));
+         ui.Ui.wave_ctrl.Ui.print_label#set_text !line
+       end
+  in
+
   let testbench () = 
 
     let cycle () = 
       cycle_count := !cycle_count + 1;
       mio_instr i o' memory;
       Cs.cycle_comb0 sim;
-      mio_data i o memory;
+      mio_data putchar i o memory;
       Cs.cycle sim;
       Lwt_unix.yield () 
     in
@@ -63,10 +78,6 @@ let run get_core memory =
 
     cycles ()
   in
-
-  let (waiter, wakener) as exit = Lwt.wait () in
-  let ui = Ui.make_ui (Waves.wave_classes waves) memory in
-  Ui.make_ui_events ui cycle_count incr_cycles;
 
   (* update the waveform every 1/4 second. *)
   let open Lwt in

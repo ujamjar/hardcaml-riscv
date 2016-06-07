@@ -2,10 +2,7 @@ open HardCamlRiscV
 open Printf
 
 (* rv32 core *)
-module Cfg = struct
-  let xlen = 32
-  let start_addr = 0x10
-end
+module Cfg = Config.RV32I_base
 module Rv = Pipe.Make(Cfg)
 module B = HardCaml.Api.B
 
