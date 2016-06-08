@@ -8,6 +8,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     {
       insn : B.t;
       iclass : B.t Class.t;
+      csr : B.t Csr_ctrl.t;
     }
 
   let imm_uj ~instr = 
@@ -30,13 +31,19 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       c.jalr |: c.ld |: c.opi, sresize instr.[31:20] Ifs.xlen;
       c.bra, sresize (concat ((smap instr [(31,31); (7,7); (30,25); (11,8)]) @ [gnd])) Ifs.xlen;
       c.st, sresize (concat (smap instr [(31,25); (11,7)])) Ifs.xlen;
+      c.csr, uresize instr.[19:15] Ifs.xlen;
     ] (zero Ifs.xlen)
 
 
   let decode_csrs csrs func = 
     let open Csr.Specs in
-    let csrs = List.map (fun csr -> csr, consti 12 csr.addr ==: func) csrs in
-    let dec = List.fold_left (fun a (_,x) -> a |: x) gnd csrs in
+    let csrs = List.map (fun csr -> List.assoc csr Csr.Specs.all_csrs) csrs in
+    let csrs = List.map (fun csr -> 
+      let addr = consti 12 csr.addr in
+      let hit = addr ==: func in
+      csr, hit) csrs 
+    in
+    let dec = List.fold_left (fun hit' (_,hit) -> hit' |: hit) gnd csrs in
     csrs, dec
 
   let decoder instr = 
@@ -82,20 +89,33 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       dec Ifs.support_wfi  0b110 
     in
 
-    (*let rdc, rdco = (* XXX remove me *)
-      let f = (funct12.[11:8] ==:. 0b1100) &: (funct12.[6:2] ==:. 0b00000) in
-      let c = rs1_0 &: f3.(2) &: sys &: f in
-      let x = funct12.[1:0] in
-      x <>:. 0b11 &: c, funct12.[1:0] @: funct12.[7:7]
-    in*)
-    let csr = 
-      let _, dec = decode_csrs
-          Csr.Specs.[ 
-            cycle; time; instret;
-            cycleh; timeh; instreth;
-          ] funct12
+    let csr, csr_use_imm, csr_imm, csr_n_we, csr_invalid_we, csrs = 
+      (* implements csrrs in read-only mode *)
+      let simple () = 
+        let _, dec = decode_csrs Ifs.csrs funct12 in
+        let csr = rs1_0 &: rd_0 &: f3.(2) &: sys &: dec in
+        csr, gnd, zero 5, gnd, gnd,
+          [| gnd; csr; gnd; gnd; gnd; gnd |]
       in
-      rs1_0 &: f3.(2) &: sys &: dec
+      let full () = 
+        (* csrrw[i], csrrs[i], csrrc[i] with error checking *)
+        let _, dec = decode_csrs Ifs.csrs funct12 in
+        let f = ~: (f3.(0) |: f3.(4)) in (* 1,2,3,5,6,7 *)
+        let csr = sys &: dec in
+        let imm = rs1 in
+        let use_imm = funct3.[2:2] in
+        let ro = funct12.[11:10] ==:. 0b11 in
+        let mode = funct12.[9:8] in
+        let we_n = 
+          (* csrrs and csrrc shall not perform write if rs1=x0.
+             csrrsi, csrrci and csrwi shall not perform write if imm=[rs1=]0 *)
+          (f3.(2) |: f3.(3) |: f3.(5) |: f3.(6) |: f3.(7)) &: rs1_0
+        in
+        (* XXX check machine mode *)
+        csr &: f, use_imm, imm, we_n, (~: we_n) &: ro,
+          Array.map (fun i -> csr &: f3.(i)) [| 1;2;3;5;6;7 |]
+      in
+      if Ifs.support_csrs then full() else simple() 
     in
 
     let trap = 
@@ -115,7 +135,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
          fence; fencei; ecall; ebreak; eret; wfi; csr])
     in
 
-    let open Insn.T in
+    let open Config.T in
     let insn = [
       `lui, lui; 
       `auipc, auipc; 
@@ -158,15 +178,15 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       `fence_i, fencei; 
       `ecall, ecall; 
       `ebreak, ebreak;
-      `csrrs, csr; 
-      (*`csrrc, gnd; 
-      `csrrw, gnd;
-      `csrrsi, gnd;
-      `csrrci, gnd; 
-      `csrrwi, gnd;*)
+      `csrrs, csrs.(1); 
+      (*`csrrw, csrs.(0);
+      `csrrc, csrs.(2); 
+      `csrrwi, csrs.(3);
+      `csrrsi, csrs.(4);
+      `csrrci, csrs.(5);*) 
     ] in
     let insn = 
-      List.map (fun (i,v) -> Enum.from_enum<Insn.T.t> i, v) insn
+      List.map (fun (i,v) -> Enum.from_enum<Config.T.t> i, v) insn
       |> List.sort (fun (a,_) (b,_) -> - (compare a b)) 
       |> List.map snd
       |> concat
@@ -177,9 +197,13 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     { insn; 
       iclass = { 
         Class.trap; 
-        lui; auipc; jal; jalr; bra; ld; st; opi; opr; fen; sys; csr;
+        lui; auipc; jal; jalr; bra; ld; st; opi; opr; fen; sys; 
+        csr; 
         f7 = instr.[30:30]; f3=funct3; 
-      } 
+      };
+      csr = {
+        Csr_ctrl.csr_use_imm; csr_imm; csr_n_we; csr_invalid_we;
+      };
     }
 
 end
@@ -224,7 +248,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       ra1_zero; ra2_zero; rad_zero;
       rwe;
       is_imm; imm; 
-      instr; insn=d.insn; iclass=d.iclass; 
+      instr; insn=d.insn; iclass=d.iclass; csr=d.csr;
     }
 
   let name = "dec"

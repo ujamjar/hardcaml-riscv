@@ -8,7 +8,7 @@ let decode_insn b =
   else if B.(to_int (msb b)) = 1 then "TRAP"
   else
     let idx = B.(to_int (onehot_to_binary b)) in
-    Insn.T.(Show_t.show (Enum_t.to_enum idx))
+    Config.T.(Show_t.show (Enum_t.to_enum idx))
 
 let signal_display = function (n,b) -> 
   let open Waveterm_waves in

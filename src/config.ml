@@ -92,6 +92,7 @@ module type S = sig
   val support_wfi : bool
   val support_eret : bool
   val support_csrs : bool
+  val csrs : csr list
 end
 
 module RV32I_base = struct
@@ -100,6 +101,11 @@ module RV32I_base = struct
   let support_wfi = false
   let support_eret = false
   let support_csrs = false
+  let csrs = 
+    [ 
+      `cycle; `time; `instret;
+      `cycleh; `timeh; `instreth;
+    ]
 end
 
 module RV32I_machine = struct
@@ -108,5 +114,14 @@ module RV32I_machine = struct
   let support_wfi = true
   let support_eret = true
   let support_csrs = true
+  let csrs = 
+    [ 
+      `cycle; `time; `instret;
+      `cycleh; `timeh; `instreth;
+      `mcpuid; `mimpid; `mhartid; (* many more to go... *)
+    ]
 end
+
+module T = Riscv.RV32I(*_MACHINE*).T
+module V = Utils.BVec(T)
 

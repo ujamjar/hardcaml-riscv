@@ -36,10 +36,14 @@ module type S = sig
     bra
     ld st
     opi opr
-    fen sys csr
+    fen sys csr 
     f3 f7
   end
   module Class_ex : module type of Interface_ex.Make(Class) 
+
+  module Csr_ctrl : interface
+    csr_use_imm csr_imm csr_n_we csr_invalid_we
+  end
 
   module Stage : interface
     insn pc instr 
@@ -49,8 +53,7 @@ module type S = sig
     branch rwe
     ra1_zero ra2_zero rad_zero
     (iclass : Class)
-    (*(mi : Mo_instr)  (* XXX extract these and drive from 'fet' / 'mem' stages *)
-    (md : Mo_data)*)
+    (csr : Csr_ctrl)
     junk
   end
   module Stage_ex : module type of Interface_ex.Make(Stage) 

@@ -26,7 +26,7 @@ module Make(C : Config.S) = struct
 
   let zero' (n,b) = zero b
   let def_instr = consti32 32 @@ Riscv.RV32I.Asm.xori ~rd:0 ~rs1:0 ~imm:0
-  let def_insn = sll (one 48) (Enum.from_enum<Insn.T.t> `xori)
+  let def_insn = sll (one 48) (Enum.from_enum<Config.T.t> `xori)
   let def_iclass = Class.{ (map zero' t) with opi = vdd; f3 = consti 3 6; }
 
   let def_clear = 

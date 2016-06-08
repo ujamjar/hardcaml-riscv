@@ -36,10 +36,14 @@ module type S = sig
     bra
     ld st
     opi opr
-    fen sys csr
+    fen sys csr 
     f3 f7
   end
   module Class_ex : module type of Interface_ex.Make(Class) 
+
+  module Csr_ctrl : interface
+    csr_use_imm csr_imm csr_n_we csr_invalid_we
+  end
 
   module Stage : interface
     insn pc instr 
@@ -49,8 +53,7 @@ module type S = sig
     branch rwe
     ra1_zero ra2_zero rad_zero
     (iclass : Class)
-    (*(mi : Mo_instr)
-    (md : Mo_data)*)
+    (csr : Csr_ctrl)
     junk
   end
   module Stage_ex : module type of Interface_ex.Make(Stage) 
@@ -117,11 +120,14 @@ module Make(C : Config.S) = struct
     bra[1]
     ld[1] st[1]
     opi[1] opr[1]
-    fen[1] sys[1]
-    csr[1]
+    fen[1] sys[1] csr[1] 
     f3[3] f7[1]
   end
   module Class_ex = Interface_ex.Make(Class)
+
+  module Csr_ctrl = interface
+    csr_use_imm[1] csr_imm[5] csr_n_we[1] csr_invalid_we[1]
+  end
 
   (* this stores the information needed at any stage of the
    * pipeline.  In some stages the information may or may not
@@ -139,7 +145,7 @@ module Make(C : Config.S) = struct
    * produce a hierarchy of modules. *)
   module Stage = interface
     (* decoded instruction *)
-    insn[Insn.V.n+1]
+    insn[Config.V.n+1]
     (* program counter *)
     pc[C.xlen] 
     (* instruction from memory *)
@@ -158,9 +164,8 @@ module Make(C : Config.S) = struct
     ra1_zero[1] ra2_zero[1] rad_zero[1]
     (* instruction class *)
     (iclass : Class)
-    (* instruction/data memory i/o *)
-    (*(mi : Mo_instr)
-    (md : Mo_data)*)
+    (* csr control *)
+    (csr : Csr_ctrl)
     (* junk TO BE REMOVED  *)
     junk[1]
   end

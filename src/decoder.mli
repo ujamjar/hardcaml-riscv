@@ -4,6 +4,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) : sig
     {
       insn : B.t;
       iclass : B.t Ifs.Class.t;
+      csr : B.t Ifs.Csr_ctrl.t;
     }
 
   val imm_uj : instr:B.t -> B.t

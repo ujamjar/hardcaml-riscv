@@ -40,13 +40,27 @@ end
 (* reference implementation *)
 module Ref = struct
 
+  (* csrrs - specfic matches only *)
+
+  let insns = 
+    List.filter ((<>) `csrrs) Config.V.list |>
+    List.map (fun x -> List.assoc x Config.T.mask_match) 
+
+  let csrs = 
+    let csrs = Rtl.Ifs.csrs in
+    let mask, mat = List.assoc `csrrs Riscv.RV32I.T.mask_match in
+    List.map (fun csr -> 
+        let csr = List.assoc csr Csr.Specs.all_csrs in
+        let addr = Int32.of_int csr.Csr.Specs.addr in
+        let addr = Int32.shift_left addr 20 in
+        0xFFFFFFFFl, Int32.logor mat addr) csrs
+
   let insn = 
-    let x = List.map (fun x -> List.assoc x Riscv.RV32I.T.mask_match) Insn.V.list in
     let open B in
-    let f (mask,mat) = 
-      (instr &: (consti32 32 mask)) ==: consti32 32 mat
-    in
-    let insn = List.map f x in
+    let f (mask,mat) = (instr &: (consti32 32 mask)) ==: consti32 32 mat in
+    let insn = List.map f insns in
+    let csrs = List.map f csrs in
+    let insn = insn @ [ reduce (|:) csrs ] in
     let trap = ~: (reduce (|:) insn) in
     B.concat (trap :: List.rev insn)
 

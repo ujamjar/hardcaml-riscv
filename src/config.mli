@@ -87,16 +87,31 @@ type csr =
   | `mfromhost ]
 
 module type S = sig
+  
   (* 32 or 64 bit *)
   val xlen : int 
+  
   (* processor start address *)
   val start_addr : int
 
   (* various options *)
+
+  (* add support for wait for interrupt instruction *)
   val support_wfi : bool
+
+  (* add support for eret instruction *)
   val support_eret : bool
+
+  (* add support for all csr instructions (csrrc is always supported) *)
   val support_csrs : bool
+
+  (* csrs which can be decoded *)
+  val csrs : csr list
 end
 
 module RV32I_base : S
 module RV32I_machine : S
+
+module T : module type of Riscv.RV32I(*_MACHINE*).T
+module V : Utils.BVec_S with type t = T.t
+
