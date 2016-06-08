@@ -122,6 +122,6 @@ module RV32I_machine = struct
     ]
 end
 
-module T = Riscv.RV32I(*_MACHINE*).T
+module T = Riscv.RV32I_MACHINE.T
 module V = Utils.BVec(T)
 

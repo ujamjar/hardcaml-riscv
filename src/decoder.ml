@@ -101,7 +101,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
         (* csrrw[i], csrrs[i], csrrc[i] with error checking *)
         let _, dec = decode_csrs Ifs.csrs funct12 in
         let f = ~: (f3.(0) |: f3.(4)) in (* 1,2,3,5,6,7 *)
-        let csr = sys &: dec in
+        let csr = sys &: dec &: f in
         let imm = rs1 in
         let use_imm = funct3.[2:2] in
         let ro = funct12.[11:10] ==:. 0b11 in
@@ -111,8 +111,9 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
              csrrsi, csrrci and csrwi shall not perform write if imm=[rs1=]0 *)
           (f3.(2) |: f3.(3) |: f3.(5) |: f3.(6) |: f3.(7)) &: rs1_0
         in
+        let invalid_we = ((~: we_n) |: f3.(1)) &: ro in
         (* XXX check machine mode *)
-        csr &: f, use_imm, imm, we_n, (~: we_n) &: ro,
+        csr &: (~: invalid_we), use_imm, imm, we_n, csr &: invalid_we,
           Array.map (fun i -> csr &: f3.(i)) [| 1;2;3;5;6;7 |]
       in
       if Ifs.support_csrs then full() else simple() 
@@ -134,6 +135,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
         [lui; auipc; jal; jalr; bra; ld; st; opi; sfti; opr; 
          fence; fencei; ecall; ebreak; eret; wfi; csr])
     in
+    let trap = trap |: csr_invalid_we in
 
     let open Config.T in
     let insn = [
@@ -178,12 +180,14 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       `fence_i, fencei; 
       `ecall, ecall; 
       `ebreak, ebreak;
+      `eret, eret;
+      `wfi, wfi;
+      `csrrw, csrs.(0);
       `csrrs, csrs.(1); 
-      (*`csrrw, csrs.(0);
       `csrrc, csrs.(2); 
       `csrrwi, csrs.(3);
       `csrrsi, csrs.(4);
-      `csrrci, csrs.(5);*) 
+      `csrrci, csrs.(5);
     ] in
     let insn = 
       List.map (fun (i,v) -> Enum.from_enum<Config.T.t> i, v) insn

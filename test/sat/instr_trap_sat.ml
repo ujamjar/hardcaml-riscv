@@ -23,52 +23,68 @@
  * equivalent.
  *)
 
-module B = HardCamlBloop.Gates.Comb
-
-let instr = B.input "instr" 32
+module G = HardCamlBloop.Gates.Comb
+module B = HardCaml.Bits.Comb.IntbitsList
+module Ifs = Interfaces.Make(Config.RV32I_machine)
 
 (* circuit we want to ensure is correct *)
-module Rtl = struct
+module Rtl(B : HardCaml.Comb.S) = struct
 
-  module Ifs = Interfaces.Make(Config.RV32I_base)
   module I = Decoder.Make_insn_decoder(Ifs)(B)
 
-  let insn = I.((decoder instr).insn) 
+  let insn instr = I.((decoder instr).insn) 
 
 end
 
 (* reference implementation *)
-module Ref = struct
+module Ref(B : HardCaml.Comb.S) = struct
 
-  (* csrrs - specfic matches only *)
-
-  let insns = 
-    List.filter ((<>) `csrrs) Config.V.list |>
-    List.map (fun x -> List.assoc x Config.T.mask_match) 
-
-  let csrs = 
-    let csrs = Rtl.Ifs.csrs in
-    let mask, mat = List.assoc `csrrs Riscv.RV32I.T.mask_match in
-    List.map (fun csr -> 
-        let csr = List.assoc csr Csr.Specs.all_csrs in
-        let addr = Int32.of_int csr.Csr.Specs.addr in
-        let addr = Int32.shift_left addr 20 in
-        0xFFFFFFFFl, Int32.logor mat addr) csrs
-
-  let insn = 
+  let insn instr = 
     let open B in
     let f (mask,mat) = (instr &: (consti32 32 mask)) ==: consti32 32 mat in
-    let insn = List.map f insns in
-    let csrs = List.map f csrs in
-    let insn = insn @ [ reduce (|:) csrs ] in
+    let insn, csrs = Gencsr.get_full_csrs Config.V.list Ifs.csrs in
+    let insn = List.map f insn in
+    let csrs = List.map (List.map f) csrs in
+    let insn = insn @ (List.map (reduce (|:)) csrs) in (* hack; ordering is subtle *)
     let trap = ~: (reduce (|:) insn) in
     B.concat (trap :: List.rev insn)
 
 end
 
+module Rtl_g = Rtl(G)
+module Ref_g = Ref(G)
+module Rtl_b = Rtl(B)
+module Ref_b = Ref(B)
+
 (* if we can find a case where they are not equal then we failed *)
-let insn_ok = B.(Rtl.insn <>: Ref.insn)
+let insn_ok = 
+  let instr = G.input "instr" 32 in
+  G.(Rtl_g.insn instr <>: Ref_g.insn instr)
+
+let myreport x = 
+  let open Printf in
+  let open HardCamlBloop in
+  let open Sat in
+  match x with
+  | `unsat -> printf "QED"
+  | `sat(soln,_) -> begin
+      let open B in
+      let vec = List.assoc "instr" soln in
+      let ins = string_of_vec_result ("",vec) |> const in
+      let print s i = printf "%-8s = %s [%x]\n" s (to_bstr i) (to_int i) in
+      print "instr"  ins;
+      print "opcode" ins.[6:0];
+      print "rd"     ins.[11:7];
+      print "rs1"    ins.[19:15];
+      print "rs2"    ins.[24:20];
+      print "funct3" ins.[14:12];
+      print "funct7" ins.[31:25];
+      print "imm12"  ins.[31:20];
+      print "imm20"  ins.[31:12];
+      print "ref"    (Ref_b.insn ins);
+      print "rtl"    (Rtl_b.insn ins)
+  end
 
 (* should print UNSAT if the circuits are equivalent *)
-let ok = HardCamlBloop.Sat.(report @@ of_signal insn_ok)
+let ok = HardCamlBloop.Sat.(myreport @@ of_signal insn_ok)
 

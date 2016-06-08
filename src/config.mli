@@ -112,6 +112,6 @@ end
 module RV32I_base : S
 module RV32I_machine : S
 
-module T : module type of Riscv.RV32I(*_MACHINE*).T
+module T : module type of Riscv.RV32I_MACHINE.T
 module V : Utils.BVec_S with type t = T.t
 

@@ -233,5 +233,5 @@ let pretty x =
   | `fence_i -> "fencei"
   | `ecall -> "ecall"
   | `ebreak -> "ebreak"
-  | `csrrs -> "csrrs"
+  (*| `csrrs -> "csrrs"*)
 
