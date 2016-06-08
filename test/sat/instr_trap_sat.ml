@@ -45,7 +45,8 @@ module Ref(B : HardCaml.Comb.S) = struct
     let insn, csrs = Gencsr.get_full_csrs Config.V.list Ifs.csrs in
     let insn = List.map f insn in
     let csrs = List.map (List.map f) csrs in
-    let insn = insn @ (List.map (reduce (|:)) csrs) in (* hack; ordering is subtle *)
+    let reduce_or l = if l=[] then gnd else reduce (|:) l in
+    let insn = insn @ (List.map (reduce_or) csrs) in (* hack; ordering is subtle *)
     let trap = ~: (reduce (|:) insn) in
     B.concat (trap :: List.rev insn)
 
@@ -61,12 +62,19 @@ let insn_ok =
   let instr = G.input "instr" 32 in
   G.(Rtl_g.insn instr <>: Ref_g.insn instr)
 
+let qed = 
+"   ____    __________ 
+  / __ \\  / ____/ __ \\
+ / / / / / __/ / / / /
+/ /_/ / / /___/ /_/ / 
+\\___\\_\\/_____/_____/  "
+
 let myreport x = 
   let open Printf in
   let open HardCamlBloop in
   let open Sat in
   match x with
-  | `unsat -> printf "QED"
+  | `unsat -> printf "%s\n" qed
   | `sat(soln,_) -> begin
       let open B in
       let vec = List.assoc "instr" soln in

@@ -97,24 +97,35 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
         csr, gnd, zero 5, gnd, gnd,
           [| gnd; csr; gnd; gnd; gnd; gnd |]
       in
+      (* csrrw[i], csrrs[i], csrrc[i] with error checking TODO check machine mode *)
       let full () = 
-        (* csrrw[i], csrrs[i], csrrc[i] with error checking *)
+        (* a supported csr address *)
         let _, dec = decode_csrs Ifs.csrs funct12 in
+        (* valid (csr &: f) => valid instruction *)
         let f = ~: (f3.(0) |: f3.(4)) in (* 1,2,3,5,6,7 *)
-        let csr = sys &: dec &: f in
+        let csr = sys &: dec in
+        let csr = csr &: f in
+        (* immediate value *)
         let imm = rs1 in
         let use_imm = funct3.[2:2] in
+        (* CSR is read only *)
         let ro = funct12.[11:10] ==:. 0b11 in
-        let mode = funct12.[9:8] in
+        (* csr level *)
+        (*let level = funct12.[9:8] in*)
+        (* write to csr is disabled *)
         let we_n = 
-          (* csrrs and csrrc shall not perform write if rs1=x0.
-             csrrsi, csrrci and csrwi shall not perform write if imm=[rs1=]0 *)
-          (f3.(2) |: f3.(3) |: f3.(5) |: f3.(6) |: f3.(7)) &: rs1_0
+          (* csrrs[i] and csrrc[i] shall not perform write if rs1=imm=x0. *)
+          (f3.(2) |: f3.(3) |: f3.(6) |: f3.(7)) &: rs1_0
         in
+        (* read (side effect) from csr disableed *)
+        let re_n = 
+          (* csrrw[i] has not perform read if rd=x0. *)
+          (f3.(1) |: f3.(5)) &: rd_0
+        in
+        (* write is enabled, but csr is read only *)
         let invalid_we = ((~: we_n) |: f3.(1)) &: ro in
-        (* XXX check machine mode *)
-        csr &: (~: invalid_we), use_imm, imm, we_n, csr &: invalid_we,
-          Array.map (fun i -> csr &: f3.(i)) [| 1;2;3;5;6;7 |]
+        csr &: f &: (~: invalid_we), use_imm, imm, we_n, csr &: f &: invalid_we,
+          Array.map (fun i -> csr &: f3.(i) &: (~: invalid_we)) [| 1;2;3;5;6;7 |] 
       in
       if Ifs.support_csrs then full() else simple() 
     in

@@ -119,6 +119,10 @@ module RV32I_machine = struct
       `cycle; `time; `instret;
       `cycleh; `timeh; `instreth;
       `mcpuid; `mimpid; `mhartid; (* many more to go... *)
+      `mstatus; `mtvec; `mtdeleg; `mie; `mtimecmp;
+      `mtime; `mtimeh;
+      `mscratch; `mepc; `mcause; `mbadaddr; `mip;
+      `mbase; `mbound; `mibase; `mibound; `mdbase; `mdbound;
     ]
 end
 
