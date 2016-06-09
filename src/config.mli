@@ -85,6 +85,7 @@ type csr =
   (* Machine Host-Target Interface (Non-Standard Berkeley Extension) *)
   | `mtohost 
   | `mfromhost ]
+  deriving(Enum,Bounded,Show)
 
 module type S = sig
   

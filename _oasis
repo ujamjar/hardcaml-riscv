@@ -140,6 +140,14 @@ Executable instr_impl_sat
   Install:            false
   BuildDepends:       hardcaml-riscv,hardcaml-bloop
 
+Executable csr
+  Path:               test
+  MainIs:             test_csr.ml
+  Custom:             true
+  CompiledObject:     byte
+  Install:            false
+  BuildDepends:       hardcaml-riscv
+
 SourceRepository master
   Type:     git
   Location: https://github.com/ujamjar/hardcaml-riscv.git

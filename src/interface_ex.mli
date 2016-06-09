@@ -33,50 +33,65 @@ module Make(X : HardCaml.Interface.S) : sig
     ('a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'g) ->
     'a t -> 'b t -> 'c t -> 'd t -> 'e t -> 'f t -> 'g t
 
+  val offsets : ?rev:bool -> unit -> int t
+
   open HardCaml.Signal
 
-  type ifs = Comb.t t
+  module type S = sig
 
-  val wire : unit -> ifs
-  val wiren : unit -> ifs
-  val consti : int -> ifs
-  val zero : ifs
-  val one : ifs
-  val ones : ifs
+    type b
+    type ifs 
 
-  val (&:) : ifs -> ifs -> ifs
-  val (|:) : ifs -> ifs -> ifs
-  val (^:) : ifs -> ifs -> ifs
-  val (~:) : ifs -> ifs
+    val wire : unit -> ifs
+    val wiren : unit -> ifs
+    val consti : int -> ifs
+    val zero : ifs
+    val one : ifs
+    val ones : ifs
 
-  val ( +: ) : ifs -> ifs -> ifs
-  val ( -: ) : ifs -> ifs -> ifs
-  val ( *: ) : ifs -> ifs -> ifs
-  val ( *+ ) : ifs -> ifs -> ifs
+    val (&:) : ifs -> ifs -> ifs
+    val (|:) : ifs -> ifs -> ifs
+    val (^:) : ifs -> ifs -> ifs
+    val (~:) : ifs -> ifs
 
-  val pack : ifs -> Comb.t
-  val unpack : Comb.t -> ifs
+    val ( +: ) : ifs -> ifs -> ifs
+    val ( -: ) : ifs -> ifs -> ifs
+    val ( *: ) : ifs -> ifs -> ifs
+    val ( *+ ) : ifs -> ifs -> ifs
 
-  module L : sig
-    type 'a l = 'a list t
-    val empty : unit -> 'a l
-    val rev : 'a l -> 'a l
-    val map : ('a t -> 'b t) -> 'a l -> 'b l
-    val cons : 'a t -> 'a l -> 'a l
-    val hd : 'a l -> 'a t
-    val tl : 'a l -> 'a l
-    val of_list : 'a t list -> 'a l
-    val to_list : 'a l -> 'a t list
+    val pack : ?rev:bool -> ifs -> b
+    val unpack : ?rev:bool -> b -> ifs
+
+    module L : sig
+      type 'a l = 'a list t
+      val empty : unit -> 'a l
+      val rev : 'a l -> 'a l
+      val map : ('a t -> 'b t) -> 'a l -> 'b l
+      val cons : 'a t -> 'a l -> 'a l
+      val hd : 'a l -> 'a t
+      val tl : 'a l -> 'a l
+      val of_list : 'a t list -> 'a l
+      val to_list : 'a l -> 'a t list
+    end
+
+    val mux : b -> ifs list -> ifs
+    val mux2 : b -> ifs -> ifs -> ifs
+    val concat : ifs list -> ifs
+    val select : int -> int -> ifs -> ifs
+    val msb : ifs -> ifs
+    val msbs : ifs -> ifs
+    val lsb : ifs -> ifs
+    val lsbs : ifs -> ifs
+
   end
 
-  val mux : Comb.t -> ifs list -> ifs
-  val mux2 : Comb.t -> ifs -> ifs -> ifs
-  val concat : ifs list -> ifs
-  val select : int -> int -> ifs -> ifs
-  val msb : ifs -> ifs
-  val msbs : ifs -> ifs
-  val lsb : ifs -> ifs
-  val lsbs : ifs -> ifs
+  module Make(B : HardCaml.Comb.S) : S
+    with type b = B.t
+    and  type ifs = B.t t
+  
+  include S 
+    with type b = HardCaml.Signal.Comb.t
+    and  type ifs = HardCaml.Signal.Comb.t t
 
 end with type 'a t = 'a X.t
 

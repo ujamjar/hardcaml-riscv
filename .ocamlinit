@@ -6,3 +6,10 @@
 #load "HardCamlAltera.cma";;
 #require "hardcaml-bloop";;
 
+open HardCaml
+open HardCamlRiscV
+
+module B = Api.B
+module Ifs = Interfaces.Make(Config.RV32I_machine)
+
+

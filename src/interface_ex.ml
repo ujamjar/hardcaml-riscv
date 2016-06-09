@@ -26,77 +26,140 @@ module Make(X : HardCaml.Interface.S) = struct
   let map5 fn a b c d e = map (fun (a,b,c,d,e) -> fn a b c d e) (zip5 a b c d e)
   let map6 fn a b c d e f = map (fun (a,b,c,d,e,f) -> fn a b c d e f) (zip6 a b c d e f)
 
-  type ifs = HardCaml.Signal.Comb.t t
-
-  let wiren () = map (fun (n,b) -> wire b -- n) t
-  let wire () = mapb wire 
-
-  let consti i = mapb (fun b -> consti b i) 
-  let zero = consti 0
-  let one = consti 1
-  let ones = consti (-1)
-
-  let (&:) = map2 (&:)
-  let (|:) = map2 (|:)
-  let (^:) = map2 (^:)
-  let (~:) = map (~:)
-
-  let ( +: ) = map2 ( +: )
-  let ( -: ) = map2 ( -: )
-  let ( *: ) = map2 ( *: )
-  let ( *+ ) = map2 ( *+ )
-
-  let pack d = HardCaml.Signal.Comb.concat (List.rev @@ to_list d)
-  let unpack d = 
-    let rec f l t = 
-      match t with
-      | [] -> []
-      | (n,b)::t -> (n, (select d (b+l-1) l)) :: f (b+l) t
-    in
-    let s = f 0 (to_list t) in
+  let offsets ?(rev=true) () = 
+    let l = to_list t in
+    let rec f l = function [] -> [] | (n, b) :: t -> (n, l) :: f (l+b) t in
+    let s = f 0 (if rev then l else List.rev l) in
     mapn (fun n -> List.assoc n s)
 
-  module L = struct
+  module type S = sig
 
-    type 'a l = 'a list t
+    type b
+    type ifs 
 
-    let empty () = X.map (fun _ -> []) X.t
-    let rev l = X.map List.rev l
-    let cons h t = X.map2 (fun h t -> h::t) h t
-    let hd l = X.map List.hd l
-    let tl l = X.map List.tl l
+    val wire : unit -> ifs
+    val wiren : unit -> ifs
+    val consti : int -> ifs
+    val zero : ifs
+    val one : ifs
+    val ones : ifs
 
-    let rec of_list = function
-      | [] -> empty ()
-      | h::t -> cons h (of_list t)
+    val (&:) : ifs -> ifs -> ifs
+    val (|:) : ifs -> ifs -> ifs
+    val (^:) : ifs -> ifs -> ifs
+    val (~:) : ifs -> ifs
 
-    let rec to_list l = 
-      try 
-        let h = hd l in
-        let t = tl l in
-        h :: to_list t
-      with _ -> []
+    val ( +: ) : ifs -> ifs -> ifs
+    val ( -: ) : ifs -> ifs -> ifs
+    val ( *: ) : ifs -> ifs -> ifs
+    val ( *+ ) : ifs -> ifs -> ifs
 
-    let map f l =
-      let rec g l = 
-        try 
-          let h = hd l in
-          let t = tl l in
-          f h :: g t
-        with _ -> []
-      in
-      of_list (g l)
+    val pack : ?rev:bool -> ifs -> b
+    val unpack : ?rev:bool -> b -> ifs
+
+    module L : sig
+      type 'a l = 'a list t
+      val empty : unit -> 'a l
+      val rev : 'a l -> 'a l
+      val map : ('a t -> 'b t) -> 'a l -> 'b l
+      val cons : 'a t -> 'a l -> 'a l
+      val hd : 'a l -> 'a t
+      val tl : 'a l -> 'a l
+      val of_list : 'a t list -> 'a l
+      val to_list : 'a l -> 'a t list
+    end
+
+    val mux : b -> ifs list -> ifs
+    val mux2 : b -> ifs -> ifs -> ifs
+    val concat : ifs list -> ifs
+    val select : int -> int -> ifs -> ifs
+    val msb : ifs -> ifs
+    val msbs : ifs -> ifs
+    val lsb : ifs -> ifs
+    val lsbs : ifs -> ifs
 
   end
 
-  let mux s l = X.map (mux s) (L.of_list l)
-  let mux2 s h l = mux s [l;h]
-  let concat l = X.map concat (L.of_list l)
-  let select h l d = X.map (fun d -> select d h l) d
-  let msb = X.map msb 
-  let msbs = X.map msbs
-  let lsb = X.map lsb 
-  let lsbs = X.map lsbs
+  module Make(B : HardCaml.Comb.S) = struct
+
+    type b = B.t
+    type ifs = b t
+
+    let wiren () = map (fun (n,b) -> B.(wire b -- n)) t
+    let wire () = mapb B.wire 
+
+    let consti i = mapb (fun b -> B.consti b i) 
+    let zero = consti 0
+    let one = consti 1
+    let ones = consti (-1)
+
+    let (&:) = map2 B.(&:)
+    let (|:) = map2 B.(|:)
+    let (^:) = map2 B.(^:)
+    let (~:) = map B.(~:)
+
+    let ( +: ) = map2 B.( +: )
+    let ( -: ) = map2 B.( -: )
+    let ( *: ) = map2 B.( *: )
+    let ( *+ ) = map2 B.( *+ )
+
+    let pack ?(rev=true) d = 
+      if rev then B.concat @@ List.rev @@ to_list d
+      else B.concat @@ to_list d
+    let unpack ?(rev=true) d = 
+      let rec f l t = 
+        match t with
+        | [] -> []
+        | (n,b)::t -> (n, (B.select d (b+l-1) l)) :: f (b+l) t
+      in
+      let s = f 0 (if rev then to_list t else List.rev (to_list t)) in
+      mapn (fun n -> List.assoc n s)
+
+    module L = struct
+
+      type 'a l = 'a list t
+
+      let empty () = X.map (fun _ -> []) X.t
+      let rev l = X.map List.rev l
+      let cons h t = X.map2 (fun h t -> h::t) h t
+      let hd l = X.map List.hd l
+      let tl l = X.map List.tl l
+
+      let rec of_list = function
+        | [] -> empty ()
+        | h::t -> cons h (of_list t)
+
+      let rec to_list l = 
+        try 
+          let h = hd l in
+          let t = tl l in
+          h :: to_list t
+        with _ -> []
+
+      let map f l =
+        let rec g l = 
+          try 
+            let h = hd l in
+            let t = tl l in
+            f h :: g t
+          with _ -> []
+        in
+        of_list (g l)
+
+    end
+
+    let mux s l = X.map (B.mux s) (L.of_list l)
+    let mux2 s h l = mux s [l;h]
+    let concat l = X.map B.concat (L.of_list l)
+    let select h l d = X.map (fun d -> B.select d h l) d
+    let msb = X.map B.msb 
+    let msbs = X.map B.msbs
+    let lsb = X.map B.lsb 
+    let lsbs = X.map B.lsbs
+
+  end
+
+  include Make(HardCaml.Signal.Comb)
 
 end
 

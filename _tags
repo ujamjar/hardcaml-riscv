@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 810cfaf310b9c0d59a7f031907ce9436)
+# DO NOT EDIT (digest: a5d93a5a4be364f9f47007072785d3c4)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -99,6 +99,20 @@ true: annot, bin_annot
 <test/sat/*.ml{,i,y}>: pkg_riscv
 <test/sat/*.ml{,i,y}>: use_HardCamlRiscV
 <test/sat/instr_impl_sat.{native,byte}>: custom
+# Executable csr
+"test/test_csr.byte": pkg_deriving
+"test/test_csr.byte": pkg_hardcaml
+"test/test_csr.byte": pkg_hardcaml-waveterm.lterm
+"test/test_csr.byte": pkg_hardcaml.syntax
+"test/test_csr.byte": pkg_riscv
+"test/test_csr.byte": use_HardCamlRiscV
+<test/*.ml{,i,y}>: pkg_deriving
+<test/*.ml{,i,y}>: pkg_hardcaml
+<test/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
+<test/*.ml{,i,y}>: pkg_hardcaml.syntax
+<test/*.ml{,i,y}>: pkg_riscv
+<test/*.ml{,i,y}>: use_HardCamlRiscV
+"test/test_csr.byte": custom
 # OASIS_STOP
 true: debug
 <firmware>: -traverse

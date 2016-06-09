@@ -199,9 +199,9 @@ module Specs = struct
 
 end
 
-module Make(B : HardCaml.Comb.S) = struct
+module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
 
-  let xlen = 32
+  let xlen = Ifs.xlen
 
   (* 3.1.1 *)
   module Mcpuid = struct
@@ -332,7 +332,7 @@ module Make(B : HardCaml.Comb.S) = struct
   (* 3.1.10 *)
   module Mtdeleg = struct
     module F = interface 
-        interrupts[xlen-32]
+        interrupts[xlen-16]
         synchronous_exceptions[16]
     end
     module Fx = Interface_ex.Make(F)
@@ -342,8 +342,8 @@ module Make(B : HardCaml.Comb.S) = struct
   module Mip = struct
     module F = interface 
       z0[xlen-8]
-      mtip[1] htip[1] stip[1] z1[0]
-      msip[1] hsip[1] ssip[1] z2[0]
+      mtip[1] htip[1] stip[1] z1[1]
+      msip[1] hsip[1] ssip[1] z2[1]
     end
     module Fx = Interface_ex.Make(F)
   end
@@ -351,8 +351,8 @@ module Make(B : HardCaml.Comb.S) = struct
   module Mie = struct
     module F = interface 
       z0[xlen-8]
-      mtie[1] htie[1] stie[1] z1[0]
-      msie[1] hsie[1] ssie[1] z2[0]
+      mtie[1] htie[1] stie[1] z1[1]
+      msie[1] hsie[1] ssie[1] z2[1]
     end
     module Fx = Interface_ex.Make(F)
   end
@@ -500,11 +500,163 @@ module Make(B : HardCaml.Comb.S) = struct
 
   module Regs_ex = Interface_ex.Make(Regs)
 
+  type timer_spec = [ `cycle | `time | `instret | `mtime ]
+  type csr_ospec = 
+    [ `zero | `ones | `const of B.t | `consti of int
+    | `counter64 of timer_spec
+    | `counter64h of timer_spec
+    | `writeable of Config.csr * int * B.t * B.t 
+    | `writeable_ext of Config.csr * int * B.t * B.t * B.t * B.t ] 
+  type csr_ispec = B.t * B.t
+
+  let csr_spec i = 
+    let module X = Xlen.F in
+    let open B in
+    let instr_set = if xlen=32 then `rv32i else `rv64i in
+    let zero' _ = `zero in
+    let writeable ~csr ~ofs ~cv ~e = `writeable(csr,ofs,cv,e) in
+    let writeable_ext ~csr ~ofs ~cv ~e i = 
+      let ext_we, ext_data = i in
+      `writeable_ext(csr,ofs,cv,e,ext_we,ext_data) 
+    in
+
+    let ofs = Regs_ex.(map (fun x -> x mod 32) (offsets ~rev:false ())) in
+
+    let regs = 
+      { 
+        Regs.cycle  = { X.data = `counter64 `cycle };
+        time        = { X.data = `counter64 `time };
+        instret     = { X.data = `counter64 `instret };
+        Regs.cycleh = { X.data = `counter64h `cycle }; 
+        timeh       = { X.data = `counter64h `time };
+        instreth    = { X.data = `counter64h `instret };
+
+        mcpuid      = 
+          { Mcpuid.F.(map zero' t) with
+              Mcpuid.F.base = `consti (Mcpuid.base instr_set);
+              extensions    = `const (Mcpuid.extensions ~base:instr_set ['U']); };
+        mimpid      = { Mimpid.F.(map zero' t) with Mimpid.F.vendor = `consti(Mimpid.vendor) };
+        mhartid     = { Mhartid.F.hartid = `zero };
+
+        mstatus     = 
+          { Mstatus.F.(map zero' t) with
+              Mstatus.F.sd = `zero;
+              vm           = `zero; (* Mbare *)
+              mprv         = `zero;
+              xs           = `zero;
+              fs           = `zero;
+              prv3         = `ones; (* XXX TODO; priv stack, interrupt support *)
+              ie3          = `zero;
+              prv2         = `ones;
+              ie2          = `zero;
+              prv1         = `ones;
+              ie1          = `zero;
+              prv          = `ones;
+              ie           = `zero;
+          };
+        mtvec       = { Mtvec.F.(map zero' t) with Mtvec.F.addr = `consti (Mtvec.Lo.trap/4) };
+        mtdeleg     = Mtdeleg.F.(map zero' t);
+        mie         = Mie.F.(map zero' t);
+        mtimecmp    = { Mtimecmp.F.(map zero' t) with 
+                          Mtimecmp.F.mtimecmp = writeable ~csr:`mtimecmp ~ofs:0 
+                                                          ~cv:(zero 32) ~e:vdd };
+        mtime       = { Mtime.F.mtime = `counter64 `mtime };
+        mtimeh      = { Mtime.F.mtime = `counter64h `mtime };
+        mscratch    = { Mscratch.F.mscratch = writeable ~csr:`mscratch ~ofs:0 
+                                                        ~cv:(zero xlen) ~e:vdd };
+        mepc        = { Mepc.F.mepc = writeable_ext ~csr:`mepc ~ofs:0 ~cv:(zero xlen) ~e:vdd
+                                                    i.Regs.mepc.Mepc.F.mepc };
+        mcause      = 
+          { Mcause.F.(map zero' t) with 
+            Mcause.F.interrupt = writeable_ext ~csr:`mcause ~cv:gnd ~e:vdd
+                                  ~ofs:ofs.Regs.mcause.Mcause.F.interrupt
+                                  i.Regs.mcause.Mcause.F.interrupt;
+            cause              = writeable_ext ~csr:`mcause ~cv:(zero 4) ~e:vdd
+                                  ~ofs:ofs.Regs.mcause.Mcause.F.cause
+                                  i.Regs.mcause.Mcause.F.cause;
+                                   
+          };
+
+        mbadaddr    = { Mbadaddr.F.mbadaddr = 
+                          writeable_ext ~csr:`mbadaddr ~ofs:0 ~cv:(zero xlen) ~e:vdd
+                            i.Regs.mbadaddr.Mbadaddr.F.mbadaddr };
+        mip         = Mip.F.(map zero' t);
+
+        mbase       = { Xlen.F.data = writeable ~csr:`mbase ~ofs:0 ~cv:(zero xlen) ~e:vdd };
+        mbound      = { Xlen.F.data = writeable ~csr:`mbound ~ofs:0 ~cv:(zero xlen) ~e:vdd };
+        mibase      = { Xlen.F.data = writeable ~csr:`mbase ~ofs:0 ~cv:(zero xlen) ~e:vdd };
+        mibound     = { Xlen.F.data = writeable ~csr:`mbound ~ofs:0 ~cv:(zero xlen) ~e:vdd };
+        mdbase      = { Xlen.F.data = writeable ~csr:`mbase ~ofs:0 ~cv:(zero xlen) ~e:vdd };
+        mdbound     = { Xlen.F.data = writeable ~csr:`mbound ~ofs:0 ~cv:(zero xlen) ~e:vdd };
+
+      }
+    in
+    regs
+
+  let csr_read_mux dec regs csrs = 
+    let rec read csr = 
+      let to_vec csr l = 
+        let check w = 
+          if w <> xlen then begin
+          failwith (Printf.sprintf "CSR bad width %s[%i]" (
+              Config.Show_csr.show csr) 
+              w)
+          end
+        in
+        let x = B.concat_e l in
+        check (B.width x);
+        x
+      in
+      match csr with
+      | `cycle    -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.cycle
+      | `time     -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.time
+      | `instret  -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.instret
+      | `cycleh   -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.cycleh
+      | `timeh    -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.timeh
+      | `instreth -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.instreth
+
+      | `mcpuid   -> to_vec csr @@ Mcpuid.F.to_list @@ regs.Regs.mcpuid
+      | `mimpid   -> to_vec csr @@ Mimpid.F.to_list @@ regs.Regs.mimpid
+      | `mhartid  -> to_vec csr @@ Mhartid.F.to_list @@ regs.Regs.mhartid
+
+      | `mstatus  -> to_vec csr @@ Mstatus.F.to_list @@ regs.Regs.mstatus
+      | `mtvec    -> to_vec csr @@ Mtvec.F.to_list @@ regs.Regs.mtvec
+      | `mtdeleg  -> to_vec csr @@ Mtdeleg.F.to_list @@ regs.Regs.mtdeleg
+      | `mie      -> to_vec csr @@ Mie.F.to_list @@ regs.Regs.mie
+      | `mtimecmp -> to_vec csr @@ Mtimecmp.F.to_list @@ regs.Regs.mtimecmp
+
+      | `mtime    -> to_vec csr @@ Mtime.F.to_list @@ regs.Regs.mtime
+      | `mtimeh   -> to_vec csr @@ Mtime.F.to_list @@ regs.Regs.mtimeh
+
+      | `mscratch -> to_vec csr @@ Mscratch.F.to_list @@ regs.Regs.mscratch
+      | `mepc     -> to_vec csr @@ Mepc.F.to_list @@ regs.Regs.mepc
+      | `mcause   -> to_vec csr @@ Mcause.F.to_list @@ regs.Regs.mcause
+      | `mbadaddr -> to_vec csr @@ Mbadaddr.F.to_list @@ regs.Regs.mbadaddr
+      | `mip      -> to_vec csr @@ Mip.F.to_list @@ regs.Regs.mip
+
+      | `mbase    -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mbase
+      | `mbound   -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mbound
+      | `mibase   -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mibase
+      | `mibound  -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mibound
+      | `mdbase   -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mdbase
+      | `mdbound  -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mdbound
+
+      | _ -> failwith "unsupported CSR"
+    in
+    let read_csrs = List.mapi 
+      (fun i x -> B.(dec.[i:i]), read x) 
+      csrs
+    in
+    B.pmux read_csrs (B.zero xlen)
+
 end
 
-module Machine = Make(HardCaml.Signal.Comb)
-
 module Build(Ifs : Interfaces.S) = struct
+
+  module B = HardCaml.Signal.Comb
+  module Machine = Make(B)(Ifs)
+
+  let xlen = Ifs.xlen
 
   let csr_index csr = 
     let rec find idx = function 
@@ -515,14 +667,14 @@ module Build(Ifs : Interfaces.S) = struct
     find 0 Ifs.csrs 
 
   (* all the logic for csrs goes here *)
-  let csr_bank ~clk ~clr csr_ctrl write_data = 
+  let make ~clk ~clr ~csr_ctrl ~ext ~wdata = 
     let module Seq = Utils.Regs(struct let clk=clk let clr=clr end) in
     let open HardCaml.Signal.Comb in
     let open Machine in
     let module X = Xlen.F in
-    
-    let instr_set = if xlen=32 then `rv32i else `rv64i in
-    
+ 
+    let spec = Machine.csr_spec ext in
+
     (* set, clear or write bits to a register *)
     let csr_reg ~cv ~e ~clr ~set ~write ~data ~f = 
       Seq.reg_fb ~e:(e &: (clr |: set |: write)) ~cv ~w:(width cv) 
@@ -535,17 +687,17 @@ module Build(Ifs : Interfaces.S) = struct
     in
 
     (* R/W csr register *)
-    let writeable_fb ~csr ~cv ~e ~f =
+    let writeable_fb ~csr ~ofs ~cv ~e ~f =
       let open Ifs.Csr_ctrl in
       let csr_index = csr_index csr in
       if csr_index = -1 then cv
       else
         csr_reg ~cv 
-          ~e:(csr_ctrl.csr_dec.[csr_index:csr_index])
+          ~e:(e &: csr_ctrl.csr_dec.[csr_index:csr_index])
           ~clr:csr_ctrl.csr_clr
           ~set:csr_ctrl.csr_set
           ~write:csr_ctrl.csr_write
-          ~data:(zero xlen) (* XXX ... from pipeline *)
+          ~data:(wdata.[(width cv)+ofs-1:ofs]) (* XXX ... from pipeline *)
           ~f
     in
     let writeable = writeable_fb ~f:(fun x -> x) in
@@ -557,7 +709,7 @@ module Build(Ifs : Interfaces.S) = struct
     (* split 32/32 counter *)
     let counter64 =
       if xlen = 64 then
-        writeable_fb ~csr:`mtime ~cv:(zero 64) ~e:vdd ~f:(fun d -> d +:. 1)
+        writeable_fb ~csr:`mtime ~ofs:0 ~cv:(zero 64) ~e:vdd ~f:(fun d -> d +:. 1)
       else
         let open Ifs.Csr_ctrl in
         let csr_index0 = csr_index `mtime in
@@ -598,73 +750,24 @@ module Build(Ifs : Interfaces.S) = struct
           let () = w <== q +:. 1 in
           q
     in
-
+ 
     let regs = 
-      { (*Regs_ex.zero with*)
-        Regs.cycle  = { X.data = counter64.[xlen-1:0] };
-        time        = { X.data = counter64.[xlen-1:0] };
-        instret     = { X.data = counter64.[xlen-1:0] };
-        Regs.cycleh = { X.data = if xlen = 32 then counter64.[63:32] else zero xlen };
-        timeh       = { X.data = if xlen = 32 then counter64.[63:32] else zero xlen };
-        instreth    = { X.data = if xlen = 32 then counter64.[63:32] else zero xlen };
-
-        mcpuid      = 
-          { Mcpuid.Fx.zero with
-              Mcpuid.F.base = consti 2 (Mcpuid.base instr_set);
-              extensions    = Mcpuid.extensions ~base:instr_set ['U']; };
-        mimpid      = { Mimpid.Fx.zero with Mimpid.F.vendor = consti 16 Mimpid.vendor };
-        mhartid     = { Mhartid.F.hartid = consti xlen 0 };
-
-        mstatus     = 
-          { Mstatus.Fx.zero with
-              Mstatus.F.sd = gnd;
-              vm           = zero 5; (* Mbare *)
-              mprv         = gnd;
-              xs           = zero 2;
-              fs           = zero 2;
-              prv3         = ones 2; (* XXX TODO; priv stack, interrupt support *)
-              ie3          = gnd;
-              prv2         = ones 2;
-              ie2          = gnd;
-              prv1         = ones 2;
-              ie1          = gnd;
-              prv          = ones 2;
-              ie           = gnd;
-          };
-        mtvec       = { Mtvec.Fx.zero with Mtvec.F.addr = consti (xlen-2) Mtvec.Lo.trap };
-        mtdeleg     = Mtdeleg.Fx.zero;
-        mie         = Mie.Fx.zero;
-        mtimecmp    = { Mtimecmp.Fx.zero with 
-                          Mtimecmp.F.mtimecmp = writeable ~csr:`mtimecmp ~cv:(zero 32) ~e:vdd };
-        mtime       = { Mtime.F.mtime = counter64.[xlen-1:0] };
-        mtimeh      = { Mtime.F.mtime = if xlen = 32 then counter64.[63:31] else zero xlen };
-        mscratch    = { Mscratch.F.mscratch = writeable ~csr:`mscratch ~cv:(zero xlen) ~e:vdd };
-        mepc        = { Mepc.F.mepc = writeable_ext ~csr:`mepc ~cv:(zero xlen) ~e:vdd
-                                                    ~ext_we:gnd ~ext_data:(zero xlen) };
-        mcause      = 
-          { Mcause.Fx.zero with 
-            Mcause.F.interrupt = writeable_ext ~csr:`mcause ~cv:gnd ~e:vdd
-                                   ~ext_we:gnd ~ext_data:gnd;
-            cause              = writeable_ext ~csr:`mcause ~cv:(zero 4) ~e:vdd
-                                   ~ext_we:gnd ~ext_data:(zero 4);
-          };
-
-        mbadaddr    = { Mbadaddr.F.mbadaddr = 
-                          writeable_ext ~csr:`mbadaddr ~cv:(zero xlen) ~e:vdd
-                            ~ext_we:gnd ~ext_data:(zero xlen) };
-        mip         = Mip.Fx.zero;
-
-        mbase       = { Xlen.F.data = writeable ~csr:`mbase ~cv:(zero xlen) ~e:vdd };
-        mbound      = { Xlen.F.data = writeable ~csr:`mbound ~cv:(zero xlen) ~e:vdd };
-        mibase      = { Xlen.F.data = writeable ~csr:`mbase ~cv:(zero xlen) ~e:vdd };
-        mibound     = { Xlen.F.data = writeable ~csr:`mbound ~cv:(zero xlen) ~e:vdd };
-        mdbase      = { Xlen.F.data = writeable ~csr:`mbase ~cv:(zero xlen) ~e:vdd };
-        mdbound     = { Xlen.F.data = writeable ~csr:`mbound ~cv:(zero xlen) ~e:vdd };
-
-      }
+      Machine.Regs.(map2 
+        (fun (n,b) r ->
+          let open B in
+          match r with
+          | `zero -> zero b
+          | `ones -> ones b
+          | `consti x -> consti b x
+          | `const x -> x
+          | `counter64 _ -> counter64.[xlen-1:0]
+          | `counter64h _ -> if xlen=32 then counter64.[63:32] else zero 64
+          | `writeable(csr, ofs, cv, e) -> writeable ~csr ~ofs ~cv ~e
+          | `writeable_ext(csr, ofs, cv, e, ext_we, ext_data) -> 
+            writeable_ext ~csr ~ofs ~cv ~e ~ext_we ~ext_data)
+        t spec)
     in
-
-
-    ()
+    regs, Machine.csr_read_mux csr_ctrl.Ifs.Csr_ctrl.csr_dec regs Ifs.csrs
 
 end
+

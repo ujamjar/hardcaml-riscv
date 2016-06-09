@@ -81,7 +81,7 @@ module Specs : sig
 
 end
 
-module Make(B : HardCaml.Comb.S) : sig
+module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) : sig
 
   module Mcpuid : sig
     module F : interface base z extensions end
@@ -268,7 +268,32 @@ module Make(B : HardCaml.Comb.S) : sig
 
   end
 
+  module Regs_ex : module type of Interface_ex.Make(Regs)
+
+  type timer_spec = [ `cycle | `time | `instret | `mtime ]
+  type csr_ospec = 
+    [ `zero | `ones | `const of B.t | `consti of int
+    | `counter64 of timer_spec
+    | `counter64h of timer_spec
+    | `writeable of Config.csr * int * B.t * B.t 
+    | `writeable_ext of Config.csr * int * B.t * B.t * B.t * B.t ] 
+  type csr_ispec = B.t * B.t
+
+  val csr_spec : csr_ispec Regs.t -> csr_ospec Regs.t
+
+  val csr_read_mux : B.t -> B.t Regs.t -> Config.csr list -> B.t
+
 end
 
-module Machine : module type of Make(HardCaml.Signal.Comb)
+module Build(Ifs : Interfaces.S) : sig
+  module B : HardCaml.Comb.S with type t = HardCaml.Signal.Comb.t
+  module Machine : module type of Make(B)(Ifs)
+
+  val make : clk:B.t -> clr:B.t -> 
+             csr_ctrl:B.t Ifs.Csr_ctrl.t -> 
+             ext:(B.t * B.t) Machine.Regs.t ->
+             wdata:B.t ->
+             B.t Machine.Regs.t * B.t
+
+end
 
