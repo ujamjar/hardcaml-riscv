@@ -1,5 +1,11 @@
-(* we need to treat csr's specially depending on how the core was built *)
+(* The CSR instructions encode an immediate address in the top 12 bits.  Not
+   all addresses are valid, however; it depends on what registers are implemented.
 
+   Here, we expand the csrrX instructions into multiple mask/match pairs that
+   encode the valid addresses.  Further, care has to be taken not to generate
+   patterns which write to read-only registers (when rs1=0, the write is diabled
+   for csrrs and csrrc).
+ *)
 let rec filter_none = function [] -> [] 
                              | None::t -> filter_none t 
                              | Some(x)::t -> x::filter_none t

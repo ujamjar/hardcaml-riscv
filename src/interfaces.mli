@@ -42,7 +42,10 @@ module type S = sig
   module Class_ex : module type of Interface_ex.Make(Class) 
 
   module Csr_ctrl : interface
-    csr_use_imm csr_imm csr_n_we csr_invalid_we
+    csr_use_imm csr_imm 
+    csr_we_n csr_re_n csr_invalid_we
+    csr_dec
+    csr_clr csr_set csr_write
   end
 
   module Stage : interface

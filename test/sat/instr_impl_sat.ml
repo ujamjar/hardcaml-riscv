@@ -1,6 +1,6 @@
 (* requires hardcaml-bloop *)
 
-open HardCamlRiscV
+(*open HardCamlRiscV*)
 open Printf 
 
 let solver = ref `mini
@@ -27,7 +27,7 @@ module B = HardCamlBloop.Gates.Make_comb(HardCamlBloop.Gates.Basic_gates)
 
 module Make(B : HardCaml.Comb.S) = struct
 
-  module Cfg = Config.RV32I_base
+  module Cfg = Config.RV32I_machine
 
   module Ifs = Interfaces.Make(Cfg)
   module F = Fetch.Make(Ifs)(B)
@@ -320,9 +320,9 @@ module Make(B : HardCaml.Comb.S) = struct
     }
 
   let make : 
-    Riscv.RV32I.T.t -> (Int32.t -> B.t * 'a) -> 'a t
+    Config.T.t -> (Int32.t -> B.t * 'a) -> 'a t
     = fun instr make ->
-    let _,match' = List.assoc instr Riscv.RV32I.T.mask_match in
+    let _,match' = List.assoc instr Config.T.mask_match in
     let rdata = input "rdata" 32 in
     let pc = input "pc" 31 @: gnd in
     let instr, data = make match' in
@@ -338,8 +338,8 @@ module Core = Make(B)
 let check ~verbose ~banned x = 
   let open HardCamlBloop.Sat in
   let soln = of_signal ~solver:!solver ~banned (*~verbose:true*) (B.(~:) x) in
-  (if verbose then report soln else printf "%s\n" 
-    (match soln with `sat _ -> "SAT" | `unsat -> "UNSAT"));
+  (if verbose then report soln 
+   else printf "%s\n" (match soln with `sat _ -> "SAT" | `unsat -> "UNSAT"));
   soln
 
 (*******************************************************************************)
@@ -358,14 +358,26 @@ let testb show mk instr f =
   printf "%-.8s[%7i]...%!" (show instr) (cost all_props);
   match check ~verbose:true ~banned all_props with
   | `unsat -> ()
-  | `sat _ ->
+  | `sat _ -> begin
     printf "checking each property\n";
-    List.iteri (fun i p ->
-      printf "prop[% 2i] " i;
-      ignore @@ check ~verbose:false p) props
+    List.iteri 
+      (fun i p ->
+        printf "prop[%2i] " i;
+        ignore @@ check ~verbose:false ~banned p) 
+      props
+  end
 
 let test mk instr f = 
-  testb Riscv.RV32I.T.Show_t.show mk instr (fun x -> f x, [])
+  let idx = Config.T.Enum_t.from_enum instr in
+  testb Config.T.Show_t.show mk instr (fun x -> 
+    let props = f x in
+    let props_insn =
+      [
+        (~: (msb x.st.insn)); (* trap is not set *) 
+        (x.st.insn ==: (sll (one (width x.st.insn)) idx)); (* instruction bit set *)
+      ]
+    in
+    props @ props_insn, [])
 
 (* Register-immediate *)
 
@@ -575,20 +587,22 @@ let () = List.iter (fun i -> test S.make i (store_props i))
 
 let () = testb (fun _ -> "#trap") All.make `addi (* doesnt matter *) @@ fun x ->
   (* disallow valid instructions, so we force a trap *)
+  let insns, csrs = Gencsr.get_full_csrs Config.V.list Ifs.csrs in
   let banned = 
-    List.map
-        (fun (_,(mask,mtch)) -> 
-          ~: ((x.instr &: consti32 32 mask) ^: consti32 32 mtch)) 
-        Riscv.RV32I.T.mask_match
+    List.map (fun (mask,mtch) -> ~: ((x.instr &: consti32 32 mask) ^: consti32 32 mtch))
+      (insns @ List.concat csrs)
   in
   let props = 
     [
       x.st.iclass.Ifs.Class.trap;
       ~: (x.st.rwe);
       ~: (x.md.req);
+      x.st.insn ==: (sll (one (width x.st.insn)) (width x.st.insn - 1));
       (* xxx pc+epc *)
     ]
   in
   props, banned
+
+(* CSRs *)
 
 

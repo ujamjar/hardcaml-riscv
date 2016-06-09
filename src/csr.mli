@@ -81,7 +81,7 @@ module Specs : sig
 
 end
 
-module Machine(B : HardCaml.Comb.S) : sig
+module Make(B : HardCaml.Comb.S) : sig
 
   module Mcpuid : sig
     module F : interface base z extensions end
@@ -167,7 +167,7 @@ module Machine(B : HardCaml.Comb.S) : sig
 
   (* 3.1.12 *)
   module Mtime : sig
-    module F : interface addr end
+    module F : interface mtime end
     module Fx : module type of Interface_ex.Make(F)
   end
   module Mtimecmp : sig
@@ -177,7 +177,7 @@ module Machine(B : HardCaml.Comb.S) : sig
 
   (* 3.1.13 *)
   module Mscratch : sig
-    module F : interface mtimecmp end
+    module F : interface mscratch end
     module Fx : module type of Interface_ex.Make(F)
   end
 
@@ -225,5 +225,50 @@ module Machine(B : HardCaml.Comb.S) : sig
     module F : interface mbadaddr end
     module Fx : module type of  Interface_ex.Make(F)
   end
+
+  module Xlen : sig
+    module F : interface data end
+    module Fx : module type of Interface_ex.Make(F)
+  end
+
+  module Regs : interface
+
+    (cycle : Xlen.F)
+    (time : Xlen.F)
+    (instret : Xlen.F)
+    (cycleh : Xlen.F)
+    (timeh : Xlen.F)
+    (instreth : Xlen.F)
+
+    (mcpuid : Mcpuid.F)
+    (mimpid : Mimpid.F)
+    (mhartid : Mhartid.F)
+
+    (mstatus : Mstatus.F)
+    (mtvec : Mtvec.F)
+    (mtdeleg : Mtdeleg.F)
+    (mie : Mie.F)
+    (mtimecmp : Mtimecmp.F)
+
+    (mtime : Mtime.F)
+    (mtimeh : Mtime.F)
+
+    (mscratch : Mscratch.F)
+    (mepc : Mepc.F)
+    (mcause : Mcause.F)
+    (mbadaddr : Mbadaddr.F)
+    (mip : Mip.F)
+
+    (mbase : Xlen.F) (* XXX max addr? *)
+    (mbound : Xlen.F) 
+    (mibase : Xlen.F) 
+    (mibound : Xlen.F) 
+    (mdbase : Xlen.F) 
+    (mdbound : Xlen.F) 
+
+  end
+
 end
+
+module Machine : module type of Make(HardCaml.Signal.Comb)
 

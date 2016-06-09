@@ -199,7 +199,7 @@ module Specs = struct
 
 end
 
-module Machine(B : HardCaml.Comb.S) = struct
+module Make(B : HardCaml.Comb.S) = struct
 
   let xlen = 32
 
@@ -359,7 +359,7 @@ module Machine(B : HardCaml.Comb.S) = struct
 
   (* 3.1.12 *)
   module Mtime = struct
-    module F = interface addr[xlen] end
+    module F = interface mtime[xlen] end
     module Fx = Interface_ex.Make(F)
   end
   module Mtimecmp = struct
@@ -369,7 +369,7 @@ module Machine(B : HardCaml.Comb.S) = struct
 
   (* 3.1.13 *)
   module Mscratch = struct
-    module F = interface mtimecmp[xlen] end
+    module F = interface mscratch[xlen] end
     module Fx = Interface_ex.Make(F)
   end
 
@@ -455,6 +455,216 @@ module Machine(B : HardCaml.Comb.S) = struct
     module Fx = Interface_ex.Make(F)
   end
 
+  (* generic xlen bits wide register *)
+  module Xlen = struct
+    module F = interface data[xlen] end
+    module Fx = Interface_ex.Make(F)
+  end
+
+  module Regs = interface
+
+    (cycle : Xlen.F)
+    (time : Xlen.F)
+    (instret : Xlen.F)
+    (cycleh : Xlen.F)
+    (timeh : Xlen.F)
+    (instreth : Xlen.F)
+
+    (mcpuid : Mcpuid.F)
+    (mimpid : Mimpid.F)
+    (mhartid : Mhartid.F)
+
+    (mstatus : Mstatus.F)
+    (mtvec : Mtvec.F)
+    (mtdeleg : Mtdeleg.F)
+    (mie : Mie.F)
+    (mtimecmp : Mtimecmp.F)
+
+    (mtime : Mtime.F)
+    (mtimeh : Mtime.F)
+
+    (mscratch : Mscratch.F)
+    (mepc : Mepc.F)
+    (mcause : Mcause.F)
+    (mbadaddr : Mbadaddr.F)
+    (mip : Mip.F)
+
+    (mbase : Xlen.F) (* XXX max addr? *)
+    (mbound : Xlen.F) 
+    (mibase : Xlen.F) 
+    (mibound : Xlen.F) 
+    (mdbase : Xlen.F) 
+    (mdbound : Xlen.F) 
+
+  end
+
+  module Regs_ex = Interface_ex.Make(Regs)
+
 end
 
+module Machine = Make(HardCaml.Signal.Comb)
 
+module Build(Ifs : Interfaces.S) = struct
+
+  let csr_index csr = 
+    let rec find idx = function 
+      | [] -> -1 
+      | x::t when x=csr -> idx 
+      | _::t -> find (idx+1) t 
+    in
+    find 0 Ifs.csrs 
+
+  (* all the logic for csrs goes here *)
+  let csr_bank ~clk ~clr csr_ctrl write_data = 
+    let module Seq = Utils.Regs(struct let clk=clk let clr=clr end) in
+    let open HardCaml.Signal.Comb in
+    let open Machine in
+    let module X = Xlen.F in
+    
+    let instr_set = if xlen=32 then `rv32i else `rv64i in
+    
+    (* set, clear or write bits to a register *)
+    let csr_reg ~cv ~e ~clr ~set ~write ~data ~f = 
+      Seq.reg_fb ~e:(e &: (clr |: set |: write)) ~cv ~w:(width cv) 
+        (fun dprev ->
+          pmux [
+            clr, (dprev &: (~: data));
+            set, (dprev |: data);
+            write, data;
+          ] (f dprev))
+    in
+
+    (* R/W csr register *)
+    let writeable_fb ~csr ~cv ~e ~f =
+      let open Ifs.Csr_ctrl in
+      let csr_index = csr_index csr in
+      if csr_index = -1 then cv
+      else
+        csr_reg ~cv 
+          ~e:(csr_ctrl.csr_dec.[csr_index:csr_index])
+          ~clr:csr_ctrl.csr_clr
+          ~set:csr_ctrl.csr_set
+          ~write:csr_ctrl.csr_write
+          ~data:(zero xlen) (* XXX ... from pipeline *)
+          ~f
+    in
+    let writeable = writeable_fb ~f:(fun x -> x) in
+
+    (* R/W csr register that can also be set externally.
+     * XXX which should get priority??? *)
+    let writeable_ext ~ext_we ~ext_data = writeable_fb ~f:(fun x -> mux2 ext_we ext_data x) in
+
+    (* split 32/32 counter *)
+    let counter64 =
+      if xlen = 64 then
+        writeable_fb ~csr:`mtime ~cv:(zero 64) ~e:vdd ~f:(fun d -> d +:. 1)
+      else
+        let open Ifs.Csr_ctrl in
+        let csr_index0 = csr_index `mtime in
+        let csr_index1 = csr_index `mtimeh in
+        if csr_index0 = (-1) || csr_index1 = (-1) then (zero xlen)
+        else
+          let w = wire 64 in
+          let reg ~cv ~e ~clr ~set ~write ~data ~w = 
+            Seq.reg_fb ~e:(e &: (clr |: set |: write)) ~cv ~w:(width cv) 
+              (fun dprev ->
+                pmux [
+                  clr, (dprev &: (~: data));
+                  set, (dprev |: data);
+                  write, data;
+                ] w)
+          in
+          let rlo = 
+            reg
+              ~cv:(zero 32)
+              ~e:(csr_ctrl.csr_dec.[csr_index0:csr_index0])
+              ~clr:csr_ctrl.csr_clr
+              ~set:csr_ctrl.csr_set
+              ~write:csr_ctrl.csr_write
+              ~data:(zero 32) (* XXX ... from pipeline *)
+              ~w:w.[31:0]
+          in
+          let rhi = 
+            reg
+              ~cv:(zero 32)
+              ~e:(csr_ctrl.csr_dec.[csr_index1:csr_index1])
+              ~clr:csr_ctrl.csr_clr
+              ~set:csr_ctrl.csr_set
+              ~write:csr_ctrl.csr_write
+              ~data:(zero 32) (* XXX ... from pipeline *)
+              ~w:w.[63:32]
+          in
+          let q = rhi @: rlo in
+          let () = w <== q +:. 1 in
+          q
+    in
+
+    let regs = 
+      { (*Regs_ex.zero with*)
+        Regs.cycle  = { X.data = counter64.[xlen-1:0] };
+        time        = { X.data = counter64.[xlen-1:0] };
+        instret     = { X.data = counter64.[xlen-1:0] };
+        Regs.cycleh = { X.data = if xlen = 32 then counter64.[63:32] else zero xlen };
+        timeh       = { X.data = if xlen = 32 then counter64.[63:32] else zero xlen };
+        instreth    = { X.data = if xlen = 32 then counter64.[63:32] else zero xlen };
+
+        mcpuid      = 
+          { Mcpuid.Fx.zero with
+              Mcpuid.F.base = consti 2 (Mcpuid.base instr_set);
+              extensions    = Mcpuid.extensions ~base:instr_set ['U']; };
+        mimpid      = { Mimpid.Fx.zero with Mimpid.F.vendor = consti 16 Mimpid.vendor };
+        mhartid     = { Mhartid.F.hartid = consti xlen 0 };
+
+        mstatus     = 
+          { Mstatus.Fx.zero with
+              Mstatus.F.sd = gnd;
+              vm           = zero 5; (* Mbare *)
+              mprv         = gnd;
+              xs           = zero 2;
+              fs           = zero 2;
+              prv3         = ones 2; (* XXX TODO; priv stack, interrupt support *)
+              ie3          = gnd;
+              prv2         = ones 2;
+              ie2          = gnd;
+              prv1         = ones 2;
+              ie1          = gnd;
+              prv          = ones 2;
+              ie           = gnd;
+          };
+        mtvec       = { Mtvec.Fx.zero with Mtvec.F.addr = consti (xlen-2) Mtvec.Lo.trap };
+        mtdeleg     = Mtdeleg.Fx.zero;
+        mie         = Mie.Fx.zero;
+        mtimecmp    = { Mtimecmp.Fx.zero with 
+                          Mtimecmp.F.mtimecmp = writeable ~csr:`mtimecmp ~cv:(zero 32) ~e:vdd };
+        mtime       = { Mtime.F.mtime = counter64.[xlen-1:0] };
+        mtimeh      = { Mtime.F.mtime = if xlen = 32 then counter64.[63:31] else zero xlen };
+        mscratch    = { Mscratch.F.mscratch = writeable ~csr:`mscratch ~cv:(zero xlen) ~e:vdd };
+        mepc        = { Mepc.F.mepc = writeable_ext ~csr:`mepc ~cv:(zero xlen) ~e:vdd
+                                                    ~ext_we:gnd ~ext_data:(zero xlen) };
+        mcause      = 
+          { Mcause.Fx.zero with 
+            Mcause.F.interrupt = writeable_ext ~csr:`mcause ~cv:gnd ~e:vdd
+                                   ~ext_we:gnd ~ext_data:gnd;
+            cause              = writeable_ext ~csr:`mcause ~cv:(zero 4) ~e:vdd
+                                   ~ext_we:gnd ~ext_data:(zero 4);
+          };
+
+        mbadaddr    = { Mbadaddr.F.mbadaddr = 
+                          writeable_ext ~csr:`mbadaddr ~cv:(zero xlen) ~e:vdd
+                            ~ext_we:gnd ~ext_data:(zero xlen) };
+        mip         = Mip.Fx.zero;
+
+        mbase       = { Xlen.F.data = writeable ~csr:`mbase ~cv:(zero xlen) ~e:vdd };
+        mbound      = { Xlen.F.data = writeable ~csr:`mbound ~cv:(zero xlen) ~e:vdd };
+        mibase      = { Xlen.F.data = writeable ~csr:`mbase ~cv:(zero xlen) ~e:vdd };
+        mibound     = { Xlen.F.data = writeable ~csr:`mbound ~cv:(zero xlen) ~e:vdd };
+        mdbase      = { Xlen.F.data = writeable ~csr:`mbase ~cv:(zero xlen) ~e:vdd };
+        mdbound     = { Xlen.F.data = writeable ~csr:`mbound ~cv:(zero xlen) ~e:vdd };
+
+      }
+    in
+
+
+    ()
+
+end
