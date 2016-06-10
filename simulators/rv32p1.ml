@@ -21,7 +21,7 @@ let old () =
   let memory = Mem.init (32*1024) in 
   (* test program *)
   let () = 
-    let open Riscv.RV32I.Asm in
+    let open Riscv.RV32I_MACHINE.Asm in
     (*memory.(4) <- addi ~rd:1 ~rs1:0 ~imm:10;
     memory.(5) <- addi ~rd:2 ~rs1:0 ~imm:20;
     memory.(6) <- andi ~rd:3 ~rs1:2 ~imm:20;
@@ -31,7 +31,16 @@ let old () =
 
     (*memory.(4) <- addi ~rd:1 ~rs1:0 ~imm:10;
     memory.(5) <- jalr ~rd:2 ~rs1:1 ~imm:10; *)
-    memory.(4) <- 0b00000000000010000101000000100011l;
+    for i=0 to 100 do
+      memory.(i) <- xori ~rd:0 ~rs1:0 ~imm:0;
+    done;
+    memory.(4) <- addi ~rd:1 ~rs1:0 ~imm:0x2AD;
+    memory.(5) <- addi ~rd:2 ~rs1:0 ~imm:0x1F8;
+    memory.(6) <- csrrw ~rd:3 ~rs1:1 ~imm:0x701;
+    memory.(7) <- csrrw ~rd:4 ~rs1:2 ~imm:0x741;
+    memory.(8) <- csrrw ~rd:5 ~rs1:0 ~imm:0x701;
+    memory.(9) <- csrrw ~rd:6 ~rs1:0 ~imm:0x741;
+    memory.(9) <- csrrc ~rd:17 ~rs1:1 ~imm:0x741;
   in
   Testbench.run get_core memory
 
@@ -41,4 +50,5 @@ let elf () =
   let _ = E.to_mem "firmware/firmware.elf" memory in
   Testbench.run get_core memory
 
-let () = elf ()
+let () = old ()
+

@@ -23,6 +23,25 @@
  * equivalent.
  *)
 
+let solver = ref `mini
+let () = 
+  let solver_args = [
+    "mini", (fun () -> solver := `mini);
+    (*"pico", (fun () -> solver := `pico);*)
+    "crypto", (fun () -> solver := `crypto);
+    "dimacs-mini", (fun () -> solver := `dimacs `mini);
+    "dimacs-pico", (fun () -> solver := `dimacs `pico);
+    "dimacs-crypto", (fun () -> solver := `dimacs `crypto);
+  ] in
+  Arg.parse
+  [
+    "-solver", Arg.Symbol(List.map fst solver_args, 
+                         (fun s -> (List.assoc s solver_args)())),
+              "select solver"
+  ]
+  (fun _ -> ())
+  "HardCamlRiscV instruction decoder+trap SAT tests"
+
 module G = HardCamlBloop.Gates.Comb
 module B = HardCaml.Bits.Comb.IntbitsList
 module Ifs = Interfaces.Make(Config.RV32I_machine)
@@ -94,5 +113,5 @@ let myreport x =
   end
 
 (* should print UNSAT if the circuits are equivalent *)
-let ok = HardCamlBloop.Sat.(myreport @@ of_signal insn_ok)
+let ok = HardCamlBloop.Sat.(myreport @@ of_signal ~solver:!solver insn_ok)
 

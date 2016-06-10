@@ -262,7 +262,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
     let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
-    let rwe = ~: (c.trap |: c.bra |: c.st |: c.fen |: c.csr) in
+    let rwe = ~: (c.trap |: c.bra |: c.st |: c.fen) in
 
     (* XXX double check this for read/write in mem stage *)
 

@@ -23,6 +23,17 @@ let signal_display = function (n,b) ->
 let wave_cfg = 
   let open Waveterm_waves in
 
+  let csr_waves = 
+    List.map (fun csr ->
+      let csr_name = 
+        try 
+          let str = Config.Show_csr.show csr in
+          String.sub str 1 (String.length str - 1)
+        with _ -> "XXX"
+      in
+      "csr_" ^ csr_name, H) Cfg32.Cfg.csrs
+  in
+
   let interleave = true in
   let stage_sigs1 = Rv.Ifs.Stages.(to_list @@ map signal_display t) in
   let stage_sigs2 = List.concat @@ 
@@ -40,33 +51,37 @@ let wave_cfg =
     Rv_o.(to_list @@ map signal_display t) @
     [ ("pipe_en",B); ("pipe_bubble",B) ] @
     stage_sigs @ 
-    (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), H)) 
+    (Array.to_list @@ Array.init 31 (fun i -> sprintf "reg_%.2i" (i+1), H)) @
+    csr_waves @ [ ("csr_rdata",H); ("csr_wdata",H) ]
   )
 
 let is_prefixed pre str = 
   (String.length pre <= String.length str) && 
     (String.sub str 0 (String.length pre) = pre)
 
+let is_prefixed_list pre str = 
+  List.fold_left (fun ok pre -> ok || is_prefixed pre str) false pre
+
 let get_wave_class pre waves =
   let open Waveterm_waves in
   let get_waves = List.filter (function
     | Clock _ -> true
-    | Binary(n,_) when is_prefixed pre n -> true
-    | Data(n,_,_) when is_prefixed pre n -> true
+    | Binary(n,_) when is_prefixed_list pre n -> true
+    | Data(n,_,_) when is_prefixed_list pre n -> true
     | _ -> false)
   in
   Array.of_list @@ get_waves @@ Array.to_list waves
 
 let wave_classes waves = 
   [
-    `all, waves;
-    `regs, get_wave_class "reg_" waves;
-    `fetch, get_wave_class "fet_" waves;
-    `decode, get_wave_class "dec_" waves;
-    `execute, get_wave_class "alu_" waves;
-    `memory, get_wave_class "mem_" waves;
-    `commit, get_wave_class "com_" waves;
-    `state, get_wave_class "state_" waves;
+    `all,     waves;
+    `regs,    get_wave_class ["reg_"] waves;
+    `fetch,   get_wave_class ["fet_"] waves;
+    `decode,  get_wave_class ["dec_"] waves;
+    `execute, get_wave_class ["alu_"] waves;
+    `memory,  get_wave_class ["mem_"] waves;
+    `commit,  get_wave_class ["com_"] waves;
+    `state,   get_wave_class ["state_";"csr_"] waves;
   ]
 
 let init_waves sim = 

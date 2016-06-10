@@ -2,7 +2,7 @@ open HardCamlRiscV
 open Printf
 
 (* rv32 core *)
-module Cfg = Config.RV32I_base
+module Cfg = Config.RV32I_machine
 module Rv = Pipe.Make(Cfg)
 module B = HardCaml.Api.B
 

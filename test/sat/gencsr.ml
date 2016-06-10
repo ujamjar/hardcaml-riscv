@@ -10,6 +10,27 @@ let rec filter_none = function [] -> []
                              | None::t -> filter_none t 
                              | Some(x)::t -> x::filter_none t
 
+let is_ro = 
+  let open Csr.Specs in 
+  function URO | SRO | HRO | MRO -> true | _ -> false 
+let is_rw x = not (is_ro x)
+
+let get_ro_csrs csrs = 
+  List.map (fun csr -> List.assoc csr Csr.Specs.all_csrs) csrs
+  |> List.filter (fun csr -> is_ro csr.Csr.Specs.priv) 
+
+let get_rw_csrs csrs = 
+  List.map (fun csr -> List.assoc csr Csr.Specs.all_csrs) csrs
+  |> List.filter (fun csr -> is_rw csr.Csr.Specs.priv) 
+
+let ro_csrs csrs = 
+  let csrs = get_ro_csrs csrs in
+  List.map (fun csr -> csr.Csr.Specs.addr) csrs
+
+let rw_csrs csrs = 
+  let csrs = get_rw_csrs csrs in
+  List.map (fun csr -> csr.Csr.Specs.addr) csrs
+
 let get_csrs insns csrs (csr_insns : Config.V.t list) = 
  
   let insns = 

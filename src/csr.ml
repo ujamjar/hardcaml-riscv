@@ -596,16 +596,20 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
   let csr_read_mux dec regs csrs = 
     let rec read csr = 
       let to_vec csr l = 
+        let csr_name = 
+          try 
+            let str = Config.Show_csr.show csr in
+            String.sub str 1 (String.length str - 1)
+          with _ -> "XXX"
+        in
         let check w = 
           if w <> xlen then begin
-          failwith (Printf.sprintf "CSR bad width %s[%i]" (
-              Config.Show_csr.show csr) 
-              w)
+            failwith (Printf.sprintf "CSR bad width %s[%i]" csr_name w)
           end
         in
         let x = B.concat_e l in
         check (B.width x);
-        x
+        B.(x -- ("csr_" ^ csr_name))
       in
       match csr with
       | `cycle    -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.cycle
@@ -647,7 +651,7 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
       (fun i x -> B.(dec.[i:i]), read x) 
       csrs
     in
-    B.pmux read_csrs (B.zero xlen)
+    B.(pmux read_csrs (B.zero xlen) -- "csr_rdata")
 
 end
 
@@ -714,11 +718,11 @@ module Build(Ifs : Interfaces.S) = struct
         let open Ifs.Csr_ctrl in
         let csr_index0 = csr_index `mtime in
         let csr_index1 = csr_index `mtimeh in
-        if csr_index0 = (-1) || csr_index1 = (-1) then (zero xlen)
+        if csr_index0 = (-1) || csr_index1 = (-1) then (zero 64)
         else
           let w = wire 64 in
           let reg ~cv ~e ~clr ~set ~write ~data ~w = 
-            Seq.reg_fb ~e:(e &: (clr |: set |: write)) ~cv ~w:(width cv) 
+            Seq.reg_fb ~e:e ~cv ~w:(width cv) 
               (fun dprev ->
                 pmux [
                   clr, (dprev &: (~: data));
@@ -727,23 +731,25 @@ module Build(Ifs : Interfaces.S) = struct
                 ] w)
           in
           let rlo = 
+            let wr = csr_ctrl.csr_dec.[csr_index0:csr_index0] in
             reg
               ~cv:(zero 32)
-              ~e:(csr_ctrl.csr_dec.[csr_index0:csr_index0])
-              ~clr:csr_ctrl.csr_clr
-              ~set:csr_ctrl.csr_set
-              ~write:csr_ctrl.csr_write
-              ~data:(zero 32) (* XXX ... from pipeline *)
+              ~e:vdd
+              ~clr:(wr &: csr_ctrl.csr_clr)
+              ~set:(wr &: csr_ctrl.csr_set)
+              ~write:((wr &: csr_ctrl.csr_write) -- "csr_counter_write0")
+              ~data:wdata
               ~w:w.[31:0]
           in
           let rhi = 
+            let wr = csr_ctrl.csr_dec.[csr_index1:csr_index1] in
             reg
               ~cv:(zero 32)
-              ~e:(csr_ctrl.csr_dec.[csr_index1:csr_index1])
-              ~clr:csr_ctrl.csr_clr
-              ~set:csr_ctrl.csr_set
-              ~write:csr_ctrl.csr_write
-              ~data:(zero 32) (* XXX ... from pipeline *)
+              ~e:vdd
+              ~clr:(wr &: csr_ctrl.csr_clr)
+              ~set:(wr &: csr_ctrl.csr_set)
+              ~write:((wr &: csr_ctrl.csr_write) -- "csr_counter_write1")
+              ~data:wdata
               ~w:w.[63:32]
           in
           let q = rhi @: rlo in
@@ -768,6 +774,6 @@ module Build(Ifs : Interfaces.S) = struct
         t spec)
     in
     regs, Machine.csr_read_mux csr_ctrl.Ifs.Csr_ctrl.csr_dec regs Ifs.csrs
-
+  
 end
 

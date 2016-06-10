@@ -8,6 +8,8 @@ module Make(C : Config.S) = struct
   module Ifs = Interfaces.Make(C)
   open Ifs
 
+  module Csr = Csr.Build(Ifs)
+  
   type stage = Comb.t Stage.t
   type stages = Comb.t Stages.t
 
@@ -26,7 +28,7 @@ module Make(C : Config.S) = struct
 
   let zero' (n,b) = zero b
   let def_instr = consti32 32 @@ Riscv.RV32I.Asm.xori ~rd:0 ~rs1:0 ~imm:0
-  let def_insn = sll (one 48) (Enum.from_enum<Config.T.t> `xori)
+  let def_insn = sll (one (Config.V.n+1)) (Enum.from_enum<Config.T.t> `xori)
   let def_iclass = Class.{ (map zero' t) with opi = vdd; f3 = consti 3 6; }
 
   let def_clear = 
@@ -203,6 +205,7 @@ module Make(C : Config.S) = struct
 
       let ctrl = p1_ctrl ~inp in
       let pipe = Stages_ex.wiren () in
+      let csr_rdata = wire C.xlen in
 
       let state = Stage.(map (fun (n,b) -> wire b -- ("state_" ^ n)) t) in
       let fet,mi = Fetch.fetch ~inp ~com:state ~fet:state in
@@ -213,7 +216,7 @@ module Make(C : Config.S) = struct
       in
       let alu = Alu.alu ~dec:pipe.dec in
       let mem,md = Mem.mem ~inp ~alu:pipe.alu in
-      let com = Commit.commit ~mem:pipe.mem in
+      let com = Commit.commit ~mem:pipe.mem ~csr_rdata in
 
       let com = { com with
         junk = (* waveform debug junk *)
@@ -221,6 +224,18 @@ module Make(C : Config.S) = struct
           state.insn.[0:0] |:
           state.ra1_zero |: state.ra2_zero }
       in
+
+      (* csrs *)
+      let csr_ext = Csr.Machine.Regs.(map (fun (n,b) -> gnd, zero b) t) in
+      let csr_regs, csr_rdata' = 
+        Csr.make 
+          ~clk:inp.I.clk
+          ~clr:inp.I.clr
+          ~csr_ctrl:com.csr
+          ~ext:csr_ext
+          ~wdata:(com.rd1 -- "csr_wdata")
+      in
+      let () = csr_rdata <== csr_rdata' in
 
       let preg cv r d = r <== Seq.reg ~cv ~e:ctrl.Ctrl.en d in
       let _ = Stage_ex.map3 preg def_clear state pipe.com in

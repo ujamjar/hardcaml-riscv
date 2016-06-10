@@ -6,6 +6,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) : sig
 
   val commit : 
     mem:t Ifs.Stage.t -> 
+    csr_rdata:t -> 
     t Ifs.Stage.t
 
   val f : 

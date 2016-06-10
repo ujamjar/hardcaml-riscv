@@ -159,7 +159,7 @@ module Make(C : Config.S) = struct
     (* register addresses *)
     ra1[log_regs] ra2[log_regs] rad[log_regs]
     (* data to/from register file *)
-    rd1[C.xlen] rd2[C.xlen] rdd[C.xlen] 
+    rd1[C.xlen] rd2[C.xlen] rdd[C.xlen]
     (* immediate *)
     imm[C.xlen] is_imm[1] 
     (* take a branch *)
