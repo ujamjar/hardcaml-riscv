@@ -10,11 +10,23 @@ let decode_insn b =
     let idx = B.(to_int (onehot_to_binary b)) in
     Config.T.(Show_t.show (Enum_t.to_enum idx))
 
+let decode_csr b = 
+  if B.(to_int (b ==:. 0) = 1) then "---"
+  else 
+    try 
+      let idx = B.(to_int (onehot_to_binary b)) in
+      let csr = List.nth Cfg32.Cfg.csrs idx in
+      Config.Show_csr.show csr
+    with _ -> 
+      "???"
+
 let signal_display = function (n,b) -> 
   let open Waveterm_waves in
   match n with
   | "dec_insn" | "fet_insn" | "alu_insn" | "mem_insn" | "com_insn" ->
     n, F(decode_insn)
+  | "dec_csr_dec" | "fet_csr_dec" | "alu_csr_dec" | "mem_csr_dec" | "com_csr_dec" ->
+    n, F(decode_csr)
   | _ ->
     if b=1 then n, B
     else n, H

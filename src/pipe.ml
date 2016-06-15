@@ -218,11 +218,17 @@ module Make(C : Config.S) = struct
       let mem,md = Mem.mem ~inp ~alu:pipe.alu in
       let com = Commit.commit ~mem:pipe.mem ~csr_rdata in
 
-      let com = { com with
-        junk = (* waveform debug junk *)
-          state.instr.[0:0] |:
-          state.insn.[0:0] |:
-          state.ra1_zero |: state.ra2_zero }
+      let com = 
+        let open Ifs.Csr_ctrl in
+        { com with
+          junk = (* waveform debug junk *)
+            state.instr.[0:0] |:
+            state.insn.[0:0] |:
+            state.ra1_zero |: state.ra2_zero |:
+            state.csr.csr_set |: state.csr.csr_clr |: 
+            state.csr.csr_write |: 
+            reduce (|:) (bits state.csr.csr_dec)
+        }
       in
 
       (* csrs *)
@@ -233,7 +239,7 @@ module Make(C : Config.S) = struct
           ~clr:inp.I.clr
           ~csr_ctrl:com.csr
           ~ext:csr_ext
-          ~wdata:(com.rd1 -- "csr_wdata")
+          ~wdata:com.rd1 
       in
       let () = csr_rdata <== csr_rdata' in
 

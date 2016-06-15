@@ -676,8 +676,13 @@ module Build(Ifs : Interfaces.S) = struct
     let open HardCaml.Signal.Comb in
     let open Machine in
     let module X = Xlen.F in
+    let open Ifs.Csr_ctrl in
  
     let spec = Machine.csr_spec ext in
+  
+    let wdata = 
+      (mux2 csr_ctrl.csr_use_imm (uresize csr_ctrl.csr_imm 32) wdata) -- "csr_wdata" 
+    in
 
     (* set, clear or write bits to a register *)
     let csr_reg ~cv ~e ~clr ~set ~write ~data ~f = 
@@ -692,7 +697,6 @@ module Build(Ifs : Interfaces.S) = struct
 
     (* R/W csr register *)
     let writeable_fb ~csr ~ofs ~cv ~e ~f =
-      let open Ifs.Csr_ctrl in
       let csr_index = csr_index csr in
       if csr_index = -1 then cv
       else

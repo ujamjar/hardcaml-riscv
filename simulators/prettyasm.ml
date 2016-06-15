@@ -12,8 +12,9 @@ let field l h x =
 
 let sfield l h x = 
   let w = h-l+1 in
+  let msb = field h h x in
   let x = field l h x in
-  if w < 32 && field h h x = 1l then 
+  if w < 32 && msb = 1l then 
     Int32.(logor
             (shift_left (mask (32-w)) w)
             x)
@@ -112,7 +113,7 @@ let sb x =
     opcode = field 0 6 x;
     f3 = field 12 14 x;
     rs1 = field 15 19 x;
-    rs2 = field 15 19 x;
+    rs2 = field 20 24 x;
     imm;
   }
 
