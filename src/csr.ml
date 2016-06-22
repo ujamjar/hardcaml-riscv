@@ -551,8 +551,14 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
               ie2          = `zero;
               prv1         = `ones;
               ie1          = `zero;
-              prv          = `ones;
-              ie           = `zero;
+              prv          = writeable_ext ~csr:`mstatus 
+                                           ~ofs:ofs.Regs.mstatus.Mstatus.F.prv 
+                                           ~cv:(ones 2) ~e:vdd
+                                           i.Regs.mstatus.Mstatus.F.prv;
+              ie           = writeable_ext ~csr:`mstatus 
+                                           ~ofs:ofs.Regs.mstatus.Mstatus.F.ie 
+                                           ~cv:gnd ~e:vdd
+                                           i.Regs.mstatus.Mstatus.F.ie;
           };
         mtvec       = { Mtvec.F.(map zero' t) with Mtvec.F.addr = `consti (Mtvec.Lo.trap/4) };
         mtdeleg     = Mtdeleg.F.(map zero' t);

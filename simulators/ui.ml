@@ -48,7 +48,7 @@ module Make(B : HardCaml.Comb.S) = struct
 
   open Waveterm_ui
 
-  let wave_cfg = Waveterm_waves.{ default with wave_cursor=0 }
+  let wave_cfg = Waveterm_waves.{ default with wave_cursor=0; wave_width=4 }
   let no_state = Waveterm_waves.{ cfg=wave_cfg; waves=[||] }
   let wrap_waves waves = Waveterm_waves.({ cfg=wave_cfg; waves }) 
 

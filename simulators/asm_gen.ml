@@ -1,5 +1,7 @@
 (* a simple asm interface with labels *)
 
+type t = < cur : int; label : string -> int; offset : string -> int >
+
 let make ~memory ~start_addr ~code = 
   let labels = Hashtbl.create 73 in
   List.iteri 
@@ -19,19 +21,26 @@ let make ~memory ~start_addr ~code =
           end))
     code
 
-let x i = "", (fun _ -> i)
-let l l i = l, (fun _ -> i)
+let x i = "", (fun (_:t) -> i)
+let l l i = l, (fun (_:t) -> i)
 let x' i = "", i
 let l' l i = l, i
 
 (* some test routines *)
 open Riscv.RV32I_MACHINE.Asm 
 
+let boot = 
+  Array.(to_list @@ init 31 (fun i -> x @@ addi ~rd:(i+1) ~rs1:0 ~imm:0)) @
+  [
+    x' @@ (fun x -> jal ~rd:0 ~imm:(x#offset "start"));
+  ]
+
 let tests = [
   "csrs",
     (fun ~memory ~start_addr ->
-    make ~memory ~start_addr ~code:[
-      x @@ addi ~rd:1 ~rs1:0 ~imm:0xF0F;       (* x1  = 0xFFFFFF0F *)
+    make ~memory ~start_addr ~code:((*boot@*)[
+      l "start" @@
+           addi ~rd:1 ~rs1:0 ~imm:0xF0F;       (* x1  = 0xFFFFFF0F *)
       x @@ addi ~rd:2 ~rs1:0 ~imm:0x0F0;       (* x2  = 0x000000F0 *)
 
       x @@ csrrw ~rd:16 ~rs1:1 ~imm:0x340;     (* csr = 0xFFFFFF0F *)
@@ -42,17 +51,25 @@ let tests = [
       x @@ csrrwi ~rd:21 ~rs1:0x1F ~imm:0x340; (* csf = 0x0000001F *)
       x @@ csrrci ~rd:21 ~rs1:0xF ~imm:0x340;  (* csf = 0x00000010 *)
       x @@ csrrsi ~rd:21 ~rs1:0x6 ~imm:0x340;  (* csf = 0x00000016 *)
-    ]);
+    ]));
 
   "loop",
     (fun ~memory ~start_addr ->
-    make ~memory ~start_addr ~code:[
-      x @@ addi ~rd:1 ~rs1:0 ~imm:0;
+    make ~memory ~start_addr ~code:((*boot@*)[
+      l "start" @@
+           addi ~rd:1 ~rs1:0 ~imm:0;
       x @@ addi ~rd:2 ~rs1:0 ~imm:4;
       l "jmp" @@
            addi ~rd:1 ~rs1:1 ~imm:1;
       x' @@ fun x -> 
            bne ~rs1:1 ~rs2:2 ~imm:(x#offset "jmp")
-    ]);
+    ]));
+
+  "ecall",
+    (fun ~memory ~start_addr ->
+    make ~memory ~start_addr ~code:((*boot@*)[
+      l "start" @@
+           ecall;
+    ]));
 ]
 

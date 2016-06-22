@@ -230,7 +230,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       iclass = { 
         Class.trap; 
         lui; auipc; jal; jalr; bra; ld; st; opi; opr; fen; sys; 
-        csr; 
+        csr; ecall; eret;
         f7 = instr.[30:30]; f3=funct3; 
       };
       csr = csr_ctrl;
@@ -262,9 +262,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
     let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
-    let rwe = ~: (c.trap |: c.bra |: c.st |: c.fen) in
-
-    (* XXX double check this for read/write in mem stage *)
+    let rwe = ~: (c.trap |: c.bra |: c.st |: c.fen |: c.sys) in
 
     (* is rd2 used in pipeline *)
     let is_pipe_imm = c.opi |: c.lui |: c.auipc |: c.jal |: c.jalr in

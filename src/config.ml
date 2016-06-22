@@ -111,7 +111,7 @@ end
 
 module RV32I_machine = struct
   let xlen = 32
-  let start_addr = 0x10
+  let start_addr = 0x10 (* XXX 0x200 *)
   let support_wfi = true
   let support_eret = true
   let support_csrs = true
