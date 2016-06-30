@@ -201,304 +201,7 @@ end
 
 module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
 
-  let xlen = Ifs.xlen
-
-  (* 3.1.1 *)
-  module Mcpuid = struct
-    module F = interface
-      base[2] z[xlen-28] extensions[26]
-    end
-    module Fx = Interface_ex.Make(F)
-
-    let base' = function
-      | `rv32i -> 0
-      | `rv32e -> 1
-      | `rv64i -> 2
-      | `rv128 -> 3
-
-    let extensions ~base ext = 
-      let open HardCaml.Bits.Comb.IntbitsList in
-      let idx c = 
-        sll (one 26) (Char.code (Char.lowercase c) - Char.code 'a')
-      in
-      B.constibl @@
-      List.fold_left (fun acc c -> acc |: idx c)
-        (if (base' base) = 1 then idx 'e' else idx 'i') ext
-
-    let base = base'
-  end
-
-  (* 3.1.2 *)
-  module Mimpid = struct
-    module F = interface
-      implementation[xlen-16] vendor[16]
-    end
-    module Fx = Interface_ex.Make(F)
-    (* 1 < vendor <= 0x7fff *)
-    let vendor = 0x2307
-    (* implementation register describes the system - no given semantics *)
-  end
-
-  (* 3.1.4 *)
-  module Mhartid = struct
-    module F = interface
-      hartid[xlen]
-    end
-    module Fx = Interface_ex.Make(F)
-    let hartid = 0x0 (* unless we have a multi-processor system...*)
-  end
-
-  (* 3.1.5  .... *)
-  module Mstatus = struct
-    module F = interface
-        sd[1] (* 3.1.8 ... *)
-        z[xlen-23] 
-        vm[5] (* 3.1.6 virtualization management *)
-        mprv[1] (* 3.1.7 memory priviledge *)
-        xs[2] fs[2] (* 3.1.8 extension context *)
-        prv3[2] ie3[1] (* 3.1.5 priv and global interrupt-enable stack *)
-        prv2[2] ie2[1]
-        prv1[2] ie1[1]
-        prv[2] ie[1]
-    end
-    module Fx = Interface_ex.Make(F)
-    (* XXX ... interrupt bits (and stack) ... check implementation *)
-
-    type ext_ctx = Off | Initial | Clean | Dirty
-
-    let ext_ctx_status_of_code = function
-      | 0 -> Off
-      | 1 -> Initial
-      | 2 -> Clean
-      | _ -> Dirty
-
-    let code_of_ext_ctx_status = function
-      | Off -> 0
-      | Initial -> 1
-      | Clean -> 2
-      | Dirty -> 3
-
-    type vm = Mbare | Mbb | Mbbid 
-            | Sv32 | Sv39 | Sv48 | Sv57 | Sv64
-            | Reserved
-
-    let vm_of_code = function
-      | 0 -> Mbare 
-      | 1 -> Mbb
-      | 2 -> Mbbid
-      | 8 -> Sv32
-      | 9 -> Sv39
-      | 10 -> Sv48
-      | 11 -> Sv57
-      | 12 -> Sv64
-      | _ -> Reserved
-
-    let code_of_vm = function
-      | Mbare -> 0
-      | Mbb -> 1
-      | Mbbid -> 2
-      | Sv32 -> 8
-      | Sv39 -> 9
-      | Sv48 -> 10
-      | Sv57 -> 11
-      | Sv64 -> 12
-      | Reserved -> 31
-  end
-
-  (* 3.1.9 *)
-  module Mtvec = struct
-    module F = interface addr[xlen-2] z[2] end
-    module Fx = Interface_ex.Make(F)
-    module Hi = struct
-      let trap = (-1) lsl 9
-      let reset = (-1) lsl 8
-      let trap_user = trap
-      let trap_super = trap + 0x40
-      let trap_hyper = trap + 0x80
-      let trap_machine = trap + 0xc0
-      let nmi = trap + 0xFC
-    end
-    module Lo = struct
-      let trap = 0x200
-      let reset = 0x100
-      let trap_user = trap
-      let trap_super = trap + 0x40
-      let trap_hyper = trap + 0x80
-      let trap_machine = trap + 0xc0
-      let nmi = trap + 0xFC
-    end
-  end
-
-  (* 3.1.10 *)
-  module Mtdeleg = struct
-    module F = interface 
-        interrupts[xlen-16]
-        synchronous_exceptions[16]
-    end
-    module Fx = Interface_ex.Make(F)
-  end
-
-  (* 3.1.11 *)
-  module Mip = struct
-    module F = interface 
-      z0[xlen-8]
-      mtip[1] htip[1] stip[1] z1[1]
-      msip[1] hsip[1] ssip[1] z2[1]
-    end
-    module Fx = Interface_ex.Make(F)
-  end
-  
-  module Mie = struct
-    module F = interface 
-      z0[xlen-8]
-      mtie[1] htie[1] stie[1] z1[1]
-      msie[1] hsie[1] ssie[1] z2[1]
-    end
-    module Fx = Interface_ex.Make(F)
-  end
-
-  (* 3.1.12 *)
-  module Mtime = struct
-    module F = interface mtime[xlen] end
-    module Fx = Interface_ex.Make(F)
-  end
-  module Mtimecmp = struct
-    module F = interface z[xlen-32] mtimecmp[32] end
-    module Fx = Interface_ex.Make(F)
-  end
-
-  (* 3.1.13 *)
-  module Mscratch = struct
-    module F = interface mscratch[xlen] end
-    module Fx = Interface_ex.Make(F)
-  end
-
-  (* 3.1.14 *)
-  module Mepc = struct
-    module F = interface mepc[xlen] end
-    module Fx = Interface_ex.Make(F)
-    (* lsb always zero *)
-  end
-
-  (* 3.1.15 *)
-  module Mcause = struct
-    module F = interface 
-      interrupt[1]
-      z[xlen-5]
-      cause[4]
-    end
-    module Fx = Interface_ex.Make(F)
-
-    type exception_code = 
-      | Instruction_address_misaligned
-      | Instruction_access_fault
-      | Illegal_instruction
-      | Breakpoint
-      | Load_address_misaligned
-      | Load_access_fault
-      | Store_AMO_address_misaligned
-      | Store_AMO_access_fault
-      | Environment_call_from_U_mode
-      | Environment_call_from_S_mode
-      | Environment_call_from_H_mode
-      | Environment_call_from_M_mode
-      | EReserved
-    
-    let exception_of_code = function
-      | 0 -> Instruction_address_misaligned
-      | 1 -> Instruction_access_fault
-      | 2 -> Illegal_instruction
-      | 3 -> Breakpoint
-      | 4 -> Load_address_misaligned
-      | 5 -> Load_access_fault
-      | 6 -> Store_AMO_address_misaligned
-      | 7 -> Store_AMO_access_fault
-      | 8 -> Environment_call_from_U_mode
-      | 9 -> Environment_call_from_S_mode
-      | 10 -> Environment_call_from_H_mode
-      | 11 -> Environment_call_from_M_mode
-      | _ -> EReserved
-    
-    let code_of_exception = function
-      | Instruction_address_misaligned -> 0
-      | Instruction_access_fault -> 1
-      | Illegal_instruction -> 2
-      | Breakpoint -> 3
-      | Load_address_misaligned -> 4
-      | Load_access_fault -> 5
-      | Store_AMO_address_misaligned -> 6
-      | Store_AMO_access_fault -> 7
-      | Environment_call_from_U_mode -> 8
-      | Environment_call_from_S_mode -> 9
-      | Environment_call_from_H_mode -> 10
-      | Environment_call_from_M_mode -> 11
-      | EReserved -> 12
-
-    type interrupt_code =
-      | Software
-      | Timer
-      | IReserved
-    
-    let interrupt_of_code = function
-      | 0 -> Software
-      | 1 -> Timer
-      | _ -> IReserved
-
-    let code_of_interrupt = function
-      | Software -> 0
-      | Timer -> 1
-      | IReserved -> 2
-  end
-
-  module Mbadaddr = struct 
-    module F = interface mbadaddr[xlen] end
-    module Fx = Interface_ex.Make(F)
-  end
-
-  (* generic xlen bits wide register *)
-  module Xlen = struct
-    module F = interface data[xlen] end
-    module Fx = Interface_ex.Make(F)
-  end
-
-  module Regs = interface
-
-    (cycle : Xlen.F)
-    (time : Xlen.F)
-    (instret : Xlen.F)
-    (cycleh : Xlen.F)
-    (timeh : Xlen.F)
-    (instreth : Xlen.F)
-
-    (mcpuid : Mcpuid.F)
-    (mimpid : Mimpid.F)
-    (mhartid : Mhartid.F)
-
-    (mstatus : Mstatus.F)
-    (mtvec : Mtvec.F)
-    (mtdeleg : Mtdeleg.F)
-    (mie : Mie.F)
-    (mtimecmp : Mtimecmp.F)
-
-    (mtime : Mtime.F)
-    (mtimeh : Mtime.F)
-
-    (mscratch : Mscratch.F)
-    (mepc : Mepc.F)
-    (mcause : Mcause.F)
-    (mbadaddr : Mbadaddr.F)
-    (mip : Mip.F)
-
-    (mbase : Xlen.F) (* XXX max addr? *)
-    (mbound : Xlen.F) 
-    (mibase : Xlen.F) 
-    (mibound : Xlen.F) 
-    (mdbase : Xlen.F) 
-    (mdbound : Xlen.F) 
-
-  end
-
-  module Regs_ex = Interface_ex.Make(Regs)
+  open Ifs
 
   type timer_spec = [ `cycle | `time | `instret | `mtime ]
   type csr_ospec = 
@@ -520,21 +223,21 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
       `writeable_ext(csr,ofs,cv,e,ext_we,ext_data) 
     in
 
-    let ofs = Regs_ex.(map (fun x -> x mod 32) (offsets ~rev:false ())) in
+    let ofs = Csr_regs_ex.(map (fun x -> x mod 32) (offsets ~rev:false ())) in
 
     let regs = 
       { 
-        Regs.cycle  = { X.data = `counter64 `cycle };
-        time        = { X.data = `counter64 `time };
-        instret     = { X.data = `counter64 `instret };
-        Regs.cycleh = { X.data = `counter64h `cycle }; 
-        timeh       = { X.data = `counter64h `time };
-        instreth    = { X.data = `counter64h `instret };
+        Csr_regs.cycle = { X.data = `counter64 `cycle };
+        time           = { X.data = `counter64 `time };
+        instret        = { X.data = `counter64 `instret };
+        cycleh         = { X.data = `counter64h `cycle }; 
+        timeh          = { X.data = `counter64h `time };
+        instreth       = { X.data = `counter64h `instret };
 
         mcpuid      = 
           { Mcpuid.F.(map zero' t) with
               Mcpuid.F.base = `consti (Mcpuid.base instr_set);
-              extensions    = `const (Mcpuid.extensions ~base:instr_set ['U']); };
+              extensions    = `const (constibl @@ Mcpuid.extensions ~base:instr_set ['U']); };
         mimpid      = { Mimpid.F.(map zero' t) with Mimpid.F.vendor = `consti(Mimpid.vendor) };
         mhartid     = { Mhartid.F.hartid = `zero };
 
@@ -552,13 +255,13 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
               prv1         = `ones;
               ie1          = `zero;
               prv          = writeable_ext ~csr:`mstatus 
-                                           ~ofs:ofs.Regs.mstatus.Mstatus.F.prv 
+                                           ~ofs:ofs.Csr_regs.mstatus.Mstatus.F.prv 
                                            ~cv:(ones 2) ~e:vdd
-                                           i.Regs.mstatus.Mstatus.F.prv;
+                                           i.Csr_regs.mstatus.Mstatus.F.prv;
               ie           = writeable_ext ~csr:`mstatus 
-                                           ~ofs:ofs.Regs.mstatus.Mstatus.F.ie 
+                                           ~ofs:ofs.Csr_regs.mstatus.Mstatus.F.ie 
                                            ~cv:gnd ~e:vdd
-                                           i.Regs.mstatus.Mstatus.F.ie;
+                                           i.Csr_regs.mstatus.Mstatus.F.ie;
           };
         mtvec       = { Mtvec.F.(map zero' t) with Mtvec.F.addr = `consti (Mtvec.Lo.trap/4) };
         mtdeleg     = Mtdeleg.F.(map zero' t);
@@ -571,21 +274,21 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
         mscratch    = { Mscratch.F.mscratch = writeable ~csr:`mscratch ~ofs:0 
                                                         ~cv:(zero xlen) ~e:vdd };
         mepc        = { Mepc.F.mepc = writeable_ext ~csr:`mepc ~ofs:0 ~cv:(zero xlen) ~e:vdd
-                                                    i.Regs.mepc.Mepc.F.mepc };
+                                                    i.Csr_regs.mepc.Mepc.F.mepc };
         mcause      = 
           { Mcause.F.(map zero' t) with 
             Mcause.F.interrupt = writeable_ext ~csr:`mcause ~cv:gnd ~e:vdd
-                                  ~ofs:ofs.Regs.mcause.Mcause.F.interrupt
-                                  i.Regs.mcause.Mcause.F.interrupt;
+                                  ~ofs:ofs.Csr_regs.mcause.Mcause.F.interrupt
+                                  i.Csr_regs.mcause.Mcause.F.interrupt;
             cause              = writeable_ext ~csr:`mcause ~cv:(zero 4) ~e:vdd
-                                  ~ofs:ofs.Regs.mcause.Mcause.F.cause
-                                  i.Regs.mcause.Mcause.F.cause;
+                                  ~ofs:ofs.Csr_regs.mcause.Mcause.F.cause
+                                  i.Csr_regs.mcause.Mcause.F.cause;
                                    
           };
 
         mbadaddr    = { Mbadaddr.F.mbadaddr = 
                           writeable_ext ~csr:`mbadaddr ~ofs:0 ~cv:(zero xlen) ~e:vdd
-                            i.Regs.mbadaddr.Mbadaddr.F.mbadaddr };
+                            i.Csr_regs.mbadaddr.Mbadaddr.F.mbadaddr };
         mip         = Mip.F.(map zero' t);
 
         mbase       = { Xlen.F.data = writeable ~csr:`mbase ~ofs:0 ~cv:(zero xlen) ~e:vdd };
@@ -618,38 +321,38 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
         B.(x -- ("csr_" ^ csr_name))
       in
       match csr with
-      | `cycle    -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.cycle
-      | `time     -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.time
-      | `instret  -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.instret
-      | `cycleh   -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.cycleh
-      | `timeh    -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.timeh
-      | `instreth -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.instreth
+      | `cycle    -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.cycle
+      | `time     -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.time
+      | `instret  -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.instret
+      | `cycleh   -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.cycleh
+      | `timeh    -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.timeh
+      | `instreth -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.instreth
 
-      | `mcpuid   -> to_vec csr @@ Mcpuid.F.to_list @@ regs.Regs.mcpuid
-      | `mimpid   -> to_vec csr @@ Mimpid.F.to_list @@ regs.Regs.mimpid
-      | `mhartid  -> to_vec csr @@ Mhartid.F.to_list @@ regs.Regs.mhartid
+      | `mcpuid   -> to_vec csr @@ Mcpuid.F.to_list @@ regs.Csr_regs.mcpuid
+      | `mimpid   -> to_vec csr @@ Mimpid.F.to_list @@ regs.Csr_regs.mimpid
+      | `mhartid  -> to_vec csr @@ Mhartid.F.to_list @@ regs.Csr_regs.mhartid
 
-      | `mstatus  -> to_vec csr @@ Mstatus.F.to_list @@ regs.Regs.mstatus
-      | `mtvec    -> to_vec csr @@ Mtvec.F.to_list @@ regs.Regs.mtvec
-      | `mtdeleg  -> to_vec csr @@ Mtdeleg.F.to_list @@ regs.Regs.mtdeleg
-      | `mie      -> to_vec csr @@ Mie.F.to_list @@ regs.Regs.mie
-      | `mtimecmp -> to_vec csr @@ Mtimecmp.F.to_list @@ regs.Regs.mtimecmp
+      | `mstatus  -> to_vec csr @@ Mstatus.F.to_list @@ regs.Csr_regs.mstatus
+      | `mtvec    -> to_vec csr @@ Mtvec.F.to_list @@ regs.Csr_regs.mtvec
+      | `mtdeleg  -> to_vec csr @@ Mtdeleg.F.to_list @@ regs.Csr_regs.mtdeleg
+      | `mie      -> to_vec csr @@ Mie.F.to_list @@ regs.Csr_regs.mie
+      | `mtimecmp -> to_vec csr @@ Mtimecmp.F.to_list @@ regs.Csr_regs.mtimecmp
 
-      | `mtime    -> to_vec csr @@ Mtime.F.to_list @@ regs.Regs.mtime
-      | `mtimeh   -> to_vec csr @@ Mtime.F.to_list @@ regs.Regs.mtimeh
+      | `mtime    -> to_vec csr @@ Mtime.F.to_list @@ regs.Csr_regs.mtime
+      | `mtimeh   -> to_vec csr @@ Mtime.F.to_list @@ regs.Csr_regs.mtimeh
 
-      | `mscratch -> to_vec csr @@ Mscratch.F.to_list @@ regs.Regs.mscratch
-      | `mepc     -> to_vec csr @@ Mepc.F.to_list @@ regs.Regs.mepc
-      | `mcause   -> to_vec csr @@ Mcause.F.to_list @@ regs.Regs.mcause
-      | `mbadaddr -> to_vec csr @@ Mbadaddr.F.to_list @@ regs.Regs.mbadaddr
-      | `mip      -> to_vec csr @@ Mip.F.to_list @@ regs.Regs.mip
+      | `mscratch -> to_vec csr @@ Mscratch.F.to_list @@ regs.Csr_regs.mscratch
+      | `mepc     -> to_vec csr @@ Mepc.F.to_list @@ regs.Csr_regs.mepc
+      | `mcause   -> to_vec csr @@ Mcause.F.to_list @@ regs.Csr_regs.mcause
+      | `mbadaddr -> to_vec csr @@ Mbadaddr.F.to_list @@ regs.Csr_regs.mbadaddr
+      | `mip      -> to_vec csr @@ Mip.F.to_list @@ regs.Csr_regs.mip
 
-      | `mbase    -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mbase
-      | `mbound   -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mbound
-      | `mibase   -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mibase
-      | `mibound  -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mibound
-      | `mdbase   -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mdbase
-      | `mdbound  -> to_vec csr @@ Xlen.F.to_list @@ regs.Regs.mdbound
+      | `mbase    -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.mbase
+      | `mbound   -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.mbound
+      | `mibase   -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.mibase
+      | `mibound  -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.mibound
+      | `mdbase   -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.mdbase
+      | `mdbound  -> to_vec csr @@ Xlen.F.to_list @@ regs.Csr_regs.mdbound
 
       | _ -> failwith "unsupported CSR"
     in
@@ -666,7 +369,7 @@ module Build(Ifs : Interfaces.S) = struct
   module B = HardCaml.Signal.Comb
   module Machine = Make(B)(Ifs)
 
-  let xlen = Ifs.xlen
+  open Ifs
 
   let csr_index csr = 
     let rec find idx = function 
@@ -768,7 +471,7 @@ module Build(Ifs : Interfaces.S) = struct
     in
  
     let regs = 
-      Machine.Regs.(map2 
+      Ifs.Csr_regs.(map2 
         (fun (n,b) r ->
           let open B in
           match r with

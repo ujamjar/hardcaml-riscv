@@ -21,7 +21,11 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) : sig
 
   val name : string
 
-  val decoder : inp:t Ifs.I.t -> fet:t Ifs.Stage.t -> t Ifs.Stage.t
+  val decoder : 
+    inp:t Ifs.I.t ->
+    csrs: t Ifs.Csr_regs.t ->
+    fet:t Ifs.Stage.t -> 
+    t Ifs.Stage.t
 
   val f : 
     inp:t Ifs.I.t -> 

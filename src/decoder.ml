@@ -243,7 +243,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
   open B
   module Insn = Make_insn_decoder(Ifs)(B) 
 
-  let decoder ~inp ~fet = 
+  let decoder ~inp ~csrs ~fet = 
 
     let open Ifs in
     let open Stage in
@@ -284,7 +284,8 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
   let f ~inp ~comb ~pipe = 
     let open Ifs.Stage in
     let open Ifs.Stages in
-    decoder ~inp ~fet:pipe.fet
+    let csrs = Ifs.Csr_regs_ex.zero in
+    decoder ~inp ~csrs ~fet:pipe.fet
 
 end
 

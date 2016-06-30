@@ -198,60 +198,76 @@ module Make(C : Config.S) = struct
       com : pipe.mem
     *)
 
-    let p1 ~inp ~f_output = 
+    let hack_junk com state = 
+      let open Stage in
+      let open Ifs.Csr_ctrl in
+      { com with
+        junk = (* waveform debug junk *)
+          state.instr.[0:0] |:
+          state.insn.[0:0] |:
+          state.ra1_zero |: state.ra2_zero |:
+          state.csr.csr_set |: state.csr.csr_clr |: 
+          state.csr.csr_write |: 
+          reduce (|:) (bits state.csr.csr_dec)
+      }
+
+    (* XXX needs to be within a (B : Comb.S) functor *)
+    let c ~inp ~f_output ~state ~async_rf ~csrs_q ~csr_rdata =
       let open Stage in
       let open Stages in
-      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
 
       let ctrl = p1_ctrl ~inp in
       let pipe = Stages_ex.wiren () in
-      let csr_rdata = wire C.xlen in
 
-      let state = Stage.(map (fun (n,b) -> wire b -- ("state_" ^ n)) t) in
       let fet,mi = Fetch.fetch ~inp ~com:state ~fet:state in
-      let dec = Decoder.decoder ~inp ~fet:pipe.fet in
+      let dec = Decoder.decoder ~inp ~csrs:csrs_q ~fet:pipe.fet in
       let dec = 
         let rfo = async_rf ~inp ~dec:pipe.dec ~com:pipe.com in
         { dec with rd1 = rfo.Rf.O.q1; rd2 = rfo.Rf.O.q2 }
       in
       let alu = Alu.alu ~dec:pipe.dec in
       let mem,md = Mem.mem ~inp ~alu:pipe.alu in
-      let com = Commit.commit ~mem:pipe.mem ~csr_rdata in
+      let com = Commit.commit ~mem:pipe.mem ~csrs:csrs_q ~csr_rdata in
+      let com = hack_junk com state in
 
-      let com = 
-        let open Ifs.Csr_ctrl in
-        { com with
-          junk = (* waveform debug junk *)
-            state.instr.[0:0] |:
-            state.insn.[0:0] |:
-            state.ra1_zero |: state.ra2_zero |:
-            state.csr.csr_set |: state.csr.csr_clr |: 
-            state.csr.csr_write |: 
-            reduce (|:) (bits state.csr.csr_dec)
-        }
-      in
-
-      (* csrs *)
-      let csr_ext = Csr.Machine.Regs.(map (fun (n,b) -> gnd, zero b) t) in
-      let csr_regs, csr_rdata' = 
-        Csr.make 
-          ~clk:inp.I.clk
-          ~clr:inp.I.clr
-          ~csr_ctrl:com.csr
-          ~ext:csr_ext
-          ~wdata:com.rd1 
-      in
-      let () = csr_rdata <== csr_rdata' in
-
-      let preg cv r d = r <== Seq.reg ~cv ~e:ctrl.Ctrl.en d in
-      let _ = Stage_ex.map3 preg def_clear state pipe.com in
       let _ = Stage_ex.map2 (<==) pipe.fet fet in
       let _ = Stage_ex.map2 (<==) pipe.dec dec in
       let _ = Stage_ex.map2 (<==) pipe.alu alu in
       let _ = Stage_ex.map2 (<==) pipe.mem mem in
       let _ = Stage_ex.map2 (<==) pipe.com com in
 
-      f_output ~ctrl ~mi ~md ~inp ~comb:pipe ~pipe
+      f_output ~ctrl ~mi ~md ~inp ~comb:pipe ~pipe,
+      pipe, com, ctrl
+
+    let p1 ~inp ~f_output = 
+      let open Stage in
+      let open Stages in
+      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
+
+      let csr_rdata = wire C.xlen in
+      let csrs_q = Ifs.Csr_regs_ex.wire () in
+      let state = Stage.(map (fun (n,b) -> wire b -- ("state_" ^ n)) t) in
+
+      (* generate core *)
+      let o, pipe, com, ctrl = c ~inp ~f_output ~state ~async_rf ~csrs_q ~csr_rdata in
+        
+      (* csrs *)
+      let csrs_wr = Ifs.Csr_regs.(map (fun (n,b) -> gnd, zero b) t) in (* from commit? *)
+      let csrs_r, csr_rdata' = 
+        Csr.make 
+          ~clk:inp.I.clk
+          ~clr:inp.I.clr
+          ~csr_ctrl:com.csr
+          ~ext:csrs_wr
+          ~wdata:com.rd1 
+      in
+      let () = csr_rdata <== csr_rdata' in
+      let _ = Ifs.Csr_regs.map2 (<==) csrs_q csrs_r in
+
+      let preg cv r d = r <== Seq.reg ~cv ~e:ctrl.Ctrl.en d in
+      let _ = Stage_ex.map3 preg def_clear state pipe.com in
+
+      o
 
   end
 

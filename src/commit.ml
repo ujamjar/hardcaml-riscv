@@ -7,7 +7,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
   let (--) s n = s -- ("com_" ^ n)
 
-  let commit ~mem ~csr_rdata =
+  let commit ~mem ~csrs ~csr_rdata =
     let open Stage in
     let open Stages in
     let open Class in
@@ -30,7 +30,8 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
   let f ~inp ~comb ~pipe = 
     let open Stages in
-    commit ~mem:pipe.mem ~csr_rdata:(zero Ifs.xlen)
+    let csrs = Ifs.Csr_regs_ex.zero in
+    commit ~mem:pipe.mem ~csrs ~csr_rdata:(zero Ifs.xlen)
 
 end
 
