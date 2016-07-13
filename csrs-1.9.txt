@@ -1,0 +1,134 @@
+Table 2.2: Currently allocated RISC-V user-level CSR addresses.
+
+Number  Privilege Name      Description
+User Trap Setup
+0x000   URW       ustatus           User status register.
+0x004   URW       uie               User interrupt-enable register.
+0x005   URW       utvec             User trap handler base address.
+User Trap Handling                  
+0x040   URW       uscratch          Scratch register for user trap handlers.
+0x041   URW       uepc              User exception program counter.
+0x042   URW       ucause            User trap cause.
+0x043   URW       ubadaddr          User bad address.
+0x044   URW       uip               User interrupt pending.
+User Floating-Point CSRs            
+0x001   URW       fflags            Floating-Point Accrued Exceptions.
+0x002   URW       frm               Floating-Point Dynamic Rounding Mode.
+0x003   URW       fcsr              Floating-Point Control and Status Register (frm + fflags).
+User Counter/Timers                 
+0xC00   URO       cycle             Cycle counter for RDCYCLE instruction.
+0xC01   URO       time              Timer for RDTIME instruction.
+0xC02   URO       instret           Instructions-retired counter for RDINSTRET instruction.
+0xC80   URO       cycleh            Upper 32 bits of cycle, RV32I only.
+0xC81   URO       timeh             Upper 32 bits of time, RV32I only.
+0xC82   URO       instreth          Upper 32 bits of instret, RV32I only.
+
+Table 2.3: Currently allocated RISC-V supervisor-level CSR addresses
+
+Number  Privilege Name      Description
+Supervisor Trap Setup
+0x100   SRW       sstatus           Supervisor status register.
+0x102   SRW       sedeleg           Supervisor exception delegation register.
+0x103   SRW       sideleg           Supervisor interrupt delegation register.
+0x104   SRW       sie               Supervisor interrupt-enable register.
+0x105   SRW       stvec             Supervisor trap handler base address.
+Supervisor Trap Handling            
+0x140   SRW       sscratch          Scratch register for supervisor trap handlers.
+0x141   SRW       sepc              Supervisor exception program counter.
+0x142   SRW       scause            Supervisor trap cause.
+0x143   SRW       sbadaddr          Supervisor bad address.
+0x144   SRW       sip               Supervisor interrupt pending.
+Supervisor Protection and Translation
+0x180   SRW       sptbr             Page-table base register.
+Supervisor Counter/Timers           
+0xD00   SRO       scycle            Supervisor cycle counter.
+0xD01   SRO       stime             Supervisor wall-clock time.
+0xD02   SRO       sinstret          Supervisor instructions-retired counter.
+0xD80   SRO       scycleh           Upper 32 bits of scycle, RV32I only.
+0xD81   SRO       stimeh            Upper 32 bits of stime, RV32I only.
+0xD82   SRO       sinstreth         Upper 32 bits of sinstret, RV32I only.
+
+Table 2.4: Currently allocated RISC-V hypervisor-level CSR addresses.
+
+Number  Privilege Name      Description
+Hypervisor Trap Setup
+0x200   HRW       hstatus           Hypervisor status register.
+0x202   HRW       hedeleg           Hypervisor exception delegation register.
+0x203   HRW       hideleg           Hypervisor interrupt delegation register.
+0x204   HRW       hie               Hypervisor interrupt-enable register.
+0x205   HRW       htvec             Hypervisor trap handler base address.
+Hypervisor Trap Handling            
+0x240   HRW       hscratch          Scratch register for hypervisor trap handlers.
+0x241   HRW       hepc              Hypervisor exception program counter.
+0x242   HRW       hcause            Hypervisor trap cause.
+0x243   HRW       hbadaddr          Hypervisor bad address.
+Hypervisor Protection and Translation
+0x28X   TBD       TBD               TBD.
+Hypervisor Counter/Timers           
+0xE00   HRO       hcycle            Hypervisor cycle counter.
+0xE01   HRO       htime             Hypervisor wall-clock time.
+0xE02   HRO       hinstret          Hypervisor instructions-retired counter.
+0xE80   HRO       hcycleh           Upper 32 bits of hcycle, RV32I only.
+0xE81   HRO       htimeh            Upper 32 bits of htime, RV32I only.
+0xE82   HRO       hinstreth         Upper 32 bits of hinstret, RV32I only.
+
+Table 2.5: Currently allocated RISC-V machine-level CSR addresses.
+
+Number Privilege  Name              Description
+Machine Information Registers
+0xF10   MRO       misa              ISA and extensions supported.
+0xF11   MRO       mvendorid         Vendor ID.
+0xF12   MRO       marchid           Architecture ID.
+0xF13   MRO       mimpid            Implementation ID.
+0xF14   MRO       mhartid           Hardware thread ID.
+Machine Trap Setup
+0x300   MRW       mstatus           Machine status register.
+0x302   MRW       medeleg           Machine exception delegation register.
+0x303   MRW       mideleg           Machine interrupt delegation register.
+0x304   MRW       mie               Machine interrupt-enable register.
+0x305   MRW       mtvec             Machine trap-handler base address.
+Machine Trap Handling
+0x340   MRW       mscratch          Scratch register for machine trap handlers.
+0x341   MRW       mepc              Machine exception program counter.
+0x342   MRW       mcause            Machine trap cause.
+0x343   MRW       mbadaddr          Machine bad address.
+0x344   MRW       mip               Machine interrupt pending.
+Machine Protection and Translation
+0x380   MRW       mbase             Base register.
+0x381   MRW       mbound            Bound register.
+0x382   MRW       mibase            Instruction base register.
+0x383   MRW       mibound           Instruction bound register.
+0x384   MRW       mdbase            Data base register.
+0x385   MRW       mdbound           Data bound register.
+Machine Timers and Counters
+0xF00   MRO       mcycle            Machine cycle counter.
+0xF01   MRO       mtime             Machine wall-clock time.
+0xF02   MRO       minstret          Machine instructions-retired counter.
+0xF80   MRO       mcycleh           Upper 32 bits of mcycle, RV32I only.
+0xF81   MRO       mtimeh            Upper 32 bits of mtime, RV32I only.
+0xF82   MRO       minstreth         Upper 32 bits of minstret, RV32I only.
+Machine Counter Setup
+0x310   MRW       mucounteren       User-mode counter enable.
+0x311   MRW       mscounteren       Supervisor-mode counter enable.
+0x312   MRW       mhcounteren       Hypervisor-mode counter enable.
+Machine Counter-Delta Registers
+0x700   MRW       mucycle_delta     cycle counter delta.
+0x701   MRW       mutime_delta      time counter delta.
+0x702   MRW       muinstret_delta   instret counter delta.
+0x704   MRW       mscycle_delta     scycle counter delta.
+0x705   MRW       mstime_delta      stime counter delta.
+0x706   MRW       msinstret_delta   sinstret counter delta.
+0x708   MRW       mhcycle_delta     hcycle counter delta.
+0x709   MRW       mhtime_delta      htime counter delta.
+0x70A   MRW       mhinstret_delta   hinstret counter delta.
+0x780   MRW       mucycle_deltah    Upper 32 bits of cycle counter delta, RV32I only.
+0x781   MRW       mutime_deltah     Upper 32 bits of time counter delta, RV32I only.
+0x782   MRW       muinstret_deltah  Upper 32 bits of instret counter delta, RV32I only.
+0x784   MRW       mscycle_deltah    Upper 32 bits of scycle counter delta, RV32I only.
+0x785   MRW       mstime_deltah     Upper 32 bits of stime counter delta, RV32I only.
+0x786   MRW       msinstret_deltah  Upper 32 bits of sinstret counter delta, RV32I only.
+0x788   MRW       mhcycle_deltah    Upper 32 bits of hcycle counter delta, RV32I only.
+0x789   MRW       mhtime_deltah     Upper 32 bits of htime counter delta, RV32I only.
+0x78A   MRW       mhinstret_deltah  Upper 32 bits of hinstret counter delta, RV32I only.
+
+

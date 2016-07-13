@@ -227,7 +227,7 @@ module Make(C : Config.S) = struct
       in
       let alu = Alu.alu ~dec:pipe.dec in
       let mem,md = Mem.mem ~inp ~alu:pipe.alu in
-      let com = Commit.commit ~mem:pipe.mem ~csrs:csrs_q ~csr_rdata in
+      let com, csrs_wr = Commit.commit ~mem:pipe.mem ~csrs:csrs_q ~csr_rdata in
       let com = hack_junk com state in
 
       let _ = Stage_ex.map2 (<==) pipe.fet fet in
@@ -237,7 +237,7 @@ module Make(C : Config.S) = struct
       let _ = Stage_ex.map2 (<==) pipe.com com in
 
       f_output ~ctrl ~mi ~md ~inp ~comb:pipe ~pipe,
-      pipe, com, ctrl
+      pipe, com, ctrl, csrs_wr
 
     let p1 ~inp ~f_output = 
       let open Stage in
@@ -249,10 +249,9 @@ module Make(C : Config.S) = struct
       let state = Stage.(map (fun (n,b) -> wire b -- ("state_" ^ n)) t) in
 
       (* generate core *)
-      let o, pipe, com, ctrl = c ~inp ~f_output ~state ~async_rf ~csrs_q ~csr_rdata in
+      let o, pipe, com, ctrl, csrs_wr = c ~inp ~f_output ~state ~async_rf ~csrs_q ~csr_rdata in
         
       (* csrs *)
-      let csrs_wr = Ifs.Csr_regs.(map (fun (n,b) -> gnd, zero b) t) in (* from commit? *)
       let csrs_r, csr_rdata' = 
         Csr.make 
           ~clk:inp.I.clk

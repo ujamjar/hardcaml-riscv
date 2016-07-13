@@ -8,7 +8,8 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) : sig
     mem:t Ifs.Stage.t -> 
     csrs:t Ifs.Csr_regs.t ->
     csr_rdata:t -> 
-    t Ifs.Stage.t
+    t Ifs.Stage.t *
+    (t * t) Ifs.Csr_regs.t
 
   val f : 
     inp:t Ifs.I.t -> 

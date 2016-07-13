@@ -25,13 +25,15 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       mux2 i.ecall (consti 32 0x100) (* XXX should come from CSRs *)
         pc_next 
     in
+    let csrs_wr = Ifs.Csr_regs.(map (fun (n,b) -> gnd, zero b) t) in 
 
-    { mem with branch; rdd; pc = pc.[31:1] @: gnd; }
+    { mem with branch; rdd; pc = pc.[31:1] @: gnd; }, csrs_wr
+
 
   let f ~inp ~comb ~pipe = 
     let open Stages in
     let csrs = Ifs.Csr_regs_ex.zero in
-    commit ~mem:pipe.mem ~csrs ~csr_rdata:(zero Ifs.xlen)
+    fst @@ commit ~mem:pipe.mem ~csrs ~csr_rdata:(zero Ifs.xlen)
 
 end
 
