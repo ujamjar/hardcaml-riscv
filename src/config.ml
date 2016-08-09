@@ -1,90 +1,32 @@
 type csr = 
-  (* Floating point *)
-  [ `fflags
-  | `frm
-  | `fcsr
-  (* User counters/times *)
-  | `cycle
-  | `time
-  | `instret
-  | `cycleh
-  | `timeh
-  | `instreth
-  (* Supervisor Trap Setup*)
-  | `sstatus 
-  | `stvec 
-  | `sie 
-  | `stimecmp 
-  (* Supervisor Timer *)
-  | `stime 
-  | `stimeh 
-  (* Supervisor Trap Handling *)
-  | `sscratch 
-  | `sepc 
-  | `scause 
-  | `sbadaddr 
-  | `sip 
-  (* Supervisor Protection and Translation *)
-  | `sptbr 
-  | `sasid 
-  (* Supervisor Read/Write Shadow of User Read-Only registers *)
-  | `cyclew 
-  | `timew 
-  | `instretw 
-  | `cyclehw 
-  | `timehw 
-  | `instrethw 
-  (* Hypervisor level CSRs - table 2.4 *)
-  (* Hypervisor Trap Setup *)
-  | `hstatus 
-  | `htvec 
-  | `htdeleg 
-  | `htimecmp 
-  (* Hypervisor Timer *)
-  | `htime 
-  | `htimeh 
-  (* Hypervisor Trap Handling *)
-  | `hscratch 
-  | `hepc 
-  | `hcause 
-  | `hbadaddr 
-  (* Hypervisor Protection and Translation *)
-  (*0x28X TBD "TBD" "TBD."*)
-  (* Hypervisor Read/Write Shadow of Supervisor Read-Only Registers *)
-  | `stimew 
-  | `stimehw 
-  (* Machine Information Registers *)
-  | `mcpuid 
-  | `mimpid 
-  | `mhartid 
-  (* Machine Trap Setup *)
-  | `mstatus 
-  | `mtvec 
-  | `mtdeleg 
-  | `mie 
-  | `mtimecmp 
-  (* Machine Timers and Counters *)
-  | `mtime 
-  | `mtimeh 
-  (* Machine Trap Handling *)
-  | `mscratch 
-  | `mepc 
-  | `mcause 
-  | `mbadaddr 
-  | `mip 
-  (* Machine Protection and Translation *)
-  | `mbase 
-  | `mbound 
-  | `mibase 
-  | `mibound 
-  | `mdbase 
-  | `mdbound 
-  (* Machine Read-Write Shadow of Hypervisor Read-Only Registers *)
-  | `htimew 
-  | `htimehw 
-  (* Machine Host-Target Interface (Non-Standard Berkeley Extension) *)
-  | `mtohost 
-  | `mfromhost ]
+  [ 
+    (* user *)
+    `ustatus | `uie | `utvec | `uscratch | `uepc | `ucause | `ubadaddr | 
+    `uip | `fflags | `frm | `fcsr | `cycle | `time | `instret | `cycleh | 
+    `timeh | `instreth |
+    (* supervisor *)
+    `sstatus | `sedeleg | `sideleg | `sie | `stvec | `sscratch | `sepc |
+    `scause | `sbadaddr | `sip | `sptbr | `scycle | `stime | `sinstret |
+    `scycleh | `stimeh | `sinstreth |
+    (* hypervisor *)
+    `hstatus | `hedeleg | `hideleg | `hie | `htvec | `hscratch | `hepc |
+    `hcause | `hbadaddr | `hcycle | `htime | `hinstret | `hcycleh |
+    `htimeh | `hinstreth |
+    (* machine *)
+    `misa | `mvendorid | `marchid | `mimpid | `mhartid |
+    `mstatus | `medeleg | `mideleg | `mie | `mtvec | `mscratch |
+    `mepc | `mcause | `mbadaddr | `mip | `mbase | `mbound |
+    `mibase | `mibound | `mdbase | `mdbound | `mcycle |
+    `mtime | `minstret | `mcycleh | `mtimeh | `minstreth | 
+    `mucounteren | `mscounteren | `mhcounteren | 
+    `mucycle | `mutime | `muinstret |
+    `mscycle | `mstime | `msinstret | 
+    `mhcycle | `mhtime | `mhinstret |
+    `mucycleh | `mutimeh | `muinstreth | 
+    `mscycleh | `mstimeh | `msinstreth | 
+    `mhcycleh | `mhtimeh | `mhinstreth 
+
+  ]
   deriving(Enum,Bounded,Show)
 
 module type S = sig
@@ -117,13 +59,28 @@ module RV32I_machine = struct
   let support_csrs = true
   let csrs = 
     [ 
-      `cycle; `time; `instret;
-      `cycleh; `timeh; `instreth;
-      `mcpuid; `mimpid; `mhartid; 
-      `mstatus; `mtvec; `mtdeleg; `mie; `mtimecmp;
-      `mtime; `mtimeh;
-      `mscratch; `mepc; `mcause; `mbadaddr; `mip;
-      `mbase; `mbound; `mibase; `mibound; `mdbase; `mdbound;
+      (* user *)
+      `ustatus; `uie; `utvec; `uscratch; `uepc; `ucause; `ubadaddr; 
+      `uip; `fflags; `frm; `fcsr; `cycle; `time; `instret; `cycleh; 
+      `timeh; `instreth;
+      (* supervisor *)
+      `sstatus; `sedeleg; `sideleg; `sie; `stvec; `sscratch; `sepc;
+      `scause; `sbadaddr; `sip; `sptbr; `scycle; `stime; `sinstret;
+      `scycleh; `stimeh; `sinstreth;
+      (* hypervisor *)
+      `hstatus; `hedeleg; `hideleg; `hie; `htvec; `hscratch; `hepc;
+      `hcause; `hbadaddr; `hcycle; `htime; `hinstret; `hcycleh;
+      `htimeh; `hinstreth;
+      (* machine *)
+      `misa; `mvendorid; `marchid; `mimpid; `mhartid;
+      `mstatus; `medeleg; `mideleg; `mie; `mtvec; `mscratch;
+      `mepc; `mcause; `mbadaddr; `mip; `mbase; `mbound;
+      `mibase; `mibound; `mdbase; `mdbound; `mcycle;
+      `mtime; `minstret; `mcycleh; `mtimeh; `minstreth; `mucounteren;
+      `mscounteren; `mhcounteren; `mucycle; `mutime; `muinstret;
+      `mscycle; `mstime; `msinstret; `mhcycle; `mhtime; `mhinstret;
+      `mucycle; `mutime; `muinstret; `mscycle; `mstime;
+      `msinstret; `mhcycle; `mhtime; `mhinstret;
     ]
 end
 

@@ -80,28 +80,23 @@ module type S = sig
     (dbg : Stages)
   end
 
-  module Mcpuid : sig
+  module Isa : sig
     module F : interface base z extensions end
     module Fx : module type of Interface_ex.Make(F)
-    val base : [ `rv32i | `rv32e | `rv64i | `rv128 ] -> int
-    val extensions : base:[ `rv32i | `rv32e | `rv64i | `rv128 ] -> char list -> 
+    val base : [ `rv32 | `rv32e | `rv64 | `rv128 ] -> int
+    val extensions : base:[ `rv32 | `rv32e | `rv64 | `rv128 ] -> char list -> 
       HardCaml.Bits.Comb.IntbitsList.t
   end
 
-  module Mimpid : sig
-    module F : interface implementation vendor end
-    module Fx : module type of Interface_ex.Make(F)
-    val vendor : int
-  end
-
-  module Mhartid : sig
-    module F : interface hartid end
-    module Fx : module type of Interface_ex.Make(F)
-    val hartid : int
-  end
-
-  module Mstatus : sig
-    module F : interface sd z vm mprv xs fs prv3 ie3 prv2 ie2 prv1 ie1 prv ie end
+  module Status : sig
+    module F : interface 
+        sd z0 vm z1 
+        mxr pum mprv
+        xs fs
+        mpp hpp spp
+        mpie hpie spie upie
+        mie hie sie uie
+    end
     module Fx : module type of Interface_ex.Make(F)
     type ext_ctx = Off | Initial | Clean | Dirty
     val ext_ctx_status_of_code : int -> ext_ctx
@@ -113,80 +108,33 @@ module type S = sig
     val code_of_vm : vm -> int
   end
 
-  module Mtvec : sig
+  module Tvec : sig
     module F : interface addr z end
-    module Fx : module type of Interface_ex.Make(F)
-    module Hi : sig
-      val trap : int
-      val reset : int
-      val trap_user : int
-      val trap_super : int
-      val trap_hyper : int
-      val trap_machine : int
-      val nmi : int
-    end
-    module Lo : sig
-      val trap : int
-      val reset : int
-      val trap_user : int
-      val trap_super : int
-      val trap_hyper : int
-      val trap_machine : int
-      val nmi : int
-    end
-  end
-
-  module Mtdeleg : sig
-    module F : interface 
-        interrupts
-        synchronous_exceptions
-    end
     module Fx : module type of Interface_ex.Make(F)
   end
 
   (* 3.1.11 *)
-  module Mip : sig
+  module Ip : sig
     module F : interface 
-      z0
-      mtip htip stip z1
-      msip hsip ssip z2
+      z
+      meip heip seip ueip
+      mtip htip stip utip
+      msip hsip ssip usip
     end
     module Fx : module type of Interface_ex.Make(F)
   end
   
-  module Mie : sig
+  module Ie : sig
     module F : interface 
-      z0
-      mtie htie stie z1
-      msie hsie ssie z2
+      z
+      meie heie seie ueie
+      mtie htie stie utie
+      msie hsie ssie usie
     end
     module Fx : module type of Interface_ex.Make(F)
   end
 
-  (* 3.1.12 *)
-  module Mtime : sig
-    module F : interface mtime end
-    module Fx : module type of Interface_ex.Make(F)
-  end
-  module Mtimecmp : sig
-    module F : interface z mtimecmp end
-    module Fx : module type of Interface_ex.Make(F)
-  end
-
-  (* 3.1.13 *)
-  module Mscratch : sig
-    module F : interface mscratch end
-    module Fx : module type of Interface_ex.Make(F)
-  end
-
-  (* 3.1.14 *)
-  module Mepc : sig
-    module F : interface mepc end
-    module Fx : module type of Interface_ex.Make(F)
-    (* lsb always zero *)
-  end
-
-  module Mcause : sig
+  module Cause : sig
     module F : interface interrupt z cause end
     module Fx : module type of Interface_ex.Make(F)
 
@@ -203,25 +151,28 @@ module type S = sig
       | Environment_call_from_S_mode
       | Environment_call_from_H_mode
       | Environment_call_from_M_mode
-      | EReserved
     
     val exception_of_code : int -> exception_code
     
     val code_of_exception : exception_code -> int
 
     type interrupt_code =
-      | Software
-      | Timer
-      | IReserved
+      | USoftware
+      | SSoftware
+      | HSoftware
+      | MSoftware
+      | UTimer
+      | STimer
+      | HTimer
+      | MTimer
+      | UExt
+      | SExt
+      | HExt
+      | MExt
     
     val interrupt_of_code : int -> interrupt_code
     val code_of_interrupt : interrupt_code -> int
 
-  end
-
-  module Mbadaddr : sig
-    module F : interface mbadaddr end
-    module Fx : module type of  Interface_ex.Make(F)
   end
 
   module Xlen : sig
@@ -229,41 +180,93 @@ module type S = sig
     module Fx : module type of Interface_ex.Make(F)
   end
 
+  module Trap : interface
+    (* setup *)
+    (status : Status.F)
+    (edeleg : Xlen.F)
+    (ideleg : Xlen.F)
+    (ie : Ie.F)
+    (tvec : Tvec.F)
+    (* handling *)
+    (scratch : Xlen.F)
+    (epc : Xlen.F)
+    (cause : Cause.F)
+    (badaddr : Xlen.F)
+    (ip : Ip.F)
+  end
+
+  module Counteren : sig
+    module F : interface z ir tm cy end
+    module Fx : module type of Interface_ex.Make(F)
+  end
+
+  module Ptbr : sig
+    module F : interface asid ppn end
+    module Fx : module type of Interface_ex.Make(F)
+  end
+
+  module X64 : interface
+    (lo : Xlen.F)
+    (hi : Xlen.F)
+  end 
+
+  module Timers : interface
+    (cycle : X64)
+    (time : X64)
+    (instret : X64)
+  end
+
+  module Machine : interface
+    (isa : Isa.F)
+    (vendorid : Xlen.F)
+    (archid : Xlen.F)
+    (impid : Xlen.F)
+    (hartid : Xlen.F)
+
+    (trap : Trap)
+
+    (timers : Timers)
+
+    (base : Xlen.F) (* XXX max addr? *)
+    (bound : Xlen.F) 
+    (ibase : Xlen.F) 
+    (ibound : Xlen.F) 
+    (dbase : Xlen.F) 
+    (dbound : Xlen.F) 
+
+    (ucounteren : Counteren.F)
+    (scounteren : Counteren.F)
+    (hcounteren : Counteren.F)
+
+    (udelta : Timers)
+    (sdelta : Timers)
+    (hdelta : Timers)
+  end
+
+  module Hypervisor : interface
+    (trap : Trap)
+    (timers : Timers)
+  end
+
+  module Supervisor : interface
+    (trap : Trap)
+    (timers : Timers)
+    (ptbr : Ptbr.F) 
+  end
+
+  module User : interface
+    (trap : Trap)
+    (timers : Timers)
+    (fflags : Xlen.F)  (* XXX *)
+    (frm : Xlen.F)
+    (fcsr : Xlen.F)
+  end
+
   module Csr_regs : interface
-
-    (cycle : Xlen.F)
-    (time : Xlen.F)
-    (instret : Xlen.F)
-    (cycleh : Xlen.F)
-    (timeh : Xlen.F)
-    (instreth : Xlen.F)
-
-    (mcpuid : Mcpuid.F)
-    (mimpid : Mimpid.F)
-    (mhartid : Mhartid.F)
-
-    (mstatus : Mstatus.F)
-    (mtvec : Mtvec.F)
-    (mtdeleg : Mtdeleg.F)
-    (mie : Mie.F)
-    (mtimecmp : Mtimecmp.F)
-
-    (mtime : Mtime.F)
-    (mtimeh : Mtime.F)
-
-    (mscratch : Mscratch.F)
-    (mepc : Mepc.F)
-    (mcause : Mcause.F)
-    (mbadaddr : Mbadaddr.F)
-    (mip : Mip.F)
-
-    (mbase : Xlen.F) (* XXX max addr? *)
-    (mbound : Xlen.F) 
-    (mibase : Xlen.F) 
-    (mibound : Xlen.F) 
-    (mdbase : Xlen.F) 
-    (mdbound : Xlen.F) 
-
+    (m : Machine)
+    (h : Hypervisor)
+    (s : Supervisor)
+    (u : User)
   end
 
   module Csr_regs_ex : module type of Interface_ex.Make(Csr_regs)
@@ -394,16 +397,18 @@ module Make(C : Config.S) = struct
   (* CSRs *)
 
   (* 3.1.1 *)
-  module Mcpuid = struct
+  module Isa = struct
     module F = interface
-      base[2] z[xlen-28] extensions[26]
+      base[2] 
+      z[xlen-28] (* WIRI *)
+      extensions[26]
     end
     module Fx = Interface_ex.Make(F)
 
     let base' = function
-      | `rv32i -> 0
+      | `rv32  -> 1
       | `rv32e -> 1
-      | `rv64i -> 2
+      | `rv64  -> 2
       | `rv128 -> 3
 
     let extensions ~base ext = 
@@ -412,46 +417,36 @@ module Make(C : Config.S) = struct
         sll (one 26) (Char.code (Char.lowercase c) - Char.code 'a')
       in
       List.fold_left (fun acc c -> acc |: idx c)
-        (if (base' base) = 1 then idx 'e' else idx 'i') ext
+        (if base = `rv32e then idx 'e' else idx 'i') ext
 
     let base = base'
   end
 
-  (* 3.1.2 *)
-  module Mimpid = struct
-    module F = interface
-      implementation[xlen-16] vendor[16]
-    end
-    module Fx = Interface_ex.Make(F)
-    (* 1 < vendor <= 0x7fff *)
-    let vendor = 0x2307
-    (* implementation register describes the system - no given semantics *)
-  end
-
-  (* 3.1.4 *)
-  module Mhartid = struct
-    module F = interface
-      hartid[xlen]
-    end
-    module Fx = Interface_ex.Make(F)
-    let hartid = 0x0 (* unless we have a multi-processor system...*)
-  end
-
   (* 3.1.5  .... *)
-  module Mstatus = struct
+  module Status = struct
     module F = interface
         sd[1] (* 3.1.8 ... *)
-        z[xlen-23] 
-        vm[5] (* 3.1.6 virtualization management *)
-        mprv[1] (* 3.1.7 memory priviledge *)
-        xs[2] fs[2] (* 3.1.8 extension context *)
-        prv3[2] ie3[1] (* 3.1.5 priv and global interrupt-enable stack *)
-        prv2[2] ie2[1]
-        prv1[2] ie1[1]
-        prv[2] ie[1]
+        z0[xlen-30] (* WPRI *)
+        vm[5] (* WARL *)
+        z1[4] (* WPRI *)
+        mxr[1]
+        pum[1]
+        mprv[1]
+        xs[2]
+        fs[2]
+        mpp[2] (* prior priviledge mode *)
+        hpp[2]
+        spp[1]
+        mpie[1] (* prior interrupt enable *)
+        hpie[1]
+        spie[1]
+        upie[1]
+        mie[1] (* interrupt enable *)
+        hie[1]
+        sie[1]
+        uie[1]
     end
     module Fx = Interface_ex.Make(F)
-    (* XXX ... interrupt bits (and stack) ... check implementation *)
 
     type ext_ctx = Off | Initial | Clean | Dirty
 
@@ -495,82 +490,40 @@ module Make(C : Config.S) = struct
   end
 
   (* 3.1.9 *)
-  module Mtvec = struct
+  module Tvec = struct
     module F = interface addr[xlen-2] z[2] end
-    module Fx = Interface_ex.Make(F)
-    module Hi = struct
-      let trap = (-1) lsl 9
-      let reset = (-1) lsl 8
-      let trap_user = trap
-      let trap_super = trap + 0x40
-      let trap_hyper = trap + 0x80
-      let trap_machine = trap + 0xc0
-      let nmi = trap + 0xFC
-    end
-    module Lo = struct
-      let trap = 0x200
-      let reset = 0x100
-      let trap_user = trap
-      let trap_super = trap + 0x40
-      let trap_hyper = trap + 0x80
-      let trap_machine = trap + 0xc0
-      let nmi = trap + 0xFC
-    end
-  end
-
-  (* 3.1.10 *)
-  module Mtdeleg = struct
-    module F = interface 
-        interrupts[xlen-16]
-        synchronous_exceptions[16]
-    end
     module Fx = Interface_ex.Make(F)
   end
 
   (* 3.1.11 *)
-  module Mip = struct
+  module Ip = struct
     module F = interface 
-      z0[xlen-8]
-      mtip[1] htip[1] stip[1] z1[1]
-      msip[1] hsip[1] ssip[1] z2[1]
+      z[xlen-12]
+      meip[1] heip[1] seip[1] ueip[1]
+      mtip[1] htip[1] stip[1] utip[1]
+      msip[1] hsip[1] ssip[1] usip[1]
     end
     module Fx = Interface_ex.Make(F)
   end
   
-  module Mie = struct
+  module Ie = struct
     module F = interface 
-      z0[xlen-8]
-      mtie[1] htie[1] stie[1] z1[1]
-      msie[1] hsie[1] ssie[1] z2[1]
+      z[xlen-12]
+      meie[1] heie[1] seie[1] ueie[1]
+      mtie[1] htie[1] stie[1] utie[1]
+      msie[1] hsie[1] ssie[1] usie[1]
     end
     module Fx = Interface_ex.Make(F)
   end
 
   (* 3.1.12 *)
-  module Mtime = struct
+  module Time = struct
     module F = interface mtime[xlen] end
     module Fx = Interface_ex.Make(F)
   end
-  module Mtimecmp = struct
-    module F = interface z[xlen-32] mtimecmp[32] end
-    module Fx = Interface_ex.Make(F)
-  end
-
-  (* 3.1.13 *)
-  module Mscratch = struct
-    module F = interface mscratch[xlen] end
-    module Fx = Interface_ex.Make(F)
-  end
-
-  (* 3.1.14 *)
-  module Mepc = struct
-    module F = interface mepc[xlen] end
-    module Fx = Interface_ex.Make(F)
-    (* lsb always zero *)
-  end
 
   (* 3.1.15 *)
-  module Mcause = struct
+  module Cause = struct
     module F = interface 
       interrupt[1]
       z[xlen-5]
@@ -591,7 +544,6 @@ module Make(C : Config.S) = struct
       | Environment_call_from_S_mode
       | Environment_call_from_H_mode
       | Environment_call_from_M_mode
-      | EReserved
     
     let exception_of_code = function
       | 0 -> Instruction_address_misaligned
@@ -606,7 +558,7 @@ module Make(C : Config.S) = struct
       | 9 -> Environment_call_from_S_mode
       | 10 -> Environment_call_from_H_mode
       | 11 -> Environment_call_from_M_mode
-      | _ -> EReserved
+      | _ -> failwith "exception_of_code"
     
     let code_of_exception = function
       | Instruction_address_misaligned -> 0
@@ -621,27 +573,49 @@ module Make(C : Config.S) = struct
       | Environment_call_from_S_mode -> 9
       | Environment_call_from_H_mode -> 10
       | Environment_call_from_M_mode -> 11
-      | EReserved -> 12
 
     type interrupt_code =
-      | Software
-      | Timer
-      | IReserved
+      | USoftware
+      | SSoftware
+      | HSoftware
+      | MSoftware
+      | UTimer
+      | STimer
+      | HTimer
+      | MTimer
+      | UExt
+      | SExt
+      | HExt
+      | MExt
     
     let interrupt_of_code = function
-      | 0 -> Software
-      | 1 -> Timer
-      | _ -> IReserved
+      | 0  -> USoftware
+      | 1  -> SSoftware
+      | 2  -> HSoftware
+      | 3  -> MSoftware
+      | 4  -> UTimer
+      | 5  -> STimer
+      | 6  -> HTimer
+      | 7  -> MTimer
+      | 8  -> UExt
+      | 9  -> SExt
+      | 10 -> HExt
+      | 11 -> MExt
+      | _ -> failwith "invalid interrupt_of_code"
 
     let code_of_interrupt = function
-      | Software -> 0
-      | Timer -> 1
-      | IReserved -> 2
-  end
-
-  module Mbadaddr = struct 
-    module F = interface mbadaddr[xlen] end
-    module Fx = Interface_ex.Make(F)
+      | USoftware -> 0
+      | SSoftware -> 1
+      | HSoftware -> 2
+      | MSoftware -> 3
+      | UTimer -> 4
+      | STimer -> 5
+      | HTimer -> 6
+      | MTimer -> 7
+      | UExt -> 8
+      | SExt -> 9
+      | HExt -> 10
+      | MExt -> 11
   end
 
   (* generic xlen bits wide register *)
@@ -650,42 +624,98 @@ module Make(C : Config.S) = struct
     module Fx = Interface_ex.Make(F)
   end
 
-  module Csr_regs = interface
-
-    (cycle : Xlen.F)
-    (time : Xlen.F)
-    (instret : Xlen.F)
-    (cycleh : Xlen.F)
-    (timeh : Xlen.F)
-    (instreth : Xlen.F)
-
-    (mcpuid : Mcpuid.F)
-    (mimpid : Mimpid.F)
-    (mhartid : Mhartid.F)
-
-    (mstatus : Mstatus.F)
-    (mtvec : Mtvec.F)
-    (mtdeleg : Mtdeleg.F)
-    (mie : Mie.F)
-    (mtimecmp : Mtimecmp.F)
-
-    (mtime : Mtime.F)
-    (mtimeh : Mtime.F)
-
-    (mscratch : Mscratch.F)
-    (mepc : Mepc.F)
-    (mcause : Mcause.F)
-    (mbadaddr : Mbadaddr.F)
-    (mip : Mip.F)
-
-    (mbase : Xlen.F) (* XXX max addr? *)
-    (mbound : Xlen.F) 
-    (mibase : Xlen.F) 
-    (mibound : Xlen.F) 
-    (mdbase : Xlen.F) 
-    (mdbound : Xlen.F) 
-
+  module Trap = interface
+    (* setup *)
+    (status : Status.F)
+    (edeleg : Xlen.F)
+    (ideleg : Xlen.F)
+    (ie : Ie.F)
+    (tvec : Tvec.F)
+    (* handling *)
+    (scratch : Xlen.F)
+    (epc : Xlen.F)
+    (cause : Cause.F)
+    (badaddr : Xlen.F)
+    (ip : Ip.F)
   end
+
+  module Counteren = struct
+    module F = interface z[xlen-3] ir[1] tm[1] cy[1] end
+    module Fx = Interface_ex.Make(F)
+  end
+
+  module Ptbr = struct
+    module F = interface 
+      asid[if xlen=64 then 26 else 10] 
+      ppn[if xlen=64 then 38 else 22] 
+    end
+    module Fx = Interface_ex.Make(F)
+  end
+
+  module X64 = interface
+    (lo : Xlen.F)
+    (hi : Xlen.F)
+  end 
+
+  module Timers = interface
+    (cycle : X64)
+    (time : X64)
+    (instret : X64)
+  end
+
+  module Machine = interface
+    (isa : Isa.F)
+    (vendorid : Xlen.F)
+    (archid : Xlen.F)
+    (impid : Xlen.F)
+    (hartid : Xlen.F)
+
+    (trap : Trap)
+
+    (timers : Timers)
+
+    (base : Xlen.F) (* XXX max addr? *)
+    (bound : Xlen.F) 
+    (ibase : Xlen.F) 
+    (ibound : Xlen.F) 
+    (dbase : Xlen.F) 
+    (dbound : Xlen.F) 
+
+    (ucounteren : Counteren.F)
+    (scounteren : Counteren.F)
+    (hcounteren : Counteren.F)
+
+    (udelta : Timers)
+    (sdelta : Timers)
+    (hdelta : Timers)
+  end
+
+  module Hypervisor = interface
+    (trap : Trap)
+    (timers : Timers)
+  end
+
+  module Supervisor = interface
+    (trap : Trap)
+    (timers : Timers)
+    (ptbr : Ptbr.F) 
+  end
+
+  module User = interface
+    (trap : Trap)
+    (timers : Timers)
+    (fflags : Xlen.F)  (* XXX *)
+    (frm : Xlen.F)
+    (fcsr : Xlen.F)
+  end
+
+  module Csr_regs = interface
+    (m : Machine)
+    (h : Hypervisor)
+    (s : Supervisor)
+    (u : User)
+  end
+
 
   module Csr_regs_ex = Interface_ex.Make(Csr_regs)
 

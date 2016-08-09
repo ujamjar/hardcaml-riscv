@@ -125,7 +125,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
         in
         (* read (side effect) from csr disableed *)
         let re_n = 
-          (* csrrw[i] has not perform read if rd=x0. *)
+          (* csrrw[i] does not perform read if rd=x0. *)
           (f3.(1) |: f3.(5)) &: rd_0
         in
         (* write is enabled, but csr is read only *)
