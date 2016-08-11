@@ -6,7 +6,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) : sig
 
   val fetch : 
     inp:t Ifs.I.t -> 
-    com:t Ifs.Stage.t -> fet:t Ifs.Stage.t -> 
+    com:t Ifs.Stage.t -> 
     t Ifs.Stage.t * t Ifs.Mo_instr.t
 
   val f : 

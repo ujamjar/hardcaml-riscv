@@ -12,4 +12,5 @@ open HardCamlRiscV
 module B = Api.B
 module Ifs = Interfaces.Make(Config.RV32I_machine)
 
+module C = Cmb.Make(B)(Ifs)
 

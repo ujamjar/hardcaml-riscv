@@ -7,7 +7,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
   let z = Stage_ex.(map (fun (_,b) -> B.zero b) t)
 
-  let fetch ~inp ~com ~fet = 
+  let fetch ~inp ~com = 
     let open Stage in
     (*let pc = mux2 com.branch com.pc (fet.pc +:. 4) in*)
     let pc = com.pc in 
@@ -24,7 +24,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
   let f ~inp ~comb ~pipe = 
     let open Stages in
-    fetch ~inp ~com:pipe.com ~fet:pipe.fet
+    fetch ~inp ~com:pipe.com 
     
   (*let m ~ctrl ~inp ~comb ~pipe = 
     let open Stage in

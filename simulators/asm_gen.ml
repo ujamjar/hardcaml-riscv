@@ -36,6 +36,12 @@ let boot =
   ]
 
 let tests = [
+  "arith", (fun ~memory ~start_addr ->
+  make ~memory ~start_addr ~code:((*boot@*)[
+      x @@ addi ~rd:1 ~rs1:0 ~imm:0x10;
+      x @@ addi ~rd:2 ~rs1:1 ~imm:0x1f;
+  ]));
+
   "csrs",
     (fun ~memory ~start_addr ->
     make ~memory ~start_addr ~code:((*boot@*)[

@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 884300fe6789321cacd59aa99850f9f6)
+# DO NOT EDIT (digest: d42713cf6432f66960a74eec452b4cda)
 Utils
 Config
 Interface_ex
@@ -13,6 +13,7 @@ Decoder
 Alu
 Mem
 Commit
+Cmb
 Pipe
 Picorv32
 # OASIS_STOP

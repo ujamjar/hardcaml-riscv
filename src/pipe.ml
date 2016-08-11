@@ -9,18 +9,14 @@ module Make(C : Config.S) = struct
   open Ifs
 
   module Csr = Csr.Build(Ifs)
+  module Cmb = Cmb.Make(Comb)(Ifs)
   
   type stage = Comb.t Stage.t
   type stages = Comb.t Stages.t
-
-  type 'a f = inp:Comb.t Ifs.I.t -> comb:stages -> pipe:stages -> 'a
+  type 'a f = 'a Cmb.f
   type f_stage = stage f
-  type 'a f_output = 
-    ctrl:Comb.t Ifs.Ctrl.t -> 
-    mi:Comb.t Ifs.Mo_instr.t ->
-    md:Comb.t Ifs.Mo_data.t ->
-    'a f
-  
+  type 'a f_output = 'a Cmb.f_output
+
   module type Stage = sig
     val name : string
     val f : f_stage
@@ -60,11 +56,11 @@ module Make(C : Config.S) = struct
       (* XXX anything we need to tidy up in mi/md? *)
     }
 
-  module Fetch = Fetch.Make(Ifs)(HardCaml.Signal.Comb)
+  (*module Fetch = Fetch.Make(Ifs)(HardCaml.Signal.Comb)
   module Decoder = Decoder.Make(Ifs)(HardCaml.Signal.Comb)
   module Alu = Alu.Make(Ifs)(HardCaml.Signal.Comb)
   module Mem = Mem.Make(Ifs)(HardCaml.Signal.Comb)
-  module Commit = Commit.Make(Ifs)(HardCaml.Signal.Comb)
+  module Commit = Commit.Make(Ifs)(HardCaml.Signal.Comb)*)
 
   module Build = struct
 
@@ -158,14 +154,14 @@ module Make(C : Config.S) = struct
 
       (* pipeline stages *)
       let func, mi, md = 
-        let fet, mi = Fetch.f ~inp ~comb ~pipe in
-        let mem, md = Mem.f ~inp ~comb ~pipe in
+        let fet, mi = Cmb.Fetch.f ~inp ~comb ~pipe in
+        let mem, md = Cmb.Mem.f ~inp ~comb ~pipe in
         { 
           fet;
-          dec = Decoder.f ~inp ~comb ~pipe;
-          alu = Alu.f ~inp ~comb ~pipe;
+          dec = Cmb.Decoder.f ~inp ~comb ~pipe;
+          alu = Cmb.Alu.f ~inp ~comb ~pipe;
           mem;
-          com = Commit.f ~inp ~comb ~pipe;
+          com = Cmb.Commit.f ~inp ~comb ~pipe;
         }, mi, md 
       in
 
@@ -185,71 +181,21 @@ module Make(C : Config.S) = struct
 
       f_output ~ctrl ~mi ~md ~inp ~comb ~pipe
 
-    let p1_ctrl ~inp = 
-      let en = vdd in
-      let bubble = gnd in
-      Ctrl.{ en; bubble }
-
-    (*
-      fet : pipe.com & pipe.fet
-      dec : pipe.fet
-      alu : pipe.dec
-      mem : pipe.alu
-      com : pipe.mem
-    *)
-
-    let hack_junk com state = 
-      let open Stage in
-      let open Ifs.Csr_ctrl in
-      { com with
-        junk = (* waveform debug junk *)
-          state.instr.[0:0] |:
-          state.insn.[0:0] |:
-          state.ra1_zero |: state.ra2_zero |:
-          state.csr.csr_set |: state.csr.csr_clr |: 
-          state.csr.csr_write |: 
-          reduce (|:) (bits state.csr.csr_dec)
-      }
-
-    (* XXX needs to be within a (B : Comb.S) functor *)
-    let c ~inp ~f_output ~state ~async_rf ~csrs_q ~csr_rdata =
-      let open Stage in
-      let open Stages in
-
-      let ctrl = p1_ctrl ~inp in
-      let pipe = Stages_ex.wiren () in
-
-      let fet,mi = Fetch.fetch ~inp ~com:state ~fet:state in
-      let dec = Decoder.decoder ~inp ~csrs:csrs_q ~fet:pipe.fet in
-      let dec = 
-        let rfo = async_rf ~inp ~dec:pipe.dec ~com:pipe.com in
-        { dec with rd1 = rfo.Rf.O.q1; rd2 = rfo.Rf.O.q2 }
-      in
-      let alu = Alu.alu ~dec:pipe.dec in
-      let mem,md = Mem.mem ~inp ~alu:pipe.alu in
-      let com, csrs_wr = Commit.commit ~mem:pipe.mem ~csrs:csrs_q ~csr_rdata in
-      let com = hack_junk com state in
-
-      let _ = Stage_ex.map2 (<==) pipe.fet fet in
-      let _ = Stage_ex.map2 (<==) pipe.dec dec in
-      let _ = Stage_ex.map2 (<==) pipe.alu alu in
-      let _ = Stage_ex.map2 (<==) pipe.mem mem in
-      let _ = Stage_ex.map2 (<==) pipe.com com in
-
-      f_output ~ctrl ~mi ~md ~inp ~comb:pipe ~pipe,
-      pipe, com, ctrl, csrs_wr
-
-    let p1 ~inp ~f_output = 
+    let p1 ~inp ~(f_output : 'a f_output) = 
       let open Stage in
       let open Stages in
       let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
 
+      let inp = Ifs.I.(map (fun x -> let y = wire (width x) in y <== x; y) inp) in
+        
       let csr_rdata = wire C.xlen in
       let csrs_q = Ifs.Csr_regs_ex.wire () in
       let state = Stage.(map (fun (n,b) -> wire b -- ("state_" ^ n)) t) in
+      let com' = Stage.(map (fun (n,b) -> wire b) t) in
 
       (* generate core *)
-      let o, pipe, com, ctrl, csrs_wr = c ~inp ~f_output ~state ~async_rf ~csrs_q ~csr_rdata in
+      let async_rf = async_rf ~inp ~com:com' in
+      let mi, md, com, _, ctrl, csrs_wr = Cmb.c ~inp ~state ~async_rf ~csrs_q ~csr_rdata in
         
       (* csrs *)
       let csrs_r, csr_rdata' = 
@@ -264,9 +210,11 @@ module Make(C : Config.S) = struct
       let _ = Ifs.Csr_regs.map2 (<==) csrs_q csrs_r in
 
       let preg cv r d = r <== Seq.reg ~cv ~e:ctrl.Ctrl.en d in
-      let _ = Stage_ex.map3 preg def_clear state pipe.com in
+      let _ = Stage_ex.map3 preg def_clear state com in
+      let _ = Stage_ex.map2 (<==) com' com in
 
-      o
+      let sts_zero = Stages.(map (fun (n,b) -> zero b) t) in
+      f_output ~ctrl ~mi ~md ~inp ~comb:sts_zero ~pipe:sts_zero 
 
   end
 

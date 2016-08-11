@@ -30,6 +30,8 @@ module Make(B : HardCaml.Comb.S) = struct
   module Cfg = Config.RV32I_machine
 
   module Ifs = Interfaces.Make(Cfg)
+  module Cmb = Cmb.Make(B)(Ifs)
+  module Rf = Rf.Make(Ifs)
   module F = Fetch.Make(Ifs)(B)
   module D = Decoder.Make(Ifs)(B)
   module X = Alu.Make(Ifs)(B)
@@ -51,52 +53,31 @@ module Make(B : HardCaml.Comb.S) = struct
   let md_inp = Ifs.Mi_data.(map inp t)
   let reduce_st st = Ifs.Stage.(B.reduce B.(|:) @@ B.bits @@ B.concat @@ to_list st)
 
-  let rf ra1 ra2 =
-    let open B in
-    let regs = 
-      Array.to_list @@
-      Array.init 32 
-        (fun i -> 
-          if i=0 then zero 32
-          else input ("r"^string_of_int i) 32)
-    in
-    mux ra1 regs,
-    mux ra2 regs
-
   let build_cpu ~pc ~instr ~rdata = 
-    let open Ifs.Stage in
-    let open Ifs.Stages in
-    
-    let fet, mi = F.f ~inp:inp_zero ~comb:sts_zero 
-      ~pipe:{ sts_zero with com = { st_zero with pc } }
+    let open Ifs in
+    let open Stage in
+    let inp = 
+      { inp_zero with Ifs.I.mi = { mi_zero with Ifs.Mi_instr.rdata = instr };
+                      Ifs.I.md = { md_zero with Ifs.Mi_data.rdata = rdata } }
+    in
+    let csr_rdata = B.zero xlen in
+    let csrs_q = Csr_regs.(map (fun (n,b) -> B.zero b) t) in
+    let state = { Stage.(map B.(fun (_,b) -> zero b) t) with pc } in
+
+    let async_rf ~dec = 
+      let rd1, rd2 = B.input "reg_rd1" 32, B.input "reg_rd2" 32 in
+      Rf.O.{
+        q1 = B.(mux2 (dec.ra1 ==:. 0) (zero 32) rd1);
+        q2 = B.(mux2 (dec.ra2 ==:. 0) (zero 32) rd2);
+      }
+    in
+
+    let mi, md, com, rfo, ctrl, csrs_wr = 
+      Cmb.c ~inp ~state ~async_rf ~csrs_q ~csr_rdata 
     in
     
-    let dec = D.f 
-      ~inp:{ inp_zero with Ifs.I.mi =  { mi_zero with Ifs.Mi_instr.rdata = instr } }
-      ~comb:sts_zero 
-      ~pipe:{ sts_zero with fet }
-    in
+    com, rfo.Rf.O.q1, rfo.Rf.O.q2, md
 
-    (* model register file as inputs (apart from r0 they are basically like inputs) *)
-    let rd n ra = B.(mux2 (ra ==:. 0) (zero 32) (input ("reg_rd"^n) 32)) in
-    let rd1, rd2 = rd "1" dec.ra1, rd "2" dec.ra2 in
-    let dec = { dec with rd1; rd2 } in
-
-    let alu = X.f ~inp:inp_zero ~comb:sts_zero 
-      ~pipe:{ sts_zero with dec }
-    in
-
-    let mem, md = M.f 
-      ~inp:{ inp_zero with Ifs.I.md = { md_zero with Ifs.Mi_data.rdata = rdata } }
-      ~comb:sts_zero 
-      ~pipe:{ sts_zero with alu }
-    in
-
-    let com = C.f ~inp:inp_zero ~comb:sts_zero 
-      ~pipe:{ sts_zero with mem }
-    in
-
-    com, rd1, rd2, md
 
   (*******************************************************************************)
 
@@ -439,7 +420,7 @@ let imm_props f x =
 let slt a b = uresize (a <+ b) 32
 let sltu a b = uresize (a <: b) 32
 
-let () = List.iter (fun (i,f) -> test I.make i (imm_props f))
+let test_rimm () = List.iter (fun (i,f) -> test I.make i (imm_props f))
   [
     `addi,  (+:);
     `andi,  (&:);
@@ -463,7 +444,7 @@ let sll_ a b = log_shift sll a b.[4:0]
 let srl_ a b = log_shift srl a b.[4:0]
 let sra_ a b = log_shift sra a b.[4:0]
 
-let () = List.iter (fun (i,f) -> test I_shift.make i (imm_shift_props f))
+let test_rimm_sh () = List.iter (fun (i,f) -> test I_shift.make i (imm_shift_props f))
   [
     `slli, sll_;
     `srli, srl_;
@@ -472,7 +453,7 @@ let () = List.iter (fun (i,f) -> test I_shift.make i (imm_shift_props f))
 
 (* Special: lui, auipc *)
 
-let () = test U.make `auipc @@ fun x ->
+let test_auipc () = test U.make `auipc @@ fun x ->
   [
     x.st.rdd ==: (x.pc +: (x.data.U.imm @: zero 12)), "rdd = pc+imm";
     x.st.rad ==: x.data.U.rd, "rad";
@@ -482,7 +463,7 @@ let () = test U.make `auipc @@ fun x ->
   ]
   @ check_class x { zero_class with Ifs.Class.auipc=vdd }
 
-let () = test U.make `lui @@ fun x ->
+let test_lui () = test U.make `lui @@ fun x ->
   [
     x.st.rdd ==: (x.data.U.imm @: zero 12), "rdd = upper imm";
     x.st.rad ==: x.data.U.rd, "rad";
@@ -504,7 +485,7 @@ let reg_props f x =
   ]
   @ check_class x { zero_class with Ifs.Class.opr=vdd }
 
-let () = List.iter (fun (i,f) -> test R.make i (reg_props f))
+let test_rr () = List.iter (fun (i,f) -> test R.make i (reg_props f))
   [
     `add,  (+:);
     `sub,  (-:);
@@ -520,7 +501,7 @@ let () = List.iter (fun (i,f) -> test R.make i (reg_props f))
 
 (* Unconditional jump *)
 
-let () = test UJ.make `jal @@ fun x ->
+let test_jal () = test UJ.make `jal @@ fun x ->
   [
     x.st.pc ==: ((x.pc +: (sresize (x.data.UJ.imm @: gnd) 32)) &:. (-2)), "pc jump"; 
     x.st.rdd ==: (x.pc +:. 4), "rdd = pc+4";
@@ -530,7 +511,7 @@ let () = test UJ.make `jal @@ fun x ->
   ]
   @ check_class x { zero_class with Ifs.Class.jal=vdd }
 
-let () = test I.make `jalr @@ fun x ->
+let test_jalr () = test I.make `jalr @@ fun x ->
   [
     x.st.pc ==: (((x.rd1 +: sresize x.data.I.imm 32) &:. (-2))), "pc jump";
     x.st.rdd ==: (x.pc +:. 4), "rdd = pc+4";
@@ -553,7 +534,7 @@ let branch_props f x =
   ]
   @ check_class x { zero_class with Ifs.Class.bra=vdd }
 
-let () = List.iter (fun (i,f) -> test SB.make i (branch_props f))
+let test_bra () = List.iter (fun (i,f) -> test SB.make i (branch_props f))
   [
     `beq,  (==:);
     `bne,  (<>:);
@@ -594,7 +575,7 @@ let load_props i x =
   ]
   @ check_class x { zero_class with Ifs.Class.ld=vdd }
 
-let () = List.iter (fun i -> test I.make i (load_props i))
+let test_load () = List.iter (fun i -> test I.make i (load_props i))
   [
     `lw;
     `lh;
@@ -631,7 +612,7 @@ let store_props i x =
   ]
   @ check_class x { zero_class with Ifs.Class.st=vdd }
 
-let () = List.iter (fun i -> test S.make i (store_props i))
+let test_store () = List.iter (fun i -> test S.make i (store_props i))
   [
     `sw;
     `sh;
@@ -640,7 +621,7 @@ let () = List.iter (fun i -> test S.make i (store_props i))
 
 (* Trap *)
 
-let () = testb (fun _ -> "#trap") All.make `addi (* doesnt matter *) @@ fun x ->
+let test_trap () = testb (fun _ -> "#trap") All.make `addi (* doesnt matter *) @@ fun x ->
   (* disallow valid instructions, so we force a trap *)
   let insns, csrs = Gencsr.get_full_csrs Config.V.list Ifs.csrs in
   let banned = 
@@ -689,7 +670,7 @@ let ro_csrs_insns =
 let (==>:) p q = (~: p) |: q
 let (<==>:) q p = (p ==>: q) &: (q ==>: p)
 
-let () = List.iter 
+let test_csrs () = List.iter 
     (fun i -> test ~no_default_checks:true (Csr.make ~csr:all_csrs_mux) i @@ fun x -> 
       let traps = x.st.iclass.Ifs.Class.trap in
       let sel g p = (if g then gnd else vdd) |: p in
@@ -728,4 +709,23 @@ let () = List.iter
         x.st.csr.csr_re_n ==>: (x.data.Csr.rd ==:. 0), "no read ==> rd=0";
       ])
     csrs_insns
+
+(**********************************************************************)
+
+let () = List.iter (fun f -> f ()) 
+  [
+    test_rimm;
+    test_rimm_sh;
+    test_auipc;
+    test_lui;
+    test_rr;
+    test_jal;
+    test_jalr;
+    test_bra;
+    test_load;
+    test_store;
+    test_trap;
+    test_csrs;
+  ]
+
 
