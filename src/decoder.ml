@@ -42,6 +42,66 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let dec = List.fold_left (|:) gnd csrs in
     (concat @@ List.rev csrs), dec
 
+  (* implements csrrs in read-only mode *)
+  let decode_csrs_ro ~funct12 ~rs1_0 ~rd_0 ~f3 ~sys = 
+    let csr_dec, dec = decode_csrs Ifs.csrs funct12 in
+    let csr = rs1_0 &: rd_0 &: f3.(2) &: sys &: dec in
+    {
+      Csr_ctrl.csr_use_imm = gnd;
+      csr_imm = zero 5;
+      csr_we_n = gnd;
+      csr_re_n = gnd;
+      csr_invalid_we = gnd;
+      csr_dec;
+      csr_clr = gnd;
+      csr_set = gnd;
+      csr_write = gnd;
+      csr_valid = csr;
+    },
+    [| gnd; csr; gnd; gnd; gnd; gnd |]
+
+  (* csrrw[i], csrrs[i], csrrc[i] with error checking *)
+  let decode_csrs_full ~funct3 ~funct12 ~rs1 ~rs1_0 ~rd_0 ~f3 ~sys = 
+    (* a supported csr address *)
+    let csr_dec, dec = decode_csrs Ifs.csrs funct12 in
+    (* valid (csr &: f) => valid instruction *)
+    let f = ~: (f3.(0) |: f3.(4)) in (* 1,2,3,5,6,7 *)
+    let csr = sys &: dec in
+    let csr = csr &: f in
+    (* immediate value *)
+    let imm = rs1 in
+    let use_imm = funct3.[2:2] in
+    (* CSR is read only *)
+    let ro = funct12.[11:10] ==:. 0b11 in
+    (* csr level *)
+    (*let level = funct12.[9:8] in*)
+    (* write to csr is disabled *)
+    let we_n = 
+      (* csrrs[i] and csrrc[i] shall not perform write if rs1=imm=x0. *)
+      (f3.(2) |: f3.(3) |: f3.(6) |: f3.(7)) &: rs1_0
+    in
+    (* read (side effect) from csr disableed *)
+    let re_n = 
+      (* csrrw[i] does not perform read if rd=x0. *)
+      (f3.(1) |: f3.(5)) &: rd_0
+    in
+    (* write is enabled, but csr is read only *)
+    let invalid_we = ((~: we_n) |: f3.(1)) &: ro in
+    let csr_valid = csr &: (~: invalid_we) in
+    let csr_invalid = csr &: invalid_we in
+    {
+      Csr_ctrl.csr_use_imm = use_imm;
+      csr_imm = imm;
+      csr_we_n = we_n;
+      csr_re_n = re_n;
+      csr_invalid_we = csr_invalid;
+      csr_dec;
+      csr_clr = (f3.(3) |: f3.(7)) &: csr_valid &: (~: we_n);
+      csr_set = (f3.(2) |: f3.(6)) &: csr_valid &: (~: we_n);
+      csr_write = (f3.(1) |: f3.(5)) &: csr_valid &: (~: we_n);
+      csr_valid = csr_valid;
+    }, Array.map (fun i -> csr &: f3.(i) &: (~: invalid_we)) [| 1;2;3;5;6;7 |] 
+
   let decoder instr = 
     (* ALM = 509, REG = 405 *)
     let opcode = instr.[6:0] in
@@ -85,67 +145,13 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       dec Ifs.support_wfi  0b110 
     in
 
-    let csr, csr_ctrl, csrs = 
-      (* implements csrrs in read-only mode *)
-      let simple () = 
-        let csr_dec, dec = decode_csrs Ifs.csrs funct12 in
-        let csr = rs1_0 &: rd_0 &: f3.(2) &: sys &: dec in
-        csr, {
-          Csr_ctrl.csr_use_imm = gnd;
-          csr_imm = zero 5;
-          csr_we_n = gnd;
-          csr_re_n = gnd;
-          csr_invalid_we = gnd;
-          csr_dec;
-          csr_clr = gnd;
-          csr_set = gnd;
-          csr_write = gnd;
-        },
-        [| gnd; csr; gnd; gnd; gnd; gnd |]
-      in
-      (* csrrw[i], csrrs[i], csrrc[i] with error checking TODO check machine mode *)
-      let full () = 
-        (* a supported csr address *)
-        let csr_dec, dec = decode_csrs Ifs.csrs funct12 in
-        (* valid (csr &: f) => valid instruction *)
-        let f = ~: (f3.(0) |: f3.(4)) in (* 1,2,3,5,6,7 *)
-        let csr = sys &: dec in
-        let csr = csr &: f in
-        (* immediate value *)
-        let imm = rs1 in
-        let use_imm = funct3.[2:2] in
-        (* CSR is read only *)
-        let ro = funct12.[11:10] ==:. 0b11 in
-        (* csr level *)
-        (*let level = funct12.[9:8] in*)
-        (* write to csr is disabled *)
-        let we_n = 
-          (* csrrs[i] and csrrc[i] shall not perform write if rs1=imm=x0. *)
-          (f3.(2) |: f3.(3) |: f3.(6) |: f3.(7)) &: rs1_0
-        in
-        (* read (side effect) from csr disableed *)
-        let re_n = 
-          (* csrrw[i] does not perform read if rd=x0. *)
-          (f3.(1) |: f3.(5)) &: rd_0
-        in
-        (* write is enabled, but csr is read only *)
-        let invalid_we = ((~: we_n) |: f3.(1)) &: ro in
-        let csr_valid = csr &: (~: invalid_we) in
-        let csr_invalid = csr &: invalid_we in
-        csr_valid, {
-          Csr_ctrl.csr_use_imm = use_imm;
-          csr_imm = imm;
-          csr_we_n = we_n;
-          csr_re_n = re_n;
-          csr_invalid_we = csr_invalid;
-          csr_dec;
-          csr_clr = (f3.(3) |: f3.(7)) &: csr_valid &: (~: we_n);
-          csr_set = (f3.(2) |: f3.(6)) &: csr_valid &: (~: we_n);
-          csr_write = (f3.(1) |: f3.(5)) &: csr_valid &: (~: we_n);
-        }, Array.map (fun i -> csr &: f3.(i) &: (~: invalid_we)) [| 1;2;3;5;6;7 |] 
-      in
-      if Ifs.support_csrs then full() else simple() 
+    let csr_ctrl, csrs = 
+      if Ifs.support_csrs then 
+        decode_csrs_full ~funct3 ~funct12 ~rs1 ~rs1_0 ~rd_0 ~f3 ~sys 
+      else 
+        decode_csrs_ro ~funct12 ~rs1_0 ~rd_0 ~f3 ~sys 
     in
+    let csr = csr_ctrl.Csr_ctrl.csr_valid in
 
     let trap = 
       let bra = bra &: notf3 [2;3] in
@@ -262,7 +268,9 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
     let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
-    let rwe = ~: (c.trap |: c.bra |: c.st |: c.fen |: c.sys) in
+    let rwe = (~: (c.trap |: c.bra |: c.st |: c.fen |: c.sys)) |: 
+              d.csr.Csr_ctrl.csr_valid
+    in
 
     (* is rd2 used in pipeline *)
     let is_pipe_imm = c.opi |: c.lui |: c.auipc |: c.jal |: c.jalr in

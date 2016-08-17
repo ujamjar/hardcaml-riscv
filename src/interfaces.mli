@@ -47,6 +47,7 @@ module type S = sig
     csr_we_n csr_re_n csr_invalid_we
     csr_dec
     csr_clr csr_set csr_write
+    csr_valid
   end
 
   module Stage : interface

@@ -47,6 +47,7 @@ module type S = sig
     csr_we_n csr_re_n csr_invalid_we 
     csr_dec
     csr_clr csr_set csr_write
+    csr_valid
   end
 
   module Stage : interface
@@ -326,6 +327,7 @@ module Make(C : Config.S) = struct
     csr_we_n[1] csr_re_n[1] csr_invalid_we[1]
     csr_dec[List.length csrs]
     csr_clr[1] csr_set[1] csr_write[1]
+    csr_valid[1]
   end
 
   (* this stores the information needed at any stage of the

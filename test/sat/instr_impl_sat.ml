@@ -53,14 +53,13 @@ module Make(B : HardCaml.Comb.S) = struct
   let md_inp = Ifs.Mi_data.(map inp t)
   let reduce_st st = Ifs.Stage.(B.reduce B.(|:) @@ B.bits @@ B.concat @@ to_list st)
 
-  let build_cpu ~pc ~instr ~rdata = 
+  let build_cpu ~pc ~instr ~rdata ~csr_rdata = 
     let open Ifs in
     let open Stage in
     let inp = 
       { inp_zero with Ifs.I.mi = { mi_zero with Ifs.Mi_instr.rdata = instr };
                       Ifs.I.md = { md_zero with Ifs.Mi_data.rdata = rdata } }
     in
-    let csr_rdata = B.zero xlen in
     let csrs_q = Csr_regs.(map (fun (n,b) -> B.zero b) t) in
     let state = { Stage.(map B.(fun (_,b) -> zero b) t) with pc } in
 
@@ -327,6 +326,7 @@ module Make(B : HardCaml.Comb.S) = struct
     {
       instr : B.t;
       rdata : B.t;
+      csr_rdata : B.t;
       pc : B.t;
       data : 'a;
       st : B.t Ifs.Stage.t;
@@ -340,19 +340,43 @@ module Make(B : HardCaml.Comb.S) = struct
     = fun instr make ->
     let _,match' = List.assoc instr Config.T.mask_match in
     let rdata = input "rdata" 32 in
+    let csr_rdata = input "csr_rdata" 32 in
     let pc = input "pc" 31 @: gnd in
     let instr, data = make match' in
-    let st,rd1,rd2, md = build_cpu ~pc ~instr ~rdata in
-    { instr; rdata; pc; data; st; rd1; rd2; md }
+    let st,rd1,rd2, md = build_cpu ~pc ~instr ~rdata ~csr_rdata in
+    { instr; rdata; csr_rdata; pc; data; st; rd1; rd2; md }
 
 end
 
 module Core = Make(B)
 
+module Make_comb(I : sig 
+    val inputs : (string * HardCaml.Bits.Comb.IntbitsList.t) list 
+end) = struct
+  include Make(struct
+    include HardCaml.Bits.Comb.IntbitsList
+    let input n b = List.assoc n I.inputs
+  end)
+end
+
 (*******************************************************************************)
 
 let check ~verbose ~banned x = 
   let open HardCamlBloop.Sat in
+
+  (*let reportage soln = 
+    let open HardCaml.Bits.Comb.IntbitsList in
+    match soln with
+    | `unsat -> printf "UNSAT\n"
+    | `sat (s,_) -> begin
+      let module X = Make_comb(struct
+        let inputs = 
+          List.map (fun (n,a) -> n, const (string_of_vec_result (n,a))) s
+      end) in
+      report soln;
+    end
+  in*)
+
   let soln = of_signal ~solver:!solver ~banned (*~verbose:true*) (B.(~:) x) in
   (if verbose then report soln 
    else printf "%s\n" (match soln with `sat _ -> "SAT" | `unsat -> "UNSAT"));
@@ -707,6 +731,7 @@ let test_csrs () = List.iter
           (~: (x.st.csr.csr_write |: x.st.csr.csr_set |: x.st.csr.csr_clr)), 
             "no write on trap";
         x.st.csr.csr_re_n ==>: (x.data.Csr.rd ==:. 0), "no read ==> rd=0";
+        x.csr_rdata ==: x.st.rdd, "csr_rdata = rdd";
       ])
     csrs_insns
 
