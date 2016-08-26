@@ -13,22 +13,22 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let open Class in
     let p = mem in
     let i = p.iclass in
-    let branch = (i.jal |: i.jalr |: (i.bra &: p.branch)) -- "branch" in
+    let sel b = let b = Config.T.Enum_t.from_enum b in p.insn.[b:b] in
+    let branch = (sel `jal |: sel `jalr |: (i.bra &: p.branch)) -- "branch" in
     let pc_next = p.pc +:. 4 in
     let rdd = 
-      mux2 (i.jal |: i.jalr) 
+      mux2 (sel `jal |: sel `jalr) 
         pc_next 
         (mux2 i.csr csr_rdata p.rdd)
     in
     let pc = 
-      mux2 branch p.rdd @@
+      mux2 branch  p.rdd @@
       mux2 i.ecall (consti 32 0x100) (* XXX should come from CSRs *)
-        pc_next 
+                   pc_next 
     in
     let csrs_wr = Ifs.Csr_regs.(map (fun (n,b) -> gnd, zero b) t) in 
 
     { mem with branch; rdd; pc = pc.[31:1] @: gnd; }, csrs_wr
-
 
   let f ~inp ~comb ~pipe = 
     let open Stages in

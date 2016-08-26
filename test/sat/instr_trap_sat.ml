@@ -51,7 +51,9 @@ module Rtl(B : HardCaml.Comb.S) = struct
 
   module I = Decoder.Make_insn_decoder(Ifs)(B)
 
-  let insn instr = I.((decoder instr).insn) 
+  let insn instr = 
+    let i,trap = I.decoder instr in
+    B.(i.I.insn @: trap)
 
 end
 
@@ -67,7 +69,7 @@ module Ref(B : HardCaml.Comb.S) = struct
     let reduce_or l = if l=[] then gnd else reduce (|:) l in
     let insn = insn @ (List.map (reduce_or) csrs) in (* hack; ordering is subtle *)
     let trap = ~: (reduce (|:) insn) in
-    B.concat (trap :: List.rev insn)
+    B.(concat (List.rev insn) @: trap)
 
 end
 

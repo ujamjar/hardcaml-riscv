@@ -9,9 +9,9 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) : sig
 
   val imm_uj : instr:B.t -> B.t
 
-  val imm : c:B.t Ifs.Class.t -> instr:B.t -> imm_uj:B.t -> B.t
+  val imm : c:B.t Ifs.Class.t -> instr:B.t -> insn:B.t -> imm_uj:B.t -> B.t
 
-  val decoder : B.t -> t
+  val decoder : B.t -> t * B.t
 
 end
 

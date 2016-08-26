@@ -1,5 +1,6 @@
 module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
+
   let alu ~dec = 
     let open Ifs.Stage in
     let open Ifs.Class in
@@ -19,8 +20,9 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let shamt = rd2.[4:0] in
 
     let c = dec.iclass in
+    let sel b = let b = Config.T.Enum_t.from_enum b in dec.insn.[b:b] in
 
-    let addctl = c.jal |: c.jalr |: c.ld |: c.st in
+    let addctl = sel `jal |: sel `jalr |: c.ld |: c.st in
     let addsub = addsub (mux2 dec.is_imm gnd c.f7) rd1 rd2 in
 
     let alu_op = mux (mux2 addctl (zero 3) c.f3) [
@@ -39,8 +41,8 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
     let rdd = 
       pmux [
-        c.lui, rd2;
-        c.bra |: c.jal |: c.auipc, dec.pc +: dec.imm;
+        sel `lui, rd2;
+        c.bra |: sel `jal |: sel `auipc, dec.pc +: dec.imm;
       ] alu_op
     in
 

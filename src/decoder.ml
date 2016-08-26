@@ -11,6 +11,8 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       csr : B.t Csr_ctrl.t;
     }
 
+  let sel insn b = let b = Config.T.Enum_t.from_enum b in insn.[b:b] 
+
   let imm_uj ~instr = 
     let d = sresize (instr.[31:12] @: gnd) Ifs.xlen in
     let rec f off = function
@@ -22,13 +24,17 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     concat @@ List.map snd @@ List.sort (fun a b -> compare (fst b) (fst a)) @@ 
       f 0 [0,0; 19,12; 11,11; 10,1; 31,20]
 
-  let imm ~c ~instr ~imm_uj = 
+  let imm ~c ~instr ~insn ~imm_uj = 
     let open Ifs.Class in
     let smap x l = List.map (fun (h,l) -> x.[h:l]) l in
+    let jal, jalr, lui, auipc = 
+      let sel = sel insn in
+      sel `jal, sel `jalr, sel `lui, sel `auipc
+    in
     pmux [
-      c.jal, imm_uj;
-      c.lui |: c.auipc, instr.[31:12] @: zero 12;
-      c.jalr |: c.ld |: c.opi, sresize instr.[31:20] Ifs.xlen;
+      jal, imm_uj;
+      lui |: auipc, instr.[31:12] @: zero 12;
+      jalr |: c.ld |: c.opi, sresize instr.[31:20] Ifs.xlen;
       c.bra, sresize (concat ((smap instr [(31,31); (7,7); (30,25); (11,8)]) @ [gnd])) Ifs.xlen;
       c.st, sresize (concat (smap instr [(31,25); (11,7)])) Ifs.xlen;
       c.csr, uresize instr.[19:15] Ifs.xlen;
@@ -57,6 +63,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       csr_set = gnd;
       csr_write = gnd;
       csr_valid = csr;
+      csr_level = const "11"; (* machine *)
     },
     [| gnd; csr; gnd; gnd; gnd; gnd |]
 
@@ -74,7 +81,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     (* CSR is read only *)
     let ro = funct12.[11:10] ==:. 0b11 in
     (* csr level *)
-    (*let level = funct12.[9:8] in*)
+    let csr_level = funct12.[9:8] in
     (* write to csr is disabled *)
     let we_n = 
       (* csrrs[i] and csrrc[i] shall not perform write if rs1=imm=x0. *)
@@ -100,6 +107,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       csr_set = (f3.(2) |: f3.(6)) &: csr_valid &: (~: we_n);
       csr_write = (f3.(1) |: f3.(5)) &: csr_valid &: (~: we_n);
       csr_valid = csr_valid;
+      csr_level;
     }, Array.map (fun i -> csr &: f3.(i) &: (~: invalid_we)) [| 1;2;3;5;6;7 |] 
 
   let decoder instr = 
@@ -134,15 +142,18 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
 
     let fence, fencei = fen &: f3.(0), fen &: f3.(1) in
 
-    let ecall, ebreak, eret, wfi = 
-      let f12_0 = (funct12.[11:9] ==:. 0) &: (funct12.[7:2] ==:. 0) in
-      let f12_c = funct12.[8:8] @: funct12.[1:0] in
+    let ecall, ebreak, uret, sret, hret, mret, wfi = 
+      let f12_0 = (funct12.[11:10] ==:. 0) &: (funct12.[7:3] ==:. 0) in
+      let f12_c = funct12.[9:8] @: funct12.[2:0] in
       let c = f12_0 &: rs1_0 &: f3.(0) &: rd_0 &: sys in
       let dec b x = if b then (f12_c ==:. x) &: c else gnd in
-      dec true 0b000, 
-      dec true 0b001, 
-      dec Ifs.support_eret 0b100, 
-      dec Ifs.support_wfi  0b110 
+      dec true 0b00000, 
+      dec true 0b00001, 
+      dec Ifs.support_uret 0b00010, 
+      dec Ifs.support_sret 0b01010, 
+      dec Ifs.support_hret 0b10010, 
+      dec Ifs.support_mret 0b11010, 
+      dec Ifs.support_wfi  0b01101
     in
 
     let csr_ctrl, csrs = 
@@ -167,7 +178,8 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       in
       ~: (reduce (|:) 
         [lui; auipc; jal; jalr; bra; ld; st; opi; sfti; opr; 
-         fence; fencei; ecall; ebreak; eret; wfi; csr])
+         fence; fencei; ecall; ebreak; 
+         uret; sret; hret; mret; wfi; csr])
     in
     let trap = trap |: csr_ctrl.Csr_ctrl.csr_invalid_we in
 
@@ -214,7 +226,10 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       `fence_i, fencei; 
       `ecall, ecall; 
       `ebreak, ebreak;
-      `eret, eret;
+      `uret, uret;
+      `sret, sret;
+      `hret, hret;
+      `mret, mret;
       `wfi, wfi;
       `csrrw, csrs.(0);
       `csrrs, csrs.(1); 
@@ -229,18 +244,26 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       |> List.map snd
       |> concat
     in
-    let insn = trap @: insn in
     let ld, st = ld &: (~: trap), st &: (~: trap) in
+
+    let level = 
+      pmux [
+        csr_ctrl.Csr_ctrl.csr_valid, csr_ctrl.Csr_ctrl.csr_level;
+        (sel insn `mret |: sel insn `wfi), const "11";
+        (sel insn `hret), const "10";
+        (sel insn `sret), const "01"; (* XXX sfence.vm *)
+      ] (const "00")
+    in
 
     { insn; 
       iclass = { 
-        Class.trap; 
-        lui; auipc; jal; jalr; bra; ld; st; opi; opr; fen; sys; 
-        csr; ecall; eret;
+        Class.bra; ld; st; opi; opr; fen; sys; 
+        csr; ecall; eret=(uret |: sret |: hret |: mret);
         f7 = instr.[30:30]; f3=funct3; 
+        level;
       };
       csr = csr_ctrl;
-    }
+    }, trap
 
 end
 
@@ -257,23 +280,25 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let open Class in
 
     let instr = inp.I.mi.Mi_instr.rdata in
-    let d = decoder instr in
+    let d, trap = decoder instr in
     let c = d.iclass in
+    let sel = sel d.insn in
 
     (* extract immediate field *)
     let imm_uj = imm_uj instr in
-    let imm = imm ~c ~instr ~imm_uj in
+    let imm = imm ~c ~instr ~insn:d.insn ~imm_uj in
 
     (* register addresses *)
     let rad, ra1, ra2 = instr.[11:7], instr.[19:15], instr.[24:20] in
     let rad_zero, ra1_zero, ra2_zero = rad ==:. 0, ra1 ==:. 0, ra2 ==:. 0 in
 
-    let rwe = (~: (c.trap |: c.bra |: c.st |: c.fen |: c.sys)) |: 
+    (* is register file written *)
+    let rwe = (~: (trap |: c.bra |: c.st |: c.fen |: c.sys)) |: 
               d.csr.Csr_ctrl.csr_valid
     in
 
     (* is rd2 used in pipeline *)
-    let is_pipe_imm = c.opi |: c.lui |: c.auipc |: c.jal |: c.jalr in
+    let is_pipe_imm = c.opi |: sel `lui |: sel `auipc |: sel `jal |: sel `jalr in
     (* rd2 uses immediate encoding in alu (but may be used in mem stage) *)
     let is_imm = is_pipe_imm |: c.ld |: c.st in
     (* ra2 is unused so mark as zero *)
@@ -285,6 +310,7 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       rwe;
       is_imm; imm; 
       instr; insn=d.insn; iclass=d.iclass; csr=d.csr;
+      exn = { Exn.invalid_instr_trap = trap };
     }
 
   let name = "dec"

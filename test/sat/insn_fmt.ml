@@ -226,8 +226,8 @@ end
 
 module All(B : HardCaml.Comb.S) = struct
   type bits = B.t
-  type 'a t = unit
-  let make _ = B.input "instr" 32, ()
+  type 'a t = B.t
+  let make _ = let b = B.input "instr" 32 in b, b 
 end
 
 module Csr(B' : HardCaml.Comb.S) = struct
@@ -265,6 +265,19 @@ module Csr(B' : HardCaml.Comb.S) = struct
       ]
     in
     instr, { rd; rs1; csr }
+
+end
+
+module Const(B' : HardCaml.Comb.S) = struct
+  module B = MakeB(B')
+
+  type bits = B.t
+
+  type 'a t = unit 
+
+  let make m = 
+    let instr = B.consti32 32 m in
+    instr, ()
 
 end
 

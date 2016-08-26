@@ -33,7 +33,10 @@ module type S = sig
   val xlen : int 
   val start_addr : int
   val support_wfi : bool
-  val support_eret : bool
+  val support_uret : bool
+  val support_sret : bool
+  val support_hret : bool
+  val support_mret : bool
   val support_csrs : bool
   val csrs : csr list
 end
@@ -42,7 +45,10 @@ module RV32I_base = struct
   let xlen = 32
   let start_addr = 0x10
   let support_wfi = false
-  let support_eret = false
+  let support_uret = false
+  let support_hret = false
+  let support_sret = false
+  let support_mret = false
   let support_csrs = false
   let csrs = 
     [ 
@@ -55,7 +61,10 @@ module RV32I_machine = struct
   let xlen = 32
   let start_addr = 0x10 (* XXX 0x200 *)
   let support_wfi = true
-  let support_eret = true
+  let support_uret = true
+  let support_hret = true
+  let support_sret = true
+  let support_mret = true
   let support_csrs = true
   let csrs = 
     [ 

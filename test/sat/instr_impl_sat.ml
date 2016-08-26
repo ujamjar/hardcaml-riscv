@@ -1,6 +1,7 @@
 (* requires hardcaml-bloop *)
 
-(*open HardCamlRiscV*)
+(* 27 Aug 1026 - rework trap logic will change a fair bit here *)
+
 open Printf 
 
 let solver = ref `mini
@@ -39,10 +40,7 @@ module Make(B : HardCaml.Comb.S) = struct
   module C = Commit.Make(Ifs)(B)
 
   let z (_,b) = B.zero b
-  let inp (n,b) = B.input n b
 
-  let st_zero = Ifs.Stage.(map z t)
-  let sts_zero = Ifs.Stages.(map z t)
   let inp_zero = Ifs.I.(map z t)
   let mi_zero = Ifs.Mi_instr.(map z t)
   let md_zero = Ifs.Mi_data.(map z t)
@@ -83,6 +81,7 @@ module Make(B : HardCaml.Comb.S) = struct
   module S = Insn_fmt.S(B)
   module All = Insn_fmt.All(B)
   module Csr = Insn_fmt.Csr(B)
+  module Const = Insn_fmt.Const(B)
 
   open B
   open Ifs.Stage
@@ -215,7 +214,7 @@ module Tests(B : HardCaml.Comb.S) = struct
       x.st.pc ==: x.pc +:. 4, "incr pc";
       ~: (x.md.req), "no mem req";
     ]
-    @ check_class x { zero_class with Ifs.Class.auipc=vdd }
+    @ check_class x zero_class 
 
   let test_lui = test U.make `lui @@ fun x ->
     [
@@ -225,7 +224,7 @@ module Tests(B : HardCaml.Comb.S) = struct
       x.st.pc ==: x.pc +:. 4, "incr pc";
       ~: (x.md.req), "no mem req";
     ]
-    @ check_class x { zero_class with Ifs.Class.lui=vdd }
+    @ check_class x zero_class 
 
   (* Register-Register *)
 
@@ -263,7 +262,7 @@ module Tests(B : HardCaml.Comb.S) = struct
       x.st.rwe, "reg write";
       ~: (x.md.req), "no mem req";
     ]
-    @ check_class x { zero_class with Ifs.Class.jal=vdd }
+    @ check_class x zero_class 
 
   let test_jalr = test I.make `jalr @@ fun x ->
     [
@@ -273,7 +272,7 @@ module Tests(B : HardCaml.Comb.S) = struct
       x.st.rwe, "reg write";
       ~: (x.md.req), "no mem req";
     ]
-    @ check_class x { zero_class with Ifs.Class.jalr=vdd }
+    @ check_class x zero_class 
 
   (* Conditional branch *)
 
@@ -384,10 +383,10 @@ module Tests(B : HardCaml.Comb.S) = struct
     in
     let props = 
       [
-        x.st.iclass.Ifs.Class.trap, "traps";
+        x.st.exn.Ifs.Exn.invalid_instr_trap, "traps";
         ~: (x.st.rwe), "no reg write";
         ~: (x.md.req), "no mem req";
-        x.st.insn ==: (sll (one (width x.st.insn)) (width x.st.insn - 1)), "insn=trap";
+        x.st.insn ==: zero (width x.st.insn), "insn=trap";
         (* xxx pc+epc *)
       ]
     in
@@ -425,7 +424,7 @@ module Tests(B : HardCaml.Comb.S) = struct
 
   let test_csrs = List.map
       (fun i -> test ~no_default_checks:true (fun m -> Csr.make ~csr:(all_csrs_mux()) m) i @@ fun x -> 
-        let traps = x.st.iclass.Ifs.Class.trap in
+        let traps = x.st.exn.Ifs.Exn.invalid_instr_trap in
         let sel g p = (if g then gnd else vdd) |: p in
         let open Ifs.Csr_ctrl in
         [
@@ -460,9 +459,40 @@ module Tests(B : HardCaml.Comb.S) = struct
             (~: (x.st.csr.csr_write |: x.st.csr.csr_set |: x.st.csr.csr_clr)), 
               "no write on trap";
           x.st.csr.csr_re_n ==>: (x.data.Csr.rd ==:. 0), "no read ==> rd=0";
-          x.csr_rdata ==: x.st.rdd, "csr_rdata = rdd";
+          (~: traps) ==>: (x.csr_rdata ==: x.st.rdd), "csr_rdata = rdd";
         ])
       csrs_insns
+
+  let level i x = [ x.st.iclass.Ifs.Class.level ==:. i, "level" ]
+
+  let test_level = 
+    testb (fun _ -> "#levels") All.make `addi @@ fun x ->
+      let traps = x.st.exn.Ifs.Exn.invalid_instr_trap in
+      let matches insn = 
+        let msk,mat = List.assoc insn Config.T.mask_match in
+        (x.data &: consti32 32 msk) ==: consti32 32 mat
+      in
+      let is_csr = 
+        matches `csrrw  |: matches `csrrs  |: matches `csrrc  |:
+        matches `csrrwi |: matches `csrrsi |: matches `csrrci 
+      in
+      let is_csr i = is_csr &: (x.instr.[29:28] ==:. i) in
+      let prop insns level label = 
+        let insns = reduce (|:) (List.map matches insns) in
+        [
+          (* initially check that the given instructions produce the right level *)
+          ((~: traps) &: (insns |: is_csr level)) ==>: 
+            (x.st.iclass.Ifs.Class.level ==:. level), "+"^label;
+          (* now check that this is the only way to produce this level 
+             (if this is not one of the expected instructions, then we cant produce
+             the given level we - proves we havent forgotten one *)
+          ((~: traps) &: (~: (insns |: is_csr level))) ==>: 
+            (x.st.iclass.Ifs.Class.level <>:. level), "-"^label;
+        ]
+      in
+      prop [`mret; `wfi] 3 "machine" @
+      prop [`hret]       2 "hyper" @
+      prop [`sret]       1 "super", []
 
 end
 
@@ -472,7 +502,7 @@ module Bits_i = struct
   let inputs = ref []
   include Bits
   let input n b = 
-    let c = try List.assoc n !inputs with _ -> failwith n in
+    let c = try List.assoc n !inputs with _ -> zero b in
     assert (width c = b);
     c
 end
@@ -490,7 +520,7 @@ let eval bits soln =
   let props, _ = f x in
   x, props
 
-let show_vec (n,b) = printf "%-16s : %s\n" n (Bits_i.to_string b)
+let show_vec (n,b) = printf "%-18s : %s\n" n (Bits_i.to_string b)
 
 let check ~verbose ~bits ~banned x = 
   let open HardCamlBloop.Sat in
@@ -551,4 +581,5 @@ let () = List.iter2 test Sat_tests.test_load Bit_tests.test_load
 let () = List.iter2 test Sat_tests.test_store Bit_tests.test_store
 let () = test Sat_tests.test_trap Bit_tests.test_trap
 let () = List.iter2 test Sat_tests.test_csrs Bit_tests.test_csrs
+let () = test Sat_tests.test_level Bit_tests.test_level
 

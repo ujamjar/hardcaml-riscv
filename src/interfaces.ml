@@ -30,17 +30,17 @@ module type S = sig
   end
 
   module Class : interface
-    trap
-    lui auipc
-    jal jalr
     bra
     ld st
     opi opr
     fen sys csr 
     ecall eret
     f3 f7
+    level
   end
   module Class_ex : module type of Interface_ex.Make(Class) 
+
+  module Exn : interface invalid_instr_trap end
 
   module Csr_ctrl : interface
     csr_use_imm csr_imm 
@@ -48,6 +48,7 @@ module type S = sig
     csr_dec
     csr_clr csr_set csr_write
     csr_valid
+    csr_level
   end
 
   module Stage : interface
@@ -59,6 +60,7 @@ module type S = sig
     ra1_zero ra2_zero rad_zero
     (iclass : Class)
     (csr : Csr_ctrl)
+    (exn : Exn)
     junk
   end
   module Stage_ex : module type of Interface_ex.Make(Stage) 
@@ -310,17 +312,19 @@ module Make(C : Config.S) = struct
   end
 
   module Class = interface
-    trap[1]
-    lui[1] auipc[1]
-    jal[1] jalr[1]
     bra[1]
     ld[1] st[1]
     opi[1] opr[1]
     fen[1] sys[1] csr[1] 
     ecall[1] eret[1]
     f3[3] f7[1]
+    level[2]
   end
   module Class_ex = Interface_ex.Make(Class)
+
+  module Exn = interface
+    invalid_instr_trap[1]
+  end
 
   module Csr_ctrl = interface
     csr_use_imm[1] csr_imm[5] 
@@ -328,6 +332,7 @@ module Make(C : Config.S) = struct
     csr_dec[List.length csrs]
     csr_clr[1] csr_set[1] csr_write[1]
     csr_valid[1]
+    csr_level[2]
   end
 
   (* this stores the information needed at any stage of the
@@ -346,7 +351,7 @@ module Make(C : Config.S) = struct
    * produce a hierarchy of modules. *)
   module Stage = interface
     (* decoded instruction *)
-    insn[Config.V.n+1]
+    insn[Config.V.n]
     (* program counter *)
     pc[C.xlen] 
     (* instruction from memory *)
@@ -367,6 +372,8 @@ module Make(C : Config.S) = struct
     (iclass : Class)
     (* csr control *)
     (csr : Csr_ctrl)
+    (* exceptions and traps *)
+    (exn : Exn)
     (* junk TO BE REMOVED  *)
     junk[1]
   end

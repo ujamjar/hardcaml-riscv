@@ -41,8 +41,11 @@ module type S = sig
   (* add support for wait for interrupt instruction *)
   val support_wfi : bool
 
-  (* add support for eret instruction *)
-  val support_eret : bool
+  (* add support for xret instructions *)
+  val support_uret : bool
+  val support_sret : bool
+  val support_hret : bool
+  val support_mret : bool
 
   (* add support for all csr instructions (csrrc is always supported) *)
   val support_csrs : bool

@@ -30,17 +30,17 @@ module type S = sig
   end
 
   module Class : interface
-    trap
-    lui auipc
-    jal jalr
     bra
     ld st
     opi opr
     fen sys csr 
     ecall eret
     f3 f7
+    level
   end
   module Class_ex : module type of Interface_ex.Make(Class) 
+
+  module Exn : interface invalid_instr_trap end
 
   module Csr_ctrl : interface
     csr_use_imm csr_imm 
@@ -48,6 +48,7 @@ module type S = sig
     csr_dec
     csr_clr csr_set csr_write
     csr_valid
+    csr_level
   end
 
   module Stage : interface
@@ -59,6 +60,7 @@ module type S = sig
     ra1_zero ra2_zero rad_zero
     (iclass : Class)
     (csr : Csr_ctrl)
+    (exn : Exn)
     junk
   end
   module Stage_ex : module type of Interface_ex.Make(Stage) 
