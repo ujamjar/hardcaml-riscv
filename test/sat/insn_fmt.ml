@@ -23,9 +23,9 @@ module I(B' : HardCaml.Comb.S) = struct
     }
 
   let make m = 
-    let rd = B.input "rd" 5 in
-    let rs1 = B.input "rs1" 5 in
-    let imm = B.input "imm" 12 in
+    let rd = B.input "i_rd" 5 in
+    let rs1 = B.input "i_rs1" 5 in
+    let imm = B.input "i_imm" 12 in
     let m = B.consti32 32 m in
     let instr = 
       B.concat [
@@ -53,9 +53,9 @@ module I_shift(B' : HardCaml.Comb.S) = struct
     }
 
   let make m = 
-    let rd = B.input "rd" 5 in
-    let rs1 = B.input "rs1" 5 in
-    let imm = B.input "imm" 5 in
+    let rd = B.input "i_rd" 5 in
+    let rs1 = B.input "i_rs1" 5 in
+    let imm = B.input "i_imm" 5 in
     let m = B.consti32 32 m in
     let instr = 
       B.concat [
@@ -83,8 +83,8 @@ module U(B' : HardCaml.Comb.S) = struct
     }
 
   let make m = 
-    let rd = B.input "rd" 5 in
-    let imm = B.input "imm" 20 in
+    let rd = B.input "i_rd" 5 in
+    let imm = B.input "i_imm" 20 in
     let m = B.consti32 32 m in
     let instr = 
       B.concat [
@@ -110,9 +110,9 @@ module R(B' : HardCaml.Comb.S) = struct
     }
 
   let make m = 
-    let rd = B.input "rd" 5 in
-    let rs1 = B.input "rs1" 5 in
-    let rs2 = B.input "rs2" 5 in
+    let rd = B.input "i_rd" 5 in
+    let rs1 = B.input "i_rs1" 5 in
+    let rs2 = B.input "i_rs2" 5 in
     let m = B.consti32 32 m in
     let instr = 
       B.concat [
@@ -172,9 +172,9 @@ module SB(B' : HardCaml.Comb.S) = struct
     }
 
   let make m = 
-    let rs1 = B.input "rs1" 5 in
-    let rs2 = B.input "rs2" 5 in
-    let imm = B.input "imm" 12 in
+    let rs1 = B.input "i_rs1" 5 in
+    let rs2 = B.input "i_rs2" 5 in
+    let imm = B.input "i_imm" 12 in
     let imm' = B.(imm @: gnd) in
     let m = B.consti32 32 m in
     let instr = 
@@ -206,9 +206,9 @@ module S(B' : HardCaml.Comb.S) = struct
     }
 
   let make m = 
-    let rs1 = B.input "rs1" 5 in
-    let rs2 = B.input "rs2" 5 in
-    let imm = B.input "imm" 12 in
+    let rs1 = B.input "i_rs1" 5 in
+    let rs2 = B.input "i_rs2" 5 in
+    let imm = B.input "i_imm" 12 in
     let m = B.consti32 32 m in
     let instr = 
       B.(concat [
@@ -227,7 +227,7 @@ end
 module All(B : HardCaml.Comb.S) = struct
   type bits = B.t
   type 'a t = B.t
-  let make _ = let b = B.input "instr" 32 in b, b 
+  let make _ = let b = B.input "i_instr" 32 in b, b 
 end
 
 module Csr(B' : HardCaml.Comb.S) = struct
@@ -243,15 +243,15 @@ module Csr(B' : HardCaml.Comb.S) = struct
     }
 
   let make ?csr ?rs1 m = 
-    let rd = B.input "rd" 5 in
+    let rd = B.input "i_rd" 5 in
     let rs1 = 
       match rs1 with
-      | None -> B.input "rs1" 5
+      | None -> B.input "i_rs1" 5
       | Some(rs1) -> rs1
     in
     let csr = 
       match csr with
-      | None -> B.input "csr" 12 
+      | None -> B.input "i_csr" 12 
       | Some(csr) -> csr
     in
     let m = B.consti32 32 m in

@@ -34,6 +34,7 @@ module Make(C : Config.S) = struct
         ra1_zero = vdd; ra2_zero = vdd; rad_zero = vdd;
         insn = def_insn; instr = def_instr;
         iclass = def_iclass;
+        prv = const "11";
     })
 
   let def_clear_mi = 

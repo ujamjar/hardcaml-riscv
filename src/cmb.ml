@@ -55,7 +55,7 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
     let alu = name "alu_" @@ Alu.alu ~dec:dec in
     let mem,md = Mem.mem ~inp ~alu:alu in
     let mem = name "mem_" mem in
-    let com, csrs_wr = Commit.commit ~mem:mem ~csrs:csrs_q ~csr_rdata in
+    let com, csrs_wr = Commit.commit ~mem:mem ~csrs:csrs_q ~csr_rdata ~prv:state.prv in
     let com = name "com_" com in
     let com = hack_junk com state in
 

@@ -33,11 +33,6 @@ module Make(B : HardCaml.Comb.S) = struct
   module Ifs = Interfaces.Make(Cfg)
   module Cmb = Cmb.Make(B)(Ifs)
   module Rf = Rf.Make(Ifs)
-  module F = Fetch.Make(Ifs)(B)
-  module D = Decoder.Make(Ifs)(B)
-  module X = Alu.Make(Ifs)(B)
-  module M = Mem.Make(Ifs)(B)
-  module C = Commit.Make(Ifs)(B)
 
   let z (_,b) = B.zero b
 
@@ -45,7 +40,7 @@ module Make(B : HardCaml.Comb.S) = struct
   let mi_zero = Ifs.Mi_instr.(map z t)
   let md_zero = Ifs.Mi_data.(map z t)
 
-  let build_cpu ~pc ~instr ~rdata ~csr_rdata = 
+  let build_cpu ~pc ~prv ~instr ~rdata ~csr_rdata () = 
     let open Ifs in
     let open Stage in
     let inp = 
@@ -53,10 +48,10 @@ module Make(B : HardCaml.Comb.S) = struct
                       Ifs.I.md = { md_zero with Ifs.Mi_data.rdata = rdata } }
     in
     let csrs_q = Csr_regs.(map (fun (n,b) -> B.zero b) t) in
-    let state = { Stage.(map B.(fun (_,b) -> zero b) t) with pc } in
+    let state = { Stage.(map B.(fun (_,b) -> zero b) t) with pc; prv } in
 
     let async_rf ~dec = 
-      let rd1, rd2 = B.input "reg_rd1" 32, B.input "reg_rd2" 32 in
+      let rd1, rd2 = B.input "i_reg_rd1" 32, B.input "i_reg_rd2" 32 in
       Rf.O.{
         q1 = B.(mux2 (dec.ra1 ==:. 0) (zero 32) rd1);
         q2 = B.(mux2 (dec.ra2 ==:. 0) (zero 32) rd2);
@@ -92,6 +87,7 @@ module Make(B : HardCaml.Comb.S) = struct
       rdata : B.t;
       csr_rdata : B.t;
       pc : B.t;
+      prv : B.t;
       data : 'a;
       st : B.t Ifs.Stage.t;
       rd1 : B.t;
@@ -103,12 +99,13 @@ module Make(B : HardCaml.Comb.S) = struct
     Config.T.t -> (Int32.t -> B.t * 'a) -> 'a t
     = fun instr make ->
     let _,match' = List.assoc instr Config.T.mask_match in
-    let rdata = input "rdata" 32 in
-    let csr_rdata = input "csr_rdata" 32 in
-    let pc = input "pc" 31 @: gnd in
+    let rdata = input "i_rdata" 32 in
+    let csr_rdata = input "i_csr_rdata" 32 in
+    let pc = input "i_pc" 31 @: gnd in
+    let prv = input "i_prv" 2 in
     let instr, data = make match' in
-    let st,rd1,rd2, md = build_cpu ~pc ~instr ~rdata ~csr_rdata in
-    { instr; rdata; csr_rdata; pc; data; st; rd1; rd2; md }
+    let st,rd1,rd2, md = build_cpu ~pc ~prv ~instr ~rdata ~csr_rdata () in
+    { instr; rdata; csr_rdata; pc; prv; data; st; rd1; rd2; md }
 
 end
 
@@ -125,9 +122,9 @@ module Tests(B : HardCaml.Comb.S) = struct
   open Ifs.Mo_data
   open B
 
-  type show = Config.T.Show_t.a -> string 
+  type show = Config.T.t -> string 
   type 'a mk = int32 -> B.t * 'a
-  type instr = Config.T.Enum_t.a 
+  type instr = Config.T.t 
   type 'a core = 'a Core.t 
   type props = ((B.t * string) list) * (B.t list)
 
@@ -398,7 +395,7 @@ module Tests(B : HardCaml.Comb.S) = struct
     let ro_csrs = Gencsr.ro_csrs Ifs.csrs |> List.map (consti 12) in
     let rw_csrs = Gencsr.rw_csrs Ifs.csrs |> List.map (consti 12) in
     let w l = HardCaml.Utils.clog2 (List.length l) in
-    let mux l = mux (input "csr_sel" (w l)) l in
+    let mux l = mux (input "i_csr_sel" (w l)) l in
     mux (ro_csrs@rw_csrs)
 
   let csrs_insns = 
@@ -492,7 +489,28 @@ module Tests(B : HardCaml.Comb.S) = struct
       in
       prop [`mret; `wfi] 3 "machine" @
       prop [`hret]       2 "hyper" @
-      prop [`sret]       1 "super", []
+      prop [`sret]       1 "super", 
+      []
+
+  let test_level_trap = 
+    testb (fun _ -> "#traplevel") All.make `addi @@ fun x ->
+      let matches insn = 
+        let msk,mat = List.assoc insn Config.T.mask_match in
+        (x.data &: consti32 32 msk) ==: consti32 32 mat
+      in
+      let traps = x.st.exn.Ifs.Exn.invalid_instr_trap in
+      let chklev insn name lev = 
+        [
+          (matches insn &: (x.prv >=:. lev)) ==>: (~: traps), name^" ok";
+          (matches insn &: (x.prv <:. lev)) ==>: traps, name^" trap";
+        ]
+      in
+      chklev `wfi "wfi" 3 @
+      chklev `mret "mret" 3 @
+      chklev `hret "hret" 2 @
+      chklev `sret "sret" 1 @
+      chklev `uret "uret" 0,
+      []
 
 end
 
@@ -520,7 +538,7 @@ let eval bits soln =
   let props, _ = f x in
   x, props
 
-let show_vec (n,b) = printf "%-18s : %s\n" n (Bits_i.to_string b)
+let show_vec (n,b) = printf "%-20s : %s\n" n (Bits_i.to_string b)
 
 let check ~verbose ~bits ~banned x = 
   let open HardCamlBloop.Sat in
@@ -557,7 +575,7 @@ let test sat bits =
   let props, banned = f x in
   let all_props = Bloop.(reduce (&:) (List.map fst props)) in
   printf "--------------------------------------------------------\n";
-  printf "%-.8s[%7i]...%!" (show instr) (cost all_props);
+  printf "%-.16s[%7i]...%!" (show instr) (cost all_props);
   match check ~verbose:false ~bits ~banned all_props with
   | `unsat -> ()
   | `sat _ -> begin
@@ -582,4 +600,5 @@ let () = List.iter2 test Sat_tests.test_store Bit_tests.test_store
 let () = test Sat_tests.test_trap Bit_tests.test_trap
 let () = List.iter2 test Sat_tests.test_csrs Bit_tests.test_csrs
 let () = test Sat_tests.test_level Bit_tests.test_level
+let () = test Sat_tests.test_level_trap Bit_tests.test_level_trap
 

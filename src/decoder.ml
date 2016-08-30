@@ -155,6 +155,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       dec Ifs.support_mret 0b11010, 
       dec Ifs.support_wfi  0b01101
     in
+    let eret = (uret |: sret |: hret |: mret) in
 
     let csr_ctrl, csrs = 
       if Ifs.support_csrs then 
@@ -179,7 +180,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       ~: (reduce (|:) 
         [lui; auipc; jal; jalr; bra; ld; st; opi; sfti; opr; 
          fence; fencei; ecall; ebreak; 
-         uret; sret; hret; mret; wfi; csr])
+         eret; wfi; csr])
     in
     let trap = trap |: csr_ctrl.Csr_ctrl.csr_invalid_we in
 
@@ -258,7 +259,7 @@ module Make_insn_decoder(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     { insn; 
       iclass = { 
         Class.bra; ld; st; opi; opr; fen; sys; 
-        csr; ecall; eret=(uret |: sret |: hret |: mret);
+        csr; ecall; eret;
         f7 = instr.[30:30]; f3=funct3; 
         level;
       };
@@ -310,7 +311,10 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
       rwe;
       is_imm; imm; 
       instr; insn=d.insn; iclass=d.iclass; csr=d.csr;
-      exn = { Exn.invalid_instr_trap = trap };
+      exn = { 
+        Exn.invalid_instr_trap = trap; 
+        invalid_instr_level = gnd;
+      };
     }
 
   let name = "dec"

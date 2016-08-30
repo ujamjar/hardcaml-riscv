@@ -40,7 +40,10 @@ module type S = sig
   end
   module Class_ex : module type of Interface_ex.Make(Class) 
 
-  module Exn : interface invalid_instr_trap end
+  module Exn : interface 
+    invalid_instr_trap
+    invalid_instr_level
+  end
 
   module Csr_ctrl : interface
     csr_use_imm csr_imm 
@@ -61,6 +64,7 @@ module type S = sig
     (iclass : Class)
     (csr : Csr_ctrl)
     (exn : Exn)
+    prv
     junk
   end
   module Stage_ex : module type of Interface_ex.Make(Stage) 
@@ -324,6 +328,7 @@ module Make(C : Config.S) = struct
 
   module Exn = interface
     invalid_instr_trap[1]
+    invalid_instr_level[1]
   end
 
   module Csr_ctrl = interface
@@ -374,6 +379,8 @@ module Make(C : Config.S) = struct
     (csr : Csr_ctrl)
     (* exceptions and traps *)
     (exn : Exn)
+    (* cpu priviledge level *)
+    prv[2]
     (* junk TO BE REMOVED  *)
     junk[1]
   end
