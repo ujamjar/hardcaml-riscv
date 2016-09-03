@@ -245,19 +245,19 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
   type csr_ospec = 
     [ `const of B.t | `consti of int
     | `counter64 of bool * timer_spec
-    | `writeable of Config.csr * int * B.t * B.t 
-    | `writeable_ext of Config.csr * int * B.t * B.t * B.t * B.t ] 
+    | `writeable of Config.csr * int * B.t 
+    | `writeable_ext of Config.csr * int * B.t * B.t * B.t ] 
   type csr_ispec = B.t * B.t
 
   let csr_spec i = 
     let open B in
     let instr_set = if xlen=32 then `rv32 else `rv64 in
-    let writeable ~csr ~ofs ~cv ~e = `writeable(csr,ofs,cv,e) in
-    let writeable_ext ~csr ~ofs ~cv ~e i = 
+    let writeable ~csr ~ofs ~cv = `writeable(csr,ofs,cv) in
+    let writeable_ext ~csr ~ofs ~cv i = 
       let ext_we, ext_data = i in
-      `writeable_ext(csr,ofs,cv,e,ext_we,ext_data) 
+      `writeable_ext(csr,ofs,cv,ext_we,ext_data) 
     in
-    let writeable_xlen csr = { Xlen.F.data = writeable ~csr ~ofs:0 ~cv:(zero xlen) ~e:vdd } in
+    let writeable_xlen csr = { Xlen.F.data = writeable ~csr ~ofs:0 ~cv:(zero xlen) } in
   
     let counter64 c = 
       Xlen.F.{ X64.hi = { data = `counter64(true, c) }; lo = { data = `counter64(false, c) } }
@@ -268,7 +268,6 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
     let regs = 
       let open Xlen.F in
       let zero = `consti 0 in
-      let ones = `consti (-1) in
       {
         Csr_regs.m = 
           {
@@ -333,24 +332,24 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
                 scratch  = writeable_xlen `mscratch;
                 epc  = 
                   { 
-                    data = writeable_ext ~csr:`mepc ~cv:(B.zero xlen) ~e:vdd ~ofs:0
+                    data = writeable_ext ~csr:`mepc ~cv:(B.zero xlen) ~ofs:0
                                          i.Csr_regs.m.Machine.trap.Trap.epc.data;
                   };
                 cause =
                   {
                     Cause.F.interrupt = 
-                      writeable_ext ~csr:`mcause ~cv:gnd ~e:vdd
+                      writeable_ext ~csr:`mcause ~cv:gnd 
                                     ~ofs:ofs.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.interrupt
                                     i.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.interrupt;
                     z = zero;
                     cause = 
-                      writeable_ext ~csr:`mcause ~cv:(B.zero 4) ~e:vdd
+                      writeable_ext ~csr:`mcause ~cv:(B.zero 4) 
                                     ~ofs:ofs.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.cause
                                     i.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.cause;
                   };
                 badaddr  = 
                   { 
-                    data = writeable_ext ~csr:`mbadaddr ~cv:(B.zero xlen) ~e:vdd ~ofs:0
+                    data = writeable_ext ~csr:`mbadaddr ~cv:(B.zero xlen) ~ofs:0
                                          i.Csr_regs.m.Machine.trap.Trap.badaddr.data;
                   };
                 ip = 
@@ -475,24 +474,24 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
                 scratch  = writeable_xlen `sscratch;
                 epc  = 
                   { 
-                    data = writeable_ext ~csr:`sepc ~cv:(B.zero xlen) ~e:vdd ~ofs:0
+                    data = writeable_ext ~csr:`sepc ~cv:(B.zero xlen) ~ofs:0
                                          i.Csr_regs.m.Machine.trap.Trap.epc.data;
                   };
                 cause =
                   {
                     Cause.F.interrupt = 
-                      writeable_ext ~csr:`scause ~cv:gnd ~e:vdd
+                      writeable_ext ~csr:`scause ~cv:gnd 
                                     ~ofs:ofs.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.interrupt
                                     i.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.interrupt;
                     z = zero;
                     cause = 
-                      writeable_ext ~csr:`scause ~cv:(B.zero 4) ~e:vdd
+                      writeable_ext ~csr:`scause ~cv:(B.zero 4) 
                                     ~ofs:ofs.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.cause
                                     i.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.cause;
                   };
                 badaddr  = 
                   { 
-                    data = writeable_ext ~csr:`sbadaddr ~cv:(B.zero xlen) ~e:vdd ~ofs:0
+                    data = writeable_ext ~csr:`sbadaddr ~cv:(B.zero xlen) ~ofs:0
                                          i.Csr_regs.m.Machine.trap.Trap.badaddr.data;
                   };
                 ip = 
@@ -577,24 +576,24 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
                 scratch  = writeable_xlen `hscratch;
                 epc  = 
                   { 
-                    data = writeable_ext ~csr:`hepc ~cv:(B.zero xlen) ~e:vdd ~ofs:0
+                    data = writeable_ext ~csr:`hepc ~cv:(B.zero xlen) ~ofs:0
                                          i.Csr_regs.m.Machine.trap.Trap.epc.data;
                   };
                 cause =
                   {
                     Cause.F.interrupt = 
-                      writeable_ext ~csr:`hcause ~cv:gnd ~e:vdd
+                      writeable_ext ~csr:`hcause ~cv:gnd 
                                     ~ofs:ofs.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.interrupt
                                     i.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.interrupt;
                     z = zero;
                     cause = 
-                      writeable_ext ~csr:`hcause ~cv:(B.zero 4) ~e:vdd
+                      writeable_ext ~csr:`hcause ~cv:(B.zero 4) 
                                     ~ofs:ofs.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.cause
                                     i.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.cause;
                   };
                 badaddr  = 
                   { 
-                    data = writeable_ext ~csr:`hbadaddr ~cv:(B.zero xlen) ~e:vdd ~ofs:0
+                    data = writeable_ext ~csr:`hbadaddr ~cv:(B.zero xlen) ~ofs:0
                                          i.Csr_regs.m.Machine.trap.Trap.badaddr.data;
                   };
                 ip = 
@@ -674,24 +673,24 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) = struct
                 scratch  = writeable_xlen `uscratch;
                 epc  = 
                   { 
-                    data = writeable_ext ~csr:`uepc ~cv:(B.zero xlen) ~e:vdd ~ofs:0
+                    data = writeable_ext ~csr:`uepc ~cv:(B.zero xlen) ~ofs:0
                                          i.Csr_regs.m.Machine.trap.Trap.epc.data;
                   };
                 cause =
                   {
                     Cause.F.interrupt = 
-                      writeable_ext ~csr:`ucause ~cv:gnd ~e:vdd
+                      writeable_ext ~csr:`ucause ~cv:gnd 
                                     ~ofs:ofs.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.interrupt
                                     i.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.interrupt;
                     z = zero;
                     cause = 
-                      writeable_ext ~csr:`ucause ~cv:(B.zero 4) ~e:vdd
+                      writeable_ext ~csr:`ucause ~cv:(B.zero 4) 
                                     ~ofs:ofs.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.cause
                                     i.Csr_regs.m.Machine.trap.Trap.cause.Cause.F.cause;
                   };
                 badaddr  = 
                   { 
-                    data = writeable_ext ~csr:`ubadaddr ~cv:(B.zero xlen) ~e:vdd ~ofs:0
+                    data = writeable_ext ~csr:`ubadaddr ~cv:(B.zero xlen) ~ofs:0
                                          i.Csr_regs.m.Machine.trap.Trap.badaddr.data;
                   };
                 ip = 
@@ -889,39 +888,42 @@ module Build(Ifs : Interfaces.S) = struct
     in
 
     (* set, clear or write bits to a register *)
-    let csr_reg ~cv ~e ~clr ~set ~write ~data ~f = 
-      Seq.reg_fb ~e:(e &: (clr |: set |: write)) ~cv ~w:(width cv) 
+    let csr_reg ~cv ~ext_we ~csr_we ~clr ~set ~write ~data ~ext_f = 
+      Seq.reg_fb ~e:(ext_we |: csr_we) ~cv ~w:(width cv) 
         (fun dprev ->
           pmux [
             clr, (dprev &: (~: data));
             set, (dprev |: data);
             write, data;
-          ] (f dprev))
+          ] (ext_f dprev))
     in
 
     (* R/W csr register *)
-    let writeable_fb ~csr ~ofs ~cv ~e ~f =
+    let writeable_fb ~csr ~ofs ~cv ~ext_we ~ext_f =
       let csr_index = csr_index csr in
       if csr_index = -1 then cv
       else
         csr_reg ~cv 
-          ~e:(e &: csr_ctrl.csr_dec.[csr_index:csr_index])
+          ~ext_we
+          ~csr_we:(csr_ctrl.csr_dec.[csr_index:csr_index] &: csr_ctrl.csr_file_write)
           ~clr:csr_ctrl.csr_clr
           ~set:csr_ctrl.csr_set
           ~write:csr_ctrl.csr_write
           ~data:(wdata.[(width cv)+ofs-1:ofs]) (* XXX ... from pipeline *)
-          ~f
+          ~ext_f
     in
-    let writeable = writeable_fb ~f:(fun x -> x) in
+    let writeable = writeable_fb ~ext_we:gnd ~ext_f:(fun x -> x) in
 
     (* R/W csr register that can also be set externally.
      * XXX which should get priority??? *)
-    let writeable_ext ~ext_we ~ext_data = writeable_fb ~f:(fun x -> mux2 ext_we ext_data x) in
+    let writeable_ext ~ext_we ~ext_data = 
+      writeable_fb ~ext_we ~ext_f:(fun x -> mux2 ext_we ext_data x) 
+    in
 
     (* split 32/32 counter *)
     let counter64 =
       if xlen = 64 then
-        writeable_fb ~csr:`mtime ~ofs:0 ~cv:(zero 64) ~e:vdd ~f:(fun d -> d +:. 1)
+        writeable_fb ~csr:`mtime ~ofs:0 ~cv:(zero 64) ~ext_we:vdd ~ext_f:(fun d -> d +:. 1)
       else
         let open Ifs.Csr_ctrl in
         let csr_index0 = csr_index `mtime in
@@ -929,7 +931,7 @@ module Build(Ifs : Interfaces.S) = struct
         if csr_index0 = (-1) || csr_index1 = (-1) then (zero 64)
         else
           let w = wire 64 in
-          let reg ~cv ~e ~clr ~set ~write ~data ~w = 
+          (*let reg ~cv ~e ~clr ~set ~write ~data ~w = 
             Seq.reg_fb ~e:e ~cv ~w:(width cv) 
               (fun dprev ->
                 pmux [
@@ -959,6 +961,12 @@ module Build(Ifs : Interfaces.S) = struct
               ~write:((wr &: csr_ctrl.csr_write) -- "csr_counter_write1")
               ~data:wdata
               ~w:w.[63:32]
+          in*)
+          let rlo = writeable_fb ~csr:`mtime  ~ofs:0 ~cv:(zero 32) 
+                                 ~ext_we:vdd ~ext_f:(fun d -> w.[31:0])
+          in
+          let rhi = writeable_fb ~csr:`mtimeh ~ofs:0 ~cv:(zero 32) 
+                                 ~ext_we:vdd ~ext_f:(fun d -> w.[63:32])
           in
           let q = rhi @: rlo in
           let () = w <== q +:. 1 in
@@ -974,9 +982,9 @@ module Build(Ifs : Interfaces.S) = struct
           | `const x -> x
           | `counter64 (false,_) -> counter64.[xlen-1:0]
           | `counter64 (true,_) -> if xlen=32 then counter64.[63:32] else zero 64
-          | `writeable(csr, ofs, cv, e) -> writeable ~csr ~ofs ~cv ~e
-          | `writeable_ext(csr, ofs, cv, e, ext_we, ext_data) -> 
-            writeable_ext ~csr ~ofs ~cv ~e ~ext_we ~ext_data)
+          | `writeable(csr, ofs, cv) -> writeable ~csr ~ofs ~cv 
+          | `writeable_ext(csr, ofs, cv, ext_we, ext_data) -> 
+            writeable_ext ~csr ~ofs ~cv ~ext_we ~ext_data)
         t spec)
     in
     regs, M.csr_read_mux csr_ctrl.Ifs.Csr_ctrl.csr_dec regs Ifs.csrs

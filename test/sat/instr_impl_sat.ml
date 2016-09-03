@@ -418,7 +418,7 @@ module Tests(B : HardCaml.Comb.S) = struct
 
   let (==>:) p q = (~: p) |: q
   let (<==>:) q p = (p ==>: q) &: (q ==>: p)
-
+(*
   let test_csrs = List.map
       (fun i -> test ~no_default_checks:true (fun m -> Csr.make ~csr:(all_csrs_mux()) m) i @@ fun x -> 
         let traps = x.st.exn.Ifs.Exn.invalid_instr_trap in
@@ -460,15 +460,86 @@ module Tests(B : HardCaml.Comb.S) = struct
         ])
       csrs_insns
 
+  let test_csrrw = testb (fun _ -> "#csrrw") All.make `addi @@ fun x ->
+    [
+    ], 
+    []
+
   let level i x = [ x.st.iclass.Ifs.Class.level ==:. i, "level" ]
+*)
+
+  let matches data insn = 
+    let msk,mat = List.assoc insn Config.T.mask_match in
+    (data &: consti32 32 msk) ==: consti32 32 mat
+
+  let test_csrs = testb (fun _ -> "#csrs") All.make `addi @@ fun x ->
+    let open Ifs.Csr_ctrl in
+    let open Ifs.Class in
+    let traps = x.st.exn.Ifs.Exn.invalid_instr_trap in
+    let matches = matches x.data in
+
+    let is_csrrw, is_csrrwi = matches `csrrw, matches `csrrwi in
+    let is_csrrs, is_csrrsi = matches `csrrs, matches `csrrsi in
+    let is_csrrc, is_csrrci = matches `csrrc, matches `csrrci in
+    let is_csr = is_csrrw |: is_csrrwi |: 
+                 is_csrrs |: is_csrrsi |: 
+                 is_csrrc |: is_csrrci 
+    in
+    let rw = x.data.[31:30] in
+    let ro = rw ==:. 0b11 in
+    let lev = x.data.[29:28] in
+    let rd, rs = x.data.[11:7], x.data.[19:15] in
+    let rd0, rs0 = rd ==:. 0, rs ==:. 0 in
+
+    [
+      (* csr class *)
+      is_csr <==>: x.st.iclass.Ifs.Class.csr, "class";
+      (* no memory request *)
+      is_csr ==>: ~: (x.md.req), "no memory access";
+      (* one of write set or clear *)
+      is_csr ==>: 
+        ((ue x.st.csr.csr_write +: 
+          ue x.st.csr.csr_set +: 
+          ue x.st.csr.csr_clr) ==:. 1), "one of write, set or clear";
+      (* immediate select *)
+      (is_csrrwi |: is_csrrsi |: is_csrrci) ==>: x.st.csr.csr_use_imm, "imm";
+      (* read-only / read_write *)
+      (is_csr &: (rw ==:. 3)) ==>: x.st.csr.csr_read_only, "ro";
+      (is_csr &: (rw <>:. 3)) ==>: (~: (x.st.csr.csr_read_only)), "rw";
+      (* bad address means no 1 hot decoded address *)
+      is_csr ==>: 
+        ((x.st.csr.csr_dec ==:. 0) <==>: 
+         ~: (x.st.csr.csr_address_valid) ), "badaddr";
+      (* writing to reg file *)
+      ((is_csrrw |: is_csrrwi) &: (rd ==:. 0)) ==>: (~: (x.st.rwe)), "no reg write";
+      ((~: traps) &: ((is_csrrw |: is_csrrwi) &: (rd <>:. 0))) ==>: x.st.rwe, "reg write";
+      ((is_csrrc |: is_csrrci |: is_csrrs |: is_csrrsi) &: (rs ==:. 0)) ==>: 
+        (~: (x.st.csr.csr_file_write)), "no file write";
+      ((~: traps) &: ((is_csrrc |: is_csrrci |: is_csrrs |: is_csrrsi) &: (rs <>:. 0))) ==>: 
+        x.st.csr.csr_file_write, "file write";
+      (* trap on read only *)
+      (is_csrrw &: ro) ==>: traps, "csrrw ro trap";
+      (is_csrrwi &: ro) ==>: traps, "csrrwi ro trap";
+      (is_csrrc &: ro &: (rs <>:. 0)) ==>: traps, "csrrc ro trap";
+      (is_csrrci &: ro &: (rs <>:. 0)) ==>: traps, "csrrci ro trap";
+      (is_csrrs &: ro &: (rs <>:. 0)) ==>: traps, "csrrs ro trap";
+      (is_csrrsi &: ro &: (rs <>:. 0)) ==>: traps, "csrrsi ro trap";
+      (* check control signals *)
+      (~: traps &: x.st.iclass.csr) ==>: 
+        ((is_csrrw |: is_csrrwi) <==>: (x.st.csr.csr_write)), "csr_write";
+      (~: traps &: x.st.iclass.csr) ==>: 
+        ((is_csrrc |: is_csrrci) <==>: (x.st.csr.csr_clr)), "csr_clr";
+      (~: traps &: x.st.iclass.csr) ==>: 
+        ((is_csrrs |: is_csrrsi) <==>: (x.st.csr.csr_set)), "csr_set";
+    ],
+    []
+
+  let test_csrs = [test_csrs]
 
   let test_level = 
     testb (fun _ -> "#levels") All.make `addi @@ fun x ->
       let traps = x.st.exn.Ifs.Exn.invalid_instr_trap in
-      let matches insn = 
-        let msk,mat = List.assoc insn Config.T.mask_match in
-        (x.data &: consti32 32 msk) ==: consti32 32 mat
-      in
+      let matches = matches x.data in
       let is_csr = 
         matches `csrrw  |: matches `csrrs  |: matches `csrrc  |:
         matches `csrrwi |: matches `csrrsi |: matches `csrrci 
@@ -494,10 +565,7 @@ module Tests(B : HardCaml.Comb.S) = struct
 
   let test_level_trap = 
     testb (fun _ -> "#traplevel") All.make `addi @@ fun x ->
-      let matches insn = 
-        let msk,mat = List.assoc insn Config.T.mask_match in
-        (x.data &: consti32 32 msk) ==: consti32 32 mat
-      in
+      let matches = matches x.data in
       let traps = x.st.exn.Ifs.Exn.invalid_instr_trap in
       let chklev insn name lev = 
         [
@@ -588,7 +656,7 @@ let test sat bits =
   end
 
 let () = List.iter2 test Sat_tests.test_rimm Bit_tests.test_rimm
-let () = List.iter2 test Sat_tests.test_rimm_sh Bit_tests.test_rimm_sh
+(*let () = List.iter2 test Sat_tests.test_rimm_sh Bit_tests.test_rimm_sh
 let () = test Sat_tests.test_auipc Bit_tests.test_auipc
 let () = test Sat_tests.test_lui Bit_tests.test_lui
 let () = List.iter2 test Sat_tests.test_rr Bit_tests.test_rr
@@ -601,4 +669,4 @@ let () = test Sat_tests.test_trap Bit_tests.test_trap
 let () = List.iter2 test Sat_tests.test_csrs Bit_tests.test_csrs
 let () = test Sat_tests.test_level Bit_tests.test_level
 let () = test Sat_tests.test_level_trap Bit_tests.test_level_trap
-
+*)

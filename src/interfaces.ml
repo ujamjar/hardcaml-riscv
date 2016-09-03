@@ -46,12 +46,18 @@ module type S = sig
   end
 
   module Csr_ctrl : interface
-    csr_use_imm csr_imm 
-    csr_we_n csr_re_n csr_invalid_we 
+    (* decode enable for each csr *)
     csr_dec
+    (* immediate variant *)
+    csr_use_imm csr_imm
+    (* csr instruction type *)
     csr_clr csr_set csr_write
-    csr_valid
-    csr_level
+    (* csr read-only *)
+    csr_read_only
+    (* csr address is valid *)
+    csr_address_valid
+    (* register file write, csr file write (set in commit stage *)
+    csr_reg_write csr_file_write
   end
 
   module Stage : interface
@@ -332,12 +338,30 @@ module Make(C : Config.S) = struct
   end
 
   module Csr_ctrl = interface
+
+
+    (*
     csr_use_imm[1] csr_imm[5] 
     csr_we_n[1] csr_re_n[1] csr_invalid_we[1]
     csr_dec[List.length csrs]
     csr_clr[1] csr_set[1] csr_write[1]
     csr_valid[1]
     csr_level[2]
+    csr_use_imm csr_imm
+    *)
+
+    (* decode enable for each csr *)
+    csr_dec[List.length csrs]
+    (* immediate variant *)
+    csr_use_imm[1] csr_imm[5]
+    (* csr instruction type *)
+    csr_clr[1] csr_set[1] csr_write[1]
+    (* csr read-only *)
+    csr_read_only[1]
+    (* csr address is valid *)
+    csr_address_valid[1]
+    (* register file write, csr file write (set in commit stage *)
+    csr_reg_write[1] csr_file_write[1]
   end
 
   (* this stores the information needed at any stage of the

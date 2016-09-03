@@ -46,12 +46,18 @@ module type S = sig
   end
 
   module Csr_ctrl : interface
-    csr_use_imm csr_imm 
-    csr_we_n csr_re_n csr_invalid_we
+    (* decode enable for each csr *)
     csr_dec
+    (* immediate variant *)
+    csr_use_imm csr_imm
+    (* csr instruction type *)
     csr_clr csr_set csr_write
-    csr_valid
-    csr_level
+    (* csr read-only *)
+    csr_read_only
+    (* csr address is valid *)
+    csr_address_valid
+    (* register file write, csr file write (set in commit stage *)
+    csr_reg_write csr_file_write
   end
 
   module Stage : interface

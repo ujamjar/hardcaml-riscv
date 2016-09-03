@@ -1,3 +1,31 @@
+CSR instructions
+----------------
+
+CSRRW  (read/write)
+CSRRS  (read/set)
+CSRRC  (read/clear)
+CSRRWI (read/write immediate)
+CSRRSI (read/set immediate)
+CSRRCI (read/clear immediate)
+
+Properties
+----------
+
+CSRRW+CSRRWI
+  rd=x0 ==> no read side affects (no register write)
+
+CSRRS+CSRRC
+  rs1=x0 ==> no write to csr or side-effects (ie illegal insn on RO CSR)
+
+CSRRSI+CSRRCI
+  zimm=0 ==>  no write to csr or side-effects (ie illegal insn on RO CSR)
+
+OTHER
+  bad csr addr => always trap (regardless of above properties?)
+
+Registers
+---------
+
 Table 2.2: Currently allocated RISC-V user-level CSR addresses.
 
 Number  Privilege Name      Description

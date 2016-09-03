@@ -137,8 +137,8 @@ module Make(B : HardCaml.Comb.S)(Ifs : Interfaces.S) : sig
   type csr_ospec = 
     [ `const of B.t | `consti of int
     | `counter64 of bool * timer_spec
-    | `writeable of Config.csr * int * B.t * B.t 
-    | `writeable_ext of Config.csr * int * B.t * B.t * B.t * B.t ] 
+    | `writeable of Config.csr * int * B.t 
+    | `writeable_ext of Config.csr * int * B.t * B.t * B.t ] 
   type csr_ispec = B.t * B.t
 
   val csr_spec : csr_ispec Ifs.Csr_regs.t -> csr_ospec Ifs.Csr_regs.t

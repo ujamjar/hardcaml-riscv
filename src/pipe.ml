@@ -24,7 +24,7 @@ module Make(C : Config.S) = struct
 
   let zero' (n,b) = zero b
   let def_instr = consti32 32 @@ Riscv.RV32I.Asm.xori ~rd:0 ~rs1:0 ~imm:0
-  let def_insn = sll (one (Config.V.n+1)) (Enum.from_enum<Config.T.t> `xori)
+  let def_insn = sll (one Config.V.n) (Enum.from_enum<Config.T.t> `xori)
   let def_iclass = Class.{ (map zero' t) with opi = vdd; f3 = consti 3 6; }
 
   let def_clear = 
@@ -182,6 +182,34 @@ module Make(C : Config.S) = struct
 
       f_output ~ctrl ~mi ~md ~inp ~comb ~pipe
 
+    let p5_new ~inp ~(f_output : 'a f_output) = 
+      let open Stage in
+      
+      let name prefix f = Stage.(map2 (fun (n,b) y -> y -- (prefix ^ n)) t f) in
+      let preg prefix (n,b) cv d =
+        try (Seq.reg ~cv ~e:ctrl.Ctrl.en d) -- (prefix ^ n)
+        with _ ->
+          failwith 
+            (n ^ ": " ^ 
+            "r[" ^ string_of_int (width r) ^ "] " ^
+            "c[" ^ string_of_int (width cv) ^ "] " ^
+            "d[" ^ string_of_int (width d) ^ "] ")
+      in
+      let stage prefix d = Stage_ex.(map3 (preg prefix) t def_clear d) in
+      
+      let fet,mi = Fetch.fetch ~inp ~com:state in
+      let fet = stage "fet_" fet in (* hmmm - might rework this *)
+      let dec = stage "dec_" @@ Decoder.decoder ~inp ~csrs:csrs_q ~fet:fet in
+      let rfo = async_rf ~dec:dec in
+      let dec = { dec with rd1 = rfo.Rf.O.q1; rd2 = rfo.Rf.O.q2 } in
+      let alu = stage "alu_" @@ Alu.alu ~dec:dec in
+      let mem,md = Mem.mem ~inp ~alu:alu in
+      let mem = stage "mem_" mem in
+      let com, csrs_wr = Commit.commit ~mem:mem ~csrs:csrs_q ~csr_rdata ~prv:state.prv in
+      let com = stage "com_" com in
+      let com = hack_junk com state in
+      ()
+
     let p1 ~inp ~(f_output : 'a f_output) = 
       let open Stage in
       let open Stages in
@@ -210,8 +238,17 @@ module Make(C : Config.S) = struct
       let () = csr_rdata <== csr_rdata' in
       let _ = Ifs.Csr_regs.map2 (<==) csrs_q csrs_r in
 
-      let preg cv r d = r <== Seq.reg ~cv ~e:ctrl.Ctrl.en d in
-      let _ = Stage_ex.map3 preg def_clear state com in
+      let preg (n,b) cv r d =
+        try
+          r <== Seq.reg ~cv ~e:ctrl.Ctrl.en d 
+        with _ ->
+          failwith 
+            (n ^ ": " ^ 
+            "r[" ^ string_of_int (width r) ^ "] " ^
+            "c[" ^ string_of_int (width cv) ^ "] " ^
+            "d[" ^ string_of_int (width d) ^ "] ")
+      in
+      let _ = Stage_ex.map4 preg Stage_ex.t def_clear state com in
       let _ = Stage_ex.map2 (<==) com' com in
 
       let sts_zero = Stages.(map (fun (n,b) -> zero b) t) in

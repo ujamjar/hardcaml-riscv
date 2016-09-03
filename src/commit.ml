@@ -33,12 +33,33 @@ module Make(Ifs : Interfaces.S)(B : HardCaml.Comb.S) = struct
     let csrs_wr = Ifs.Csr_regs.(map (fun (n,b) -> gnd, zero b) t) in 
 
     let invalid_instr_level = prv <: i.level in
-    let invalid_instr_trap = p.exn.Exn.invalid_instr_trap |: invalid_instr_level in
+
+    let csr_reg_write, csr_file_write = 
+      let no_reg_write = p.rad_zero in
+      let no_file_write = (~: (sel `csrrw |: sel `csrrwi)) &: p.ra1_zero in
+      p.iclass.csr &: (~: no_reg_write),
+      p.iclass.csr &: (~: no_file_write)
+    in
+    let csr_trap = 
+      (~: (p.csr.Csr_ctrl.csr_address_valid)) |:
+      (p.csr.Csr_ctrl.csr_read_only &: csr_file_write)
+    in
+
+    let invalid_instr_trap = 
+      p.exn.Exn.invalid_instr_trap |: invalid_instr_level |: csr_trap
+    in
+    let trap_n = ~: invalid_instr_trap in
 
     { mem with 
       branch; rdd; 
+      rwe = (p.rwe |: csr_reg_write) &: trap_n;
       pc = pc.[31:1] @: gnd; 
       exn = { Exn.invalid_instr_trap; invalid_instr_level };
+      csr = 
+        { mem.csr with 
+          Csr_ctrl.csr_reg_write = csr_reg_write &: trap_n; 
+          csr_file_write = csr_file_write &: trap_n; 
+        };
     }, csrs_wr
 
   let f ~inp ~comb ~pipe = 
