@@ -182,8 +182,9 @@ module Make(C : Config.S) = struct
 
       f_output ~ctrl ~mi ~md ~inp ~comb ~pipe
 
-    let p5_new ~inp ~(f_output : 'a f_output) = 
+    (*let p5_new ~inp ~(f_output : 'a f_output) = 
       let open Stage in
+      let module Seq = Utils.Regs(struct let clk=inp.I.clk let clr=inp.I.clr end) in
       
       let name prefix f = Stage.(map2 (fun (n,b) y -> y -- (prefix ^ n)) t f) in
       let preg prefix (n,b) cv d =
@@ -209,6 +210,7 @@ module Make(C : Config.S) = struct
       let com = stage "com_" com in
       let com = hack_junk com state in
       ()
+    *)
 
     let p1 ~inp ~(f_output : 'a f_output) = 
       let open Stage in
