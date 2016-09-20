@@ -22,5 +22,6 @@ depends: [
   "hardcaml"
   "hardcaml-llvmsim"
   "hardcaml-waveterm"
+  "hardcaml-bloop"
 ]
 available: [ ocaml-version >= "4.01.0" ]
